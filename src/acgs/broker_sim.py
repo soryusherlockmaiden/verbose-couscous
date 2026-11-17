@@ -228,8 +228,7 @@ class _Replay:
                 self.enter(entry, trade.prices.opening, mark.opening, source_open, filters)
 
         if j.position.quantity:
-            closing_listing = as_of(self.market.listings[self.inst], end)
-            if closing_listing is None or not closing_listing.tradable:
+            if self.listing_boundary(start, end):
                 raise ReplayError(f"Position crosses an unresolved listing boundary at {end}")
             if tiers.tier(abs(j.position.quantity) * mark.high) is None:
                 raise ReplayError(f"Mark path exceeds observed maintenance tier coverage at {start}")
@@ -265,6 +264,20 @@ class _Replay:
                 self.trail(trail, stop_path.close, mark.close, filters)
             else:
                 j.record(end, "REJECTED", detail="TRAIL_CLOSE_UNAVAILABLE")
+
+    def listing_boundary(self, start: int, end: int) -> bool:
+        """Exposure follows the exchange's effective state, even if evidence arrived later.
+
+        Decisions stay causal (`as_of`). Accounting for a held position fails closed on
+        a status change the exchange applied inside the bar, whenever it was recorded.
+        """
+        history = self.market.listings[self.inst]
+        known = as_of(history, end)
+        actual = next((x for x in reversed(history) if x.effective <= end), None)
+        return (
+            known is None or not known.tradable or actual is None or not actual.tradable
+            or any(not x.tradable and start < x.effective <= end for x in history)
+        )
 
     def post_funding(self, event: Funding, mark: Decimal, source: MarkSource) -> None:
         if self.journal.position.quantity:

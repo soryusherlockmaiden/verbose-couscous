@@ -305,6 +305,13 @@ def test_t19_delisting_boundary_refuses_open_position(dataset: Dataset, policy: 
     market = Market(replace(dataset, listings=(*dataset.listings, delisted)))
     with pytest.raises(ReplayError, match="listing boundary"):
         replay(market, "fixture", policy, clock(T + HOUR), plan(enter()))
+    # Evidence recorded after the bar still marks an exchange event the position lived through.
+    for status, effective in (("CLOSE_ONLY", T + 30 * 60_000), ("DELISTED", T + HOUR)):
+        late = Listing(INST, effective, evidence(T + 2 * HOUR), status)
+        market = Market(replace(dataset, listings=(*dataset.listings, late)))
+        assert evaluate(market, order(), policy).executable
+        with pytest.raises(ReplayError, match="listing boundary"):
+            replay(market, "fixture", policy, clock(T + HOUR), plan(enter()))
 
 
 def test_t19_t21_mark_retained_when_flat_and_unsupported_tier_aborts_exposure(
