@@ -1,4 +1,4 @@
-# ACGS V2 — System Specification (SPEC)
+# ACGS — System Specification (SPEC)
 
 **Version:** 0.4 — Pre-M0 Corrections  
 **Date:** 2026-11-17  
@@ -507,6 +507,7 @@ A contract is not considered resolved merely by selecting a value: it requires r
 
 ## 15. v0.4 targeted change notes
 
+- Editorial: product renamed from "ACGS V2" to **ACGS** (PRD v1.4). No behavior changed.
 - Defined `cycle_equity` (conservative net liquidation value excluding external inflows) as the measure for the 100 USDT trigger and 30 USDT halt, with cadence parity and a required M2 recovery shortfall-rate metric (§7.3.1). Thresholds unchanged.
 - Added `SHORTFALL_HOLD` and the only permitted operator resolutions after a recovery shortfall (§7.4.1); clarified INV-04.
 - Added account isolation, account preconditions and external cash-flow handling (§7.6, INV-11).

@@ -1,6 +1,6 @@
-# ACGS V2 — Adaptive Capital Growth System
+# ACGS — Adaptive Capital Growth System
 
-ACGS V2 is a research-first, safety-first experiment with automated trading on **Binance USD-M USDT perpetual futures**, starting from **50 USDT**. It tries to grow the stake to a 100 USDT trigger, recover the original 50 USDT to Spot, and then compound only the remaining active capital at lower risk.
+ACGS is a research-first, safety-first experiment with automated trading on **Binance USD-M USDT perpetual futures**, starting from **50 USDT**. It tries to grow the stake to a 100 USDT trigger, recover the original 50 USDT to Spot, and then compound only the remaining active capital at lower risk.
 
 > **Risk warning:** Futures trading can lose the entire stake, including losses beyond modeled stops (gaps, liquidation, slippage, API faults). Nothing in this repository is financial advice or a promise of returns. The operator is responsible for account eligibility and legal compliance in their jurisdiction.
 
@@ -16,7 +16,7 @@ ACGS V2 is a research-first, safety-first experiment with automated trading on *
 
 ## Core documents
 
-ACGS V2 maintains four authoritative core documents. Milestone-specific research artifacts, configurations, evidence reports and operational runbooks are permitted when necessary. They are not additional governance documents or independent sources of product truth.
+ACGS maintains four authoritative core documents. Milestone-specific research artifacts, configurations, evidence reports and operational runbooks are permitted when necessary. They are not additional governance documents or independent sources of product truth.
 
 | File | Responsibility |
 |---|---|

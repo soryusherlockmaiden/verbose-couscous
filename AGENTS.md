@@ -8,7 +8,7 @@ Read this file completely at the start of every session. Do not rely on memory o
 
 ## A. Project identity
 
-**ACGS V2 — Adaptive Capital Growth System.** It is a research-first, safety-first experiment in automated trading on **Binance USD-M USDT perpetual futures**, starting from **50 USDT**.
+**ACGS — Adaptive Capital Growth System.** It is a research-first, safety-first experiment in automated trading on **Binance USD-M USDT perpetual futures**, starting from **50 USDT**.
 
 - The goal is to determine, with reproducible evidence, whether a 50 USDT strategy is executable and has a credible net-of-cost edge. Only if it does is safe operation built. The goal is **not** to ship a trading bot at any cost.
 - Capital lifecycle:

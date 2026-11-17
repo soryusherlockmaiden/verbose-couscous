@@ -1,4 +1,4 @@
-# ACGS V2 — Engineering Roadmap
+# ACGS — Engineering Roadmap
 
 **Version:** 0.4 — Pre-M0 Corrections  
 **Date:** 2026-11-17  
@@ -223,6 +223,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 ## 13. v0.4 targeted change notes
 
+- Editorial: product renamed from "ACGS V2" to **ACGS** (PRD v1.4). No scope changed.
 - Basis updated to `SPEC.md` v0.4.
 - M2 evaluates trigger/halt on `cycle_equity` with the halt-headroom cap and reports the recovery shortfall rate.
 - M3 acceptance adds shortfall hold, external-inflow and halt-headroom tests (T-27–T-30).

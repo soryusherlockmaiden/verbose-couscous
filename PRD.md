@@ -1,6 +1,6 @@
-# ACGS V2 — Product Requirements Document (PRD)
+# ACGS — Product Requirements Document (PRD)
 
-**Product:** Adaptive Capital Growth System (ACGS V2)  
+**Product:** Adaptive Capital Growth System (ACGS)  
 **Version:** 1.4 — Approved & Locked  
 **Date:** 2026-11-17  
 **Status:** Approved & Locked as the product baseline (2026-11-17); strategy and risk parameters remain unvalidated and research-pending  
@@ -11,7 +11,7 @@
 
 ## 1. Executive Summary
 
-ACGS V2 is an automated, research-driven futures trading system designed to experiment with aggressive growth of a small initial account, recover the original capital upon reaching a defined target, and then transition irreversibly to a more conservative compounding regime. It combines the prior ACGS emphasis on reproducible research, point-in-time data, validation, and controlled execution with a phase-based capital policy and capital-recovery workflow.
+ACGS is an automated, research-driven futures trading system designed to experiment with aggressive growth of a small initial account, recover the original capital upon reaching a defined target, and then transition irreversibly to a more conservative compounding regime. It combines the earlier ACGS design's emphasis on reproducible research, point-in-time data, validation, and controlled execution with a phase-based capital policy and capital-recovery workflow.
 
 The first target is **100 USDT observed eligible Futures equity**, starting from **50 USDT**. Reaching this threshold initiates a **recovery attempt**, not an unconditional transfer. The bot must block new exposure, safely settle open positions, reconcile realized balances and transferable funds, and transfer **50 USDT** to Spot **only if the post-transfer active Futures reserve requirement is satisfied**. The target is aspirational, not guaranteed. Futures trading may result in complete loss of the stake, including losses exceeding modeled protective stops.
 
@@ -27,7 +27,7 @@ Small futures accounts face several linked problems:
 - Exchange/API faults, partial fills, missing protective stops, and process restarts can turn a strategy defect into uncontrolled exposure.
 - Systems often lack a reliable mechanism for recovering initial capital and preventing subsequent high-risk re-entry.
 
-ACGS V2 addresses these through a validated strategy pipeline, explicit capital-state transitions, risk-first order authorization, exchange reconciliation, and a verifiable capital ledger.
+ACGS addresses these through a validated strategy pipeline, explicit capital-state transitions, risk-first order authorization, exchange reconciliation, and a verifiable capital ledger.
 
 ## 3. Product Vision and Goals
 
@@ -358,7 +358,7 @@ Implementation order is intentionally **research-first and risk-before-order**. 
 
 ## 15. Lightweight Documentation and Source of Truth
 
-ACGS V2 maintains four authoritative core documents: `README.md`, `PRD.md`, `SPEC.md`, and `ROADMAP.md`. Milestone-specific research artifacts, configurations, evidence reports, and operational runbooks are permitted when necessary, but do not constitute additional governance documents or independent sources of product truth.
+ACGS maintains four authoritative core documents: `README.md`, `PRD.md`, `SPEC.md`, and `ROADMAP.md`. Milestone-specific research artifacts, configurations, evidence reports, and operational runbooks are permitted when necessary, but do not constitute additional governance documents or independent sources of product truth.
 
 | File | Responsibility |
 |---|---|
@@ -383,6 +383,7 @@ Do **not** create mandatory standalone CANON, ADR, Build Plan, audit packs or go
 
 ### v1.4 — Approved & Locked (2026-11-17)
 
+- Editorial: product renamed from "ACGS V2" to **ACGS** at the operator's instruction. No requirement changed.
 - Added §5.2.1: capital-cycle closure (`CYCLE_CLOSED`), new-cycle conditions, between-cycle-only top-ups, and lifetime limits of two cycles / 100 USDT committed capital (OD-13).
 - §5.3: enumerated the permitted operator decisions after a recovery shortfall; ACGS never transfers Spot to Futures; protected funds should leave the bot account's reach.
 - §8: separate trading and transfer keys; transfer restricted in code to Futures-to-Spot.
