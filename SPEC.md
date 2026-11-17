@@ -89,7 +89,7 @@ No exchange testnet is used in any milestone. Exchange-facing behavior is exerci
 
 **`PAPER` = mainnet shadow mode (M4):**
 - Market data, instrument filters, funding and order book come from Binance mainnet public endpoints.
-- An optional **read-only** API key (no trading, transfer or withdrawal permission) may read the real account: balances, margin mode, position mode, leverage and fee settings. It is used for account snapshots and the §7.6 precondition checks. At startup, PAPER verifies the key's permissions via the exchange API-restriction query and refuses any key with trading, transfer or withdrawal permission (T-34).
+- An optional **read-only** API key may read real account balances, margin mode, position mode, leverage and fee settings for account snapshots and §7.6 precondition checks. If a key is configured, PAPER verifies its permissions at startup via the exchange API-restriction query and refuses any key with trading, transfer or withdrawal permission (T-34). PAPER can start on public data alone.
 - Every order is built exactly as `LIVE` would build it: quantized quantity and prices, flags, client order ID. It is validated locally against the live filters and recorded as a `SHADOW_ORDER` with its full payload. It is **never transmitted**. The paper adapter has no code path to any order endpoint, including the test-order endpoint.
 - Fills are simulated from live mainnet prices/order book with the versioned cost model.
 
@@ -146,10 +146,11 @@ Binance `fundingInfo` lists only symbols whose funding cap, floor or interval ha
 | Forward `premiumIndex` snapshots (all symbols: `nextFundingTime`, mark price) | Next scheduled settlement as observed at capture time | `VERIFIED` from capture time onward |
 | Forward `fundingInfo` snapshots | Interval and cap/floor for listed (adjusted) symbols at capture time | `VERIFIED` for listed symbols |
 | Interval inferred from spacing between settlements | Schedule in effect over a period | `RECONSTRUCTED` |
-| Absence from `fundingInfo` plus the documented default | Default schedule applies | `RECONSTRUCTED` (source: documented default) until confirmed by `premiumIndex` or settlements for the same period |
+| Documented default applicable to the instrument and period | Explicit research scenario for a schedule with missing evidence | `RECONSTRUCTED` (source and applicability recorded in the versioned configuration) |
 
 - **Accounting uses events, not schedules.** The simulator posts funding at the recorded settlement times and rates (§4.5). A derived interval is used only for decision-time estimates, such as the fee/funding reserve (`FEE_FUNDING_RESERVE`) and the expected next settlement.
-- **No default assumption.** A symbol absent from `fundingInfo` is never silently assumed to settle every 8h.
+- **Decision-time evidence.** For a decision at time *t*, estimates may use only observations and documentation available by *t*. An interval inferred from settlement spacing becomes available only after all supporting records are available. A later settlement can support a later estimate. It cannot confirm an interval for an earlier decision or change that decision's provenance.
+- **Missing schedule evidence.** Absence from `fundingInfo` supplies no interval. Use a documented default only in an explicitly configured `RECONSTRUCTED` research scenario. Without supporting evidence or such a scenario, tag the interval `UNAVAILABLE`.
 - **Inference rules** (frozen in M1 under SC-01): a declared timestamp-jitter tolerance; detection of interval changes inside a window; handling of listing start and of missing settlements.
 - **Gaps:** a missing settlement record during a period in which a position may be open is `UNAVAILABLE`. That symbol-period is excluded or handled by a declared conservative rule (§4.4); values are never interpolated.
 - **Cap/floor:** store published funding-rate caps/floors with effective times for cost stress tests.
@@ -310,7 +311,7 @@ The agreed 100 USDT observation trigger and 30 USDT halt threshold are **unchang
   - (a) `additional_operational_reserve = 0` as the research baseline;
   - (b) at least one positive scenario justified by **cost-model error**, i.e., the distribution of realized minus modeled closing cost on development data (e.g., an upper percentile). It is never justified by costs already deducted in `conservative_NLV`.
 
-  One scenario is designated **primary** for the pass/fail decision; the others are sensitivities. Shortfall and dead-zone rates are reported per scenario. M3 (SC-06) sets the operational reserve from this evidence and may choose only an evaluated value or one within the evaluated range. Any other value requires re-estimation on non-holdout data.
+  Designate one **primary** scenario before the holdout for the M2 pass/fail decision. Report shortfall and dead-zone rates for each scenario. In M3 (SC-06), the exact operational reserve must meet the preregistered M2 criteria. If the value differs from the primary scenario, evidence from the original M2 holdout qualifies only if the exact value was preregistered for promotion evaluation under the declared multiple-comparison rules and passed those criteria. Otherwise, preregister a separate evaluation on a fresh holdout using the same M2 criteria. An evaluated range or a sensitivity result alone is insufficient.
 - Reserve value, exchange field mapping and snapshot freshness remain under OD-02/OD-03 and SC-06.
 
 ### 7.4 Recovery substate and crash-consistency contract (M3 hard gate)
@@ -500,7 +501,7 @@ Research must use chronological development/validation windows, walk-forward tes
 | T-31 | Fixed-loss halt; new cycle with residual 28 + top-up 22; then a third cycle; top-up during an open cycle | Cycle `CLOSED` only after flat; every cycle only with wallet 50.00–50.50 and the excess excluded from `cycle_equity`; second cycle only with post-mortem; third cycle or committed capital >100 rejected; mid-cycle inflow unapproved and excluded | M3 |
 | T-32 | Transfer adapter asked for Spot→Futures, another transfer type or an arbitrary amount; trading key used for a transfer | Rejected in code; no request sent | M3 (sim); M5 |
 | T-33 | Signal close 100, fill gaps to 101; stop price falls between ticks | Stop placed at fill − d, rounded toward entry; realized risk <= budget | M1 |
-| T-34 | PAPER started with a key that has trading/transfer/withdrawal permission; any PAPER code path reaching an order endpoint; `LIVE_SHADOW` order routed anywhere but the test-order endpoint | PAPER refuses the key; PAPER sends no order request of any kind; `LIVE_SHADOW` sends only to the test-order endpoint and performs no transfer | M4/M5 |
+| T-34 | PAPER started without a key or with a key that has trading/transfer/withdrawal permission; any PAPER code path reaching an order endpoint; `LIVE_SHADOW` order routed anywhere but the test-order endpoint | PAPER can start on public data alone and refuses keys with any prohibited permission; PAPER sends no order request of any kind; `LIVE_SHADOW` sends only to the test-order endpoint and performs no transfer | M4/M5 |
 | T-35 | Ticker delisted and later relisted; multiplier contract symbol | Distinct instrument IDs; no stitched history or indicators across epochs | M1 |
 | T-36 | Funding interval changes from 8h to 4h inside a research window | Funding posted at recorded settlement times; the derived interval change is detected and tagged `RECONSTRUCTED`; no 8h assumption | M1 |
 | T-37 | ATR trailing update | Updates only at bar close and only in the favorable direction; live replacement places the new stop before cancelling the old | M1 (sim); M3 (mock); M5 (smoke test) |
@@ -508,7 +509,7 @@ Research must use chronological development/validation windows, walk-forward tes
 | T-39 | M5 protective-order smoke test at minimum size; order types marked `NOT_VALIDATED` in `LIVE_SHADOW` | Stop acceptance/visibility, `reduceOnly`/`closePosition`, gap-free replacement and emergency flatten confirmed and signed off, otherwise NO-GO for `LIVE_ARMED`; sign-off invalidated and repeated after any account-mode, order-parameter, endpoint or API change (INV-12) | M5 |
 | T-40 | Protective stop lives in the conditional/algo order family; reconciler or recovery flattening queries only regular orders | Both families and both update streams queried; stop unconfirmed if not found in its own family; contingent algo orders cancelled before transfer | M3 (mock); M5 |
 | T-41 | Tight stop where the margin/leverage cap binds before the risk budget; quantized quantity passes all filters | Order accepted below 100% risk utilization with binding constraint `MARGIN` recorded; no false rejection. A case where only rounding *up* would meet `minNotional` is still rejected (T-22) | M1 |
-| T-42 | Symbol absent from `fundingInfo`; interval inferred from settlement spacing; settlement record missing while a position may be open | No 8h assumption; inferred interval tagged `RECONSTRUCTED` until confirmed; gap tagged `UNAVAILABLE` and the symbol-period excluded or handled conservatively; no interpolation | M1 |
+| T-42 | Symbol absent from `fundingInfo`; documented default scenario; interval inferred from settlement spacing with a record arriving after a decision; settlement record missing while a position may be open | Absent interval is `UNAVAILABLE` unless supported by evidence or an explicit default scenario. Default and inferred intervals are `RECONSTRUCTED`. Later records cannot affect the earlier decision. A settlement gap is `UNAVAILABLE` and the symbol-period is excluded or handled conservatively without interpolation | M1 |
 | T-43 | Flat, reconciled settlement at `cycle_equity` 99.99; 100.00 with reserve 0; 100.00 with reserve 0.50; 100.20 with reserve 0.50; 100.50 with reserve 0.50 | Resume allowed if other preconditions pass; transfer eligible; `SHORTFALL_HOLD` with resume refused; `SHORTFALL_HOLD` with resume refused; transfer eligible. Decimal comparison; no immediate re-trigger loop | M3 |
 
 ## 13. Open contract register
@@ -520,7 +521,7 @@ Research must use chronological development/validation windows, walk-forward tes
 | SC-03 | Before M2 holdout | Pre-registered numeric gates, sample size, confidence and multiplicity; recovery reserve scenarios and the primary scenario (§7.3.1) |
 | SC-04 | **M2, frozen before holdout** (with SC-03) | Strategy signal semantics, indexing, warm-up, stop-level computation, universe ranking cadence and trigger/halt evaluation cadence; **not** simulator event processing (§4.5.1) |
 | SC-05 | **M2, frozen before holdout** (with SC-03); M3 production engine | M2 minimal Ignition sizing and target/halt simulation; `cycle_equity` measure and cadence (§7.3.1); halt-headroom cap (§8.1) |
-| SC-06 | M3 | Exchange-specific account-equity/mark-price field mapping, snapshot freshness, realized/transferable balance reconciliation, costs and post-transfer reserve (operational value chosen from M2-evaluated scenarios, §7.3.1), external cash-flow detection fields (§7.6); **not** simulator PnL/event accounting |
+| SC-06 | M3 | Exchange-specific account-equity/mark-price field mapping, snapshot freshness, realized/transferable balance reconciliation, costs and post-transfer reserve (the exact operational value must pass the M2 criteria, §7.3.1), external cash-flow detection fields (§7.6); **not** simulator PnL/event accounting |
 | SC-07 | M3 | State transitions, peak guards, risk/exposure limits and halt recovery |
 | SC-08 | M3 | Durable transfer-intent/reconciliation algorithm and ledger invariants |
 | SC-09 | M4 | Paper pilot duration, alerts, fault-response and operational acceptance |
@@ -542,6 +543,7 @@ A contract is not considered resolved merely by selecting a value: it requires r
 
 ## 15. v0.4 targeted change notes
 
+- Clarified that PAPER can start on public data alone (T-34), funding estimates use decision-time evidence and explicit default scenarios (T-42), and the exact operational reserve requires promotion evidence under the M2 criteria (§7.3.1).
 - Funding evidence (§4.3.1): settlement events `VERIFIED`; derived intervals `RECONSTRUCTED`; gaps `UNAVAILABLE`; no 8h default; `premiumIndex` added to forward capture; T-42.
 - M1/M2 boundary (§4.5.1): M1 owns simulator event processing; M2 owns strategy semantics and trigger cadence; M1 rules are not tuned on M2 results.
 - Recovery reserve scenarios preregistered before the M2 holdout (0 USDT baseline plus a cost-model-error scenario, one primary); dead-zone rate reported; M3 chooses only an evaluated value (§7.3.1).

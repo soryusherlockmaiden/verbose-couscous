@@ -38,7 +38,7 @@
 - GitHub Actions: unit tests, lint, secret scanning; no production credentials in CI.
 - Clear separation of offline, paper, and future live adapters; no live adapter implementation required.
 - Import contracts enforcing the capability boundary (SPEC §2.1).
-- **Account eligibility pre-check** (manual, no trading credentials): confirm the operator's account and jurisdiction permit Binance USD-M Futures, isolated margin, a dedicated account or sub-account, the needed API permissions (read-only, trading, universal transfer, IP restriction) and availability of the futures test-order endpoint. Each item is recorded as `VERIFIED` (dated evidence), `NOT_ELIGIBLE` or `UNVERIFIED`.
+- **Account eligibility pre-check** (manual, no trading credentials): confirm the operator's account and jurisdiction permit Binance USD-M Futures, isolated margin, a dedicated account or sub-account, the needed API permissions (read-only if configured for PAPER, trading, universal transfer, IP restriction) and availability of the futures test-order endpoint. Each applicable item is recorded as `VERIFIED` (dated evidence), `NOT_ELIGIBLE` or `UNVERIFIED`.
   - Any `NOT_ELIGIBLE` ⇒ project `BLOCKED` before M1.
   - `UNVERIFIED` items do not block M0 acceptance or OFFLINE M1/M2. They are carried forward as open blockers with the deadlines below.
   - HTTP 451/403 from forward capture to Binance Futures public endpoints flags the jurisdiction item for operator review. It is not automatically `NOT_ELIGIBLE`, because only the host IP may be restricted.
@@ -49,14 +49,15 @@
 | Item | Must be `VERIFIED` before |
 |---|---|
 | USD-M Futures access in the operator's jurisdiction | Start of M3 |
-| Dedicated account/sub-account, read-only key, account settings (single-asset mode, BNB fee deduction off, isolated margin) | Start of M4 |
-| Trading, universal-transfer and IP-restriction permissions; futures test-order endpoint | Start of M5 |
+| Dedicated account/sub-account | Start of M4 |
+| Read-only key permissions and account settings (single-asset mode, BNB fee deduction off, isolated margin), if PAPER uses an account key | Start of M4 |
+| Live account settings; trading, universal-transfer and IP-restriction permissions; futures test-order endpoint | Start of M5 |
 
-All items are re-verified at the start of M5, since regional and exchange rules can change.
+Verify all applicable items at the start of M5, including re-verification of items checked earlier.
 
 **Deliverables:** runnable offline skeleton, CI workflow, README quickstart, config validation, first invariant tests, account eligibility record, running forward-capture job.
 
-**Acceptance:** clean install/replay smoke test; CI green; secret scan clean; invalid config fails safely; no real exchange order/transfer path exists; restart preserves state fixture; import contracts enforced in CI (T-13); eligibility recorded (every item has a status; `UNVERIFIED` allowed and listed as open); forward capture stores provenance-tagged snapshots.
+**Acceptance:** clean install/replay smoke test; CI green; secret scan clean; invalid config fails safely; no real exchange order/transfer path exists; restart preserves state fixture; import contracts enforced in CI (T-13); eligibility recorded (each applicable item has a status; `UNVERIFIED` allowed and listed as open); forward capture stores provenance-tagged snapshots.
 
 **Exit decision:** accept M0 only when all checks are reproducible on a clean environment.
 
@@ -87,7 +88,7 @@ All items are re-verified at the start of M5, since regional and exchange rules 
 - Unapproved versioned research strategy can execute **only in OFFLINE simulation**; no implicit PAPER/LIVE approval.
 - No exchange credentials or live orders required.
 - Candidate order rejected when satisfying minimum notional would breach risk after quantity rounding; margin/leverage does not waive stop-risk or reserve checks.
-- Stop distance preserved from the actual fill and tick rounding never widens the stop; relisted tickers, funding-interval changes, step-wise trailing and liquidation-before-stop handled per T-33 and T-35–T-38; margin-bound sizing produces no false rejection (T-41); funding evidence rules hold (T-42).
+- Stop distance preserved from the actual fill and tick rounding never widens the stop; relisted tickers, funding-interval changes, step-wise trailing and liquidation-before-stop handled per T-33 and T-35–T-38; margin-bound sizing produces no false rejection (T-41); funding estimates use evidence available by the decision time and record any default as an explicit research scenario (T-42).
 - Feasibility report reproducibly enumerates executable candidates, rejection reasons, cost/stop-distance sensitivities and provenance limitations; no unsupported claim that 50 USDT is sufficient.
 
 **Exit decision:** M1 can pass without profitable strategy or a minimum executable-order rate, but **not** without the feasibility report (SC-12) or with unresolved simulated equity/event-order accounting (SPEC SC-02). Data-quality and mark-price-proxy limitations are recorded and promotion constraints identified.
@@ -124,7 +125,7 @@ All items are re-verified at the start of M5, since regional and exchange rules 
 - Orthogonal operational states: `RUNNING`, `PAUSED`, `RECOVERING`, `HALTED`.
 - Central risk authorization: approved config, stop-risk budget, margin/liquidation buffer, minimum order, aggregate/correlated exposure and no-trade rejection reasons.
 - Fixed Ignition initial-capital loss halt at 30 USDT (not peak drawdown); research/approve additional preventive limits separately.
-- Recovery simulation: observed equity >=100 triggers freeze/settlement; 50 USDT transfer only if settled funds allow 50 USDT retained **plus additional reserve**; durable idempotent intent and ledger. The operational reserve is chosen from M2-evaluated scenarios (SPEC §7.3.1).
+- Recovery simulation: observed equity >=100 triggers freeze/settlement; 50 USDT transfer only if settled funds allow 50 USDT retained **plus additional reserve**; durable idempotent intent and ledger. The exact operational reserve must pass the preregistered M2 criteria before use (SPEC §7.3.1).
 - Candidate Growth/Vault high-water mark halts and Vault profit locking remain research-pending until separately approved.
 - Capital-cycle closure, new-cycle authorization and lifetime limits (SPEC §7.1.1); Futures→Spot-only transfer adapter with separate key (SPEC §10).
 - **Exchange-account reconciliation contract (SPEC SC-06):** map exchange mark-based unrealized PnL, wallet/realized balances, available/transferable funds, snapshot freshness, remaining costs and recovery reserve. Simulate/mock these exchange responses and failure modes in M3; actual exchange adapter stays gated to M5. Do not reopen M1's simulated accounting rules.
@@ -140,6 +141,7 @@ All items are re-verified at the start of M5, since regional and exchange rules 
 - Shortfall enters `SHORTFALL_HOLD` with only the SPEC §7.4.1 resolutions; external inflows never trigger recovery; entries beyond halt headroom are rejected (T-27–T-30); resume is refused while `cycle_equity >= 100`, including the dead zone (T-43).
 - Cycle closure and lifetime limits, and transfer-direction restriction pass T-31 and T-32; reconciliation covers both regular and conditional/algo order families against mocks (T-40).
 - Insufficient reserve or uncertain transfer status blocks transition.
+- The evidence identifies the exact operational reserve and shows that it passed the preregistered M2 criteria (SPEC §7.3.1).
 - Lost acknowledgment/restart never causes blind duplicate transfer.
 - No strategy can bypass risk engine or clear a latched halt.
 - Recovery success is confirmed exactly once in simulated ledger and permanently disables automatic re-Ignition.
@@ -150,7 +152,7 @@ All items are re-verified at the start of M5, since regional and exchange rules 
 
 ## 7. M4 — Paper Pilot
 
-**Prerequisite:** dedicated account, read-only key and account settings `VERIFIED` (§3 deadlines).
+**Prerequisite:** dedicated account `VERIFIED`. If PAPER uses a read-only key, verify its permissions and the account settings. With public data alone, record the settings as configuration assumptions until M5 (SPEC §7.6).
 
 **Scope**
 - Public live market data, simulated exchange fills and costs, persistent position/order/stop lifecycle. Runs as **mainnet shadow mode**: live mainnet data, optional read-only account key, orders built exactly as live and recorded but never sent (SPEC §3.1).
@@ -161,13 +163,13 @@ All items are re-verified at the start of M5, since regional and exchange rules 
 
 **Deliverables:** paper runbook, incident logs, reconciliation dashboard/CLI summaries, paper evidence report.
 
-**Acceptance:** observation window completed; no unapproved exposure; restart/partial-fill/stop-rejection/disconnect/transfer-timeout scenarios pass; paper/live logic divergence risks documented; no real orders or transfers; no order request of any kind sent and trading-capable keys refused (T-34); account preconditions verified with the read-only key where configured.
+**Acceptance:** observation window completed; no unapproved exposure; restart/partial-fill/stop-rejection/disconnect/transfer-timeout scenarios pass; paper/live logic divergence risks documented; zero order requests and zero real transfers; PAPER starts on public data alone and refuses any key with trading, transfer or withdrawal permissions (T-34); account preconditions verified with the read-only key where configured.
 
 **Exit decision:** `PASS` only establishes operational readiness for **considering** M5, not profitability or live approval.
 
 ## 8. M5 — Optional Controlled Live Pilot
 
-**Prerequisites:** M2 research `PASS`, M3 safety `PASS`, M4 paper `PASS`, **separate live strategy/config authorization** (paper approval is insufficient), explicit manual authorization, all account eligibility items verified and re-verified at M5 start (§3), current Binance endpoint and position-mode verification, emergency runbook.
+**Prerequisites:** M2 research `PASS`, M3 safety `PASS`, M4 paper `PASS`, **separate live strategy/config authorization** (paper approval is insufficient), explicit manual authorization, all applicable account eligibility items verified at M5 start (§3), current Binance endpoint and position-mode verification, emergency runbook.
 
 **Scope**
 - Separate live adapter, minimal API permissions, exchange-hosted protective orders, isolated margin verification, live reconciliation.
@@ -240,7 +242,8 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 ## 13. v0.4 targeted change notes
 
-- Account eligibility: `UNVERIFIED` does not block M0 or OFFLINE M1/M2; `NOT_ELIGIBLE` blocks M1; staged deadlines (jurisdiction before M3, account settings and read-only key before M4, permissions before M5) with re-verification at M5; 451/403 triggers operator review.
+- Clarified the optional read-only key in M4, decision-time funding evidence in M1, and validation of the exact operational reserve against the M2 criteria.
+- Account eligibility: `UNVERIFIED` does not block M0 or OFFLINE M1/M2; `NOT_ELIGIBLE` blocks M1. Staged deadlines are in §3. HTTP 451/403 triggers operator review.
 - Funding evidence and `premiumIndex` forward capture (M0/M1, T-42); M1/M2 simulation-semantics boundary; reserve scenarios preregistered before the M2 holdout; resume refused at or above the trigger (T-43).
 - Editorial: product renamed from "ACGS V2" to **ACGS** (PRD v1.4). No scope changed.
 - Basis updated to `SPEC.md` v0.4.
