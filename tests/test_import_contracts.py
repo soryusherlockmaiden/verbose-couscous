@@ -1,4 +1,11 @@
-"""M0 capability boundaries (T-13, T-16), checked by pytest in both native CI jobs."""
+"""M0 capability boundaries (T-13, T-16), checked by pytest in both native CI jobs.
+
+These static AST rules are a cheap guardrail, not a proof of determinism: dynamic
+access such as `getattr(datetime, "now")` or tuple unpacking can still evade them.
+When decision code lands in M1, add a runtime determinism test that runs it under
+different patched wall clocks (or with `time`/`datetime.now` patched to raise) and
+asserts identical outputs.
+"""
 
 import ast
 from collections.abc import Iterator
@@ -59,7 +66,6 @@ DECISION_SAFE_IMPORTS = {
 }
 DYNAMIC_CODE = {"__import__", "eval", "exec"}
 DECISION_IO_BUILTINS = {"input", "open"}
-WALL_CLOCK_CLASSES = {"datetime.date", "datetime.datetime"}
 WALL_CLOCK_CALLS = {"now", "utcnow", "today"}
 
 
@@ -120,59 +126,36 @@ def dotted_reference(node: ast.expr) -> str | None:
     return None
 
 
-def reference_bindings(module: str, tree: ast.AST) -> dict[str, set[str]]:
-    bindings: dict[str, set[str]] = {}
+def clock_names(tree: ast.AST) -> set[str]:
+    """Names and attributes annotated as the injected `Clock`."""
+    names: set[str] = set()
     for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                name = alias.asname or alias.name.partition(".")[0]
-                origin = alias.name if alias.asname else name
-                bindings.setdefault(f"{module}.{name}", set()).add(origin)
-        elif isinstance(node, ast.ImportFrom) and not node.level and node.module:
-            for alias in node.names:
-                name = alias.asname or alias.name
-                bindings.setdefault(f"{module}.{name}", set()).add(
-                    f"{node.module}.{alias.name}"
-                )
-        elif isinstance(node, ast.Assign | ast.AnnAssign) and node.value is not None:
-            origin = dotted_reference(node.value)
-            if origin is None:
+        if isinstance(node, ast.arg):
+            annotated, annotation = node.arg, node.annotation
+        elif isinstance(node, ast.AnnAssign):
+            target = node.target
+            if isinstance(target, ast.Name):
+                annotated = target.id
+            elif isinstance(target, ast.Attribute):
+                annotated = target.attr
+            else:
                 continue
-            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-            for target in targets:
-                if isinstance(target, ast.Name):
-                    bindings.setdefault(f"{module}.{target.id}", set()).add(
-                        f"{module}.{origin}"
-                    )
-    return bindings
+            annotation = node.annotation
+        else:
+            continue
+        if isinstance(annotation, ast.Constant) and annotation.value == "Clock":
+            names.add(annotated)
+        elif annotation is not None:
+            reference = dotted_reference(annotation)
+            if reference is not None and reference.rpartition(".")[2] == "Clock":
+                names.add(annotated)
+    return names
 
 
-def is_wall_clock_class(
-    name: str, bindings: dict[str, set[str]], followed: frozenset[str] = frozenset()
-) -> bool:
-    if name in WALL_CLOCK_CLASSES:
-        return True
-    for prefix in module_and_packages(name):
-        if prefix in bindings:
-            if prefix in followed:
-                return False
-            suffix = name[len(prefix) :]
-            return any(
-                is_wall_clock_class(origin + suffix, bindings, followed | {prefix})
-                for origin in bindings[prefix]
-            )
-    return False
-
-
-def decision_violations(
-    source: str,
-    module: str = "acgs.strategy",
-    bindings: dict[str, set[str]] | None = None,
-) -> list[str]:
+def decision_violations(source: str) -> list[str]:
     """Apply the same purity checks to decision modules and reachable helpers."""
     tree = ast.parse(source)
-    if bindings is None:
-        bindings = reference_bindings(module, tree)
+    injected_clocks = clock_names(tree)
     problems = module_violations(source)
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -186,11 +169,22 @@ def decision_violations(
         elif isinstance(node, ast.Name) and node.id in DECISION_IO_BUILTINS:
             problems.append(node.id)
         elif isinstance(node, ast.Attribute) and node.attr in WALL_CLOCK_CALLS:
-            target = dotted_reference(node.value)
-            if target is not None and is_wall_clock_class(
-                f"{module}.{target}", bindings
-            ):
-                problems.append(f"{target}.{node.attr}")
+            # `now`/`utcnow`/`today` read the wall clock on any datetime class or
+            # instance; only the injected clock may provide the time.
+            receiver = node.value
+            injected = (
+                isinstance(receiver, ast.Name) and receiver.id in injected_clocks
+            ) or (isinstance(receiver, ast.Attribute) and receiver.attr in injected_clocks)
+            if not injected:
+                problems.append(f"{dotted_reference(receiver) or '<expression>'}.{node.attr}")
+        elif (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "astimezone"
+            and not node.args
+            and not node.keywords
+        ):
+            problems.append("astimezone() without an explicit time zone")
     return problems
 
 
@@ -235,7 +229,8 @@ def decision_dependency_violations(sources: dict[Path, str]) -> list[str]:
             if name.partition(".")[0] == "acgs":
                 # Python executes parent package initializers when importing a module.
                 dependencies.update(module_and_packages(name))
-        graph[module] = dependencies
+        # Stop at capability modules: importing one is already the violation to report.
+        graph[module] = set() if module in CAPABILITY_MODULES else dependencies
 
     decision_modules = {
         module
@@ -251,11 +246,8 @@ def decision_dependency_violations(sources: dict[Path, str]) -> list[str]:
     reachable_sources = {
         module: path for module, path in modules.items() if module in checked_modules
     }
-    bindings: dict[str, set[str]] = {}
-    for module, path in reachable_sources.items():
-        bindings.update(reference_bindings(module, ast.parse(sources[path])))
-    for module, path in reachable_sources.items():
-        violations = decision_violations(sources[path], module, bindings)
+    for path in reachable_sources.values():
+        violations = decision_violations(sources[path])
         problems.extend(f"{path.as_posix()}: {problem}" for problem in violations)
     return problems
 
@@ -428,6 +420,15 @@ def test_wall_clock_is_rejected_through_the_package_initializer() -> None:
         "from datetime import UTC, datetime\ndatetime.now(UTC)\n",
         "from datetime import datetime as moment\nmoment.utcnow()\n",
         "import datetime\ndatetime.date.today()\n",
+        "from acgs.clock import Clock\n\n\ndef stamp(clock: Clock):\n    return clock.now().now()\n",
+        (
+            "from acgs.clock import Clock\n\n\ndef stamp(clock: Clock):\n"
+            "    instant = clock.now()\n    return instant.now()\n"
+        ),
+        (
+            "from acgs.clock import Clock\n\n\ndef local(clock: Clock):\n"
+            "    return clock.now().astimezone()\n"
+        ),
     ],
 )
 def test_decision_rules_reject_capability_and_wall_clock_bypasses(source: str) -> None:
@@ -442,3 +443,14 @@ def test_decision_rules_allow_an_injected_clock() -> None:
         "    return clock.now().astimezone(UTC)\n"
     )
     assert decision_violations(source) == []
+
+
+def test_traversal_stops_at_capability_modules() -> None:
+    sources = {
+        Path("strategy.py"): "from acgs.__main__ import main\n",
+        Path("__main__.py"): "from acgs.smoke import run_smoke\n",
+        Path("smoke.py"): "import sqlite3\n",
+    }
+    assert decision_dependency_violations(sources) == [
+        "Forbidden dependency: acgs.__main__"
+    ]
