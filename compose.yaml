@@ -1,0 +1,23 @@
+services:
+  acgs:
+    build:
+      context: .
+      target: runtime
+    image: acgs:m0
+    init: true
+    volumes:
+      - acgs-data:/data
+  capture:
+    extends:
+      service: acgs
+    profiles: ["capture"]
+    command: ["capture", "--watch"]
+  check:
+    build:
+      context: .
+      target: check
+    image: acgs:m0-check
+    profiles: ["check"]
+
+volumes:
+  acgs-data:

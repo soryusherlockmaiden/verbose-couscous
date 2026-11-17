@@ -1,0 +1,10 @@
+[
+  {
+    "symbol": "BTCUSDT",
+    "adjustedFundingRateCap": "0.00300",
+    "adjustedFundingRateFloor": "-0.00300",
+    "fundingIntervalHours": 8,
+    "disclaimer": true,
+    "updateTime": null
+  }
+]

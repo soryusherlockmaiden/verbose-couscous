@@ -8,10 +8,10 @@ ACGS is a research-first, safety-first experiment with automated trading on **Bi
 
 | Item | State |
 |---|---|
-| Phase | **Pre-M0**: documentation baseline only, no code yet |
+| Phase | **M0 Foundation accepted** (2026-11-17 UTC); M1 not started |
 | `PRD.md` | v1.4, Approved & Locked |
 | `SPEC.md` | v0.4, engineering baseline candidate |
-| `ROADMAP.md` | v0.4, no milestone started |
+| `ROADMAP.md` | v0.4, progress and evidence in §12 |
 | Live orders / real transfers | **Not authorized** |
 
 ## Core documents
@@ -77,7 +77,7 @@ Test-order acceptance proves only that a request is valid. A protective-order ty
 
 | Milestone | Goal | Status |
 |---|---|---|
-| M0 Foundation | Offline skeleton, CI, config, account eligibility pre-check, forward data capture | Not started |
+| M0 Foundation | Offline skeleton, CI, config, account eligibility pre-check, forward data capture | PASS (accepted) |
 | M1 Market & Offline Execution | PIT data, deterministic simulator and equity ledger, 50 USDT feasibility report | Not started |
 | M2 Strategy Research | Preregistered research decision: `PASS` / `FAIL` / `INCONCLUSIVE` | Not started |
 | M3 Capital & Risk Engine | State machine, risk engine, recovery simulation, fault injection | Not started |
@@ -88,11 +88,68 @@ M0–M4 never place real orders or real transfers.
 
 ## Setup and commands
 
-There is no code yet, so there are no setup steps or commands. M0 will add the quickstart here: install, configuration, test, lint and offline replay commands.
+### Windows native (PowerShell)
 
-Supported development environments: Ubuntu 24.04, and Windows via WSL2 + Docker Desktop (keep the repository inside the WSL filesystem). Docker is the canonical way to run checks, and CI runs lint, type checks and tests on both Ubuntu and Windows, so results do not differ between machines.
+Run in the Windows checkout. Install Git and uv 0.13.7 first. uv reads the Python 3.12.13 pin from `.python-version` and creates a local `.venv`.
 
-Planned technology baseline (PRD §10): Python 3.12+, CCXT with the native Binance API where required, NumPy/Pandas, SQLite (single writer), pytest, Docker Compose on a single VPS, and GitHub Actions.
+```powershell
+Set-Location C:\dev\acgs
+uv python install
+uv sync --locked
+uv run --locked ruff check .
+uv run --locked mypy
+uv run --locked pytest
+uv run --locked python -m acgs smoke
+uv run --locked python -m acgs smoke
+```
+
+The second smoke run replays the same state fixture in `data/acgs.sqlite3`. On Ubuntu 24.04 or a Linux cloud agent, run the same uv commands from the checkout. Each checkout has its own virtual environment and database. CI runs these checks on `ubuntu-24.04` and `windows-2025`.
+
+### WSL2 and Linux (Docker Compose)
+
+On Windows, use a WSL2 distro with Docker Desktop's WSL integration enabled. Run this from the WSL terminal. Keep the checkout under the Linux home directory. On Linux, run the same commands with Docker Engine and the Compose plugin.
+
+```sh
+cd ~
+git clone https://github.com/soryusherlockmaiden/verbose-couscous.git acgs
+cd acgs
+docker compose build acgs
+docker compose run --rm acgs smoke
+docker compose run --rm acgs smoke
+docker compose --profile check build check
+docker compose --profile check run --rm check
+```
+
+Compose stores SQLite in the `acgs-data` named volume. The smoke job records a deterministic state fixture, and on replay it verifies that the stored record still matches; a changed record exits with an error. Historical market replay arrives in M1. The `check` service runs the same ruff, mypy and pytest checks as the native workflow inside the container.
+
+### Public forward capture
+
+Defaults are in [config/m0.toml](config/m0.toml). M0 supports `OFFLINE` only. A missing mode defaults to `OFFLINE`; an invalid or unsupported mode is refused at startup. Pass `--config` and `--db` before the subcommand when running the Python entry point.
+
+```text
+uv run --locked python -m acgs --config config/m0.toml capture
+uv run --locked python -m acgs --config config/m0.toml capture --watch
+uv run --locked python -m acgs --config config/m0.toml capture --clear-restriction
+docker compose run --rm acgs capture
+docker compose run --rm acgs capture --clear-restriction
+docker compose --profile capture up -d capture
+docker compose --profile capture logs -f capture
+docker compose --profile capture stop capture
+```
+
+Use one capture process per database. The scheduled service polls for due work. It records `exchangeInfo` and `fundingInfo` once per UTC day, and `premiumIndex` plus shallow order books at the configured interval (default five minutes, BTCUSDT and ETHUSDT for depth). Successful records carry the response (stored zlib-compressed), fixed-width UTC timestamps, source URL, the SHA-256 of the raw response bytes and observation provenance.
+
+A HTTP 200 response counts as captured only if every record passes minimum structure and value checks; otherwise it is stored as `INVALID_PAYLOAD` without provenance and retried after 60 seconds.
+
+HTTP 403/451 stops the capture process and latches: later runs refuse to send any request until the operator has reviewed the cause and runs `capture --clear-restriction`, which is recorded as an audit event. Rate-limit responses defer further requests. A one-shot `capture` exits 0 only when everything due was captured.
+
+The all-symbol `premiumIndex` snapshot dominates storage at the default five-minute interval (roughly 150 KB per snapshot before compression). Check the database size during the first days of operation and keep enough free disk on the VPS. Capture uses only public market-data GET requests and requires no API credentials.
+
+To scan the full Git history from a checkout with Docker, run the same Gitleaks image as CI:
+
+```text
+docker run --rm --env GIT_CONFIG_COUNT=1 --env GIT_CONFIG_KEY_0=safe.directory --env GIT_CONFIG_VALUE_0=/repo --mount "type=bind,source=${PWD},target=/repo,readonly" ghcr.io/gitleaks/gitleaks:v8.24.3@sha256:e1b35e12a8c6fa8901f060459cfb6b2fc4c484d3afbe3b029733a3bbfab07055 git --redact --log-opts=--all /repo
+```
 
 ## Repository layout
 
@@ -101,6 +158,10 @@ README.md     Overview, operating modes, setup (this file)
 PRD.md        Product requirements (Approved & Locked)
 SPEC.md       System specification
 ROADMAP.md    Milestones and acceptance
+src/acgs/     Offline configuration, SQLite ledger, and public capture
+config/       M0 configuration
+tests/        Offline safety checks and public data fixtures
+evidence/m0/  Verification and manual eligibility record
 AGENTS.md     Instructions for AI coding agents (not a product document)
 CLAUDE.md     Claude Code pointer to AGENTS.md
 ```
