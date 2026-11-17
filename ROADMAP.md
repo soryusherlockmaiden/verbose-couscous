@@ -223,7 +223,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 | Milestone | Status | Owner | Evidence | Decision |
 |---|---|---|---|---|
-| M0 | IN PROGRESS | Operator | [M0 verification](evidence/m0/verification.md) | All acceptance checks pass at code commit `e16d08f` ([hosted CI](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44191231342)) except a live capture re-run on the operator's machine. Then operator acceptance and merge of PR #2. |
+| M0 | PASS (technical; operator acceptance pending) | Operator | [M0 verification](evidence/m0/verification.md) | All acceptance checks pass at code commit `e16d08f` ([hosted CI](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44191231342)), including Windows live capture: five HTTP 200 `CAPTURED`/`VERIFIED` responses with raw hashes checked. Operator acceptance and PR #2 merge pending. |
 | M1 | NOT STARTED | TBD | — | Pending |
 | M2 | NOT STARTED | TBD | — | Pending |
 | M3 | NOT STARTED | TBD | — | Pending |
@@ -234,14 +234,15 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 1. **PRD v1.4 is Approved & Locked** as the product baseline; no further PRD approval task remains.
 2. Review SPEC open contracts **SC-01/SC-02** and M0 scope; ensure M1 simulator accounting/event priority is resolved before M1 exit; do not pre-approve research-only risk settings.
-3. `README.md` created (pre-M0 version). Implement M0 with OFFLINE-only safety tests, CI, the account eligibility pre-check and forward capture, and add the README quickstart.
-4. Begin M1 data provenance and exchange-feasibility research before investing in live execution.
+3. Operator review of the completed M0 verification evidence and acceptance decision; PR #2 merge remains a separate pending action.
+4. After M0 operator acceptance and merge, plan M1 data provenance and exchange-feasibility research. M1 remains not started.
 5. Pre-register M2 numeric promotion criteria **before** holdout evaluation.
 
 **Roadmap acceptance:** This document plans work; it does not authorize live orders, real transfers, or a production deployment.
 
 ## 13. v0.4 targeted change notes
 
+- Recorded the independent Windows live capture re-verification at `e16d08f`; M0 technical verification is PASS, with operator acceptance still pending and M1 not started.
 - M0 foundation implemented on a topic branch. CI uses `ubuntu-24.04` and `windows-2025`, and README covers Windows native and WSL2 workflows.
 - M0 review fixes: stricter import contract (no bare `acgs` imports, no wall-clock reads in decision layers), persistent HTTP 403/451 latch, compressed capture payloads (ledger schema v2), fixed-width UTC timestamps, verified smoke replay, Docker `check` service, and CI actions/images pinned by SHA or digest.
 - M0 requires identical lint/type/test results on Ubuntu 24.04 and Windows, with Docker canonical and a two-OS CI matrix. M2 preregisters exact operational reserve candidates.

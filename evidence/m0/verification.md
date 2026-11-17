@@ -1,6 +1,6 @@
 # M0 verification
 
-Status: every M0 acceptance check passes at code commit `e16d08f` except one. A live forward capture with the stricter record validation must still be run from the operator's machine (see the table). Milestone acceptance is pending operator review. The baseline is `main` at `53992e0`.
+Status: **PASS (technical verification)** at code commit `e16d08ff5ceeead9906db2d83cea3f797b8e7f28`, including live forward capture with the stricter record validation on the Windows workstation. Operator acceptance remains pending. The baseline is `main` at `53992e0`.
 
 ## M0 acceptance summary (code commit `e16d08f`)
 
@@ -14,8 +14,24 @@ Status: every M0 acceptance check passes at code commit `e16d08f` except one. A 
 | Restart preserves the state fixture | Smoke replay verification, v1 to v2 migration test | Passed |
 | Import contracts enforced in CI (T-13) | `tests/test_import_contracts.py` in both native jobs and the container `check` service | Passed; 118 tests in total |
 | Eligibility recorded | [Account eligibility record](account-eligibility.md) | Every item recorded as `UNVERIFIED`, which M0 allows. The jurisdiction item must be verified before M3. |
-| Forward capture stores provenance-tagged snapshots | Fixture tests at `e16d08f`. Live run with schema v2 on the Windows workstation at `22f01d6` | **Live re-run pending.** `e16d08f` tightened record validation, so one live `capture` from the operator's machine must confirm five `CAPTURED`/`VERIFIED` responses. The cloud agent's IP receives HTTP 451 from Binance (restricted location); the latch stopped capture after the first request, as designed. |
+| Forward capture stores provenance-tagged snapshots | Fixture tests and Windows live capture at `e16d08f`; see the record below | Passed: five HTTP 200 responses, all `CAPTURED`/`VERIFIED`; stored payload decompression and raw SHA-256 checked. |
 | Reproducible on a clean environment | Fresh hosted runners | Passed |
+
+## Windows live capture re-verification (2026-11-18, Asia/Bangkok)
+
+During the independent re-review in this Codex chat, an archived copy of code commit `e16d08ff5ceeead9906db2d83cea3f797b8e7f28` was tested at `C:\dev\acgs\.review-pr2` on the Windows workstation, using Python 3.12.13 and the locked dependencies. The exact capture command, run from that directory, was:
+
+```text
+.venv/Scripts/python.exe -m acgs --config config/m0.toml --db data/review-live.sqlite3 capture
+```
+
+The command exited 0 and printed `Capture CAPTURED=5`. The responses covered daily `exchangeInfo` and `fundingInfo`, all-symbol `premiumIndex`, and depth for BTCUSDT and ETHUSDT. A separate verification script reopened the SQLite ledger, asserted exactly five records, and checked HTTP 200, `VERIFIED` provenance, successful decompression with `stored_payload`, and equality of each stored SHA-256 with the hash of the raw decompressed bytes. All assertions passed; the script printed `5 verified live captures; raw SHA-256 matches`.
+
+The temporary review directory and database were removed after verification. This record preserves the observed command and results; individual response hashes, request/receive timestamps and raw payloads from that run are not retained. To repeat the check from a checkout of the same code, run `uv sync --locked`, then `uv run --locked python -m acgs --config config/m0.toml --db data/review-live.sqlite3 capture` with a fresh database.
+
+The same re-review passed native and Docker lint/type checks and 118 tests, native smoke record/replay, Docker smoke replay, and the pinned Gitleaks scan of 27 commits including `e16d08f` with no leaks. Hosted CI is linked in the acceptance table. The later documentation-only commit `e995c5722358e3d24d85803f4c29196731c15c6b` also passed [hosted CI run 44191539604](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44191539604).
+
+The earlier cloud-host HTTP 451 remains an environment-specific restriction; its latch stopped requests as designed. The successful Windows run used the workstation's normal public connection without credentials or restriction bypass. It verifies public capture, not account/jurisdiction eligibility; all eligibility items remain `UNVERIFIED`. Continuous VPS operation was not demonstrated. Operator acceptance and PR #2 merge remain pending; M1 remains not started.
 
 ## Wall-clock import contract verification
 
