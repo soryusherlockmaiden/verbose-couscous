@@ -12,6 +12,8 @@ services:
       service: acgs
     profiles: ["capture"]
     command: ["capture", "--watch"]
+    # Resume after a reboot or Docker restart; `stop` keeps it stopped.
+    restart: unless-stopped
   check:
     build:
       context: .

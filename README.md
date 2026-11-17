@@ -141,7 +141,9 @@ Use one capture process per database. The scheduled service polls for due work. 
 
 A HTTP 200 response counts as captured only if every record passes minimum structure and value checks; otherwise it is stored as `INVALID_PAYLOAD` without provenance and retried after 60 seconds.
 
-HTTP 403/451 stops the capture process and latches: later runs refuse to send any request until the operator has reviewed the cause and runs `capture --clear-restriction`, which is recorded as an audit event. Rate-limit responses defer further requests. A one-shot `capture` exits 0 only when everything due was captured.
+HTTP 403/451 latches capture: no further request is sent until the operator has reviewed the cause and runs `capture --clear-restriction`, which is recorded as an audit event. A one-shot `capture` exits 1. The `--watch` service does not exit; it logs the restriction once, pauses without sending requests, and resumes on its next poll after the latch is cleared. The clear command may run while the service is paused, for example `docker compose run --rm acgs capture --clear-restriction`.
+
+The Compose `capture` service uses `restart: unless-stopped`. It starts again after a reboot or a Docker restart once Docker is running, unless you stopped it with `docker compose --profile capture stop capture`. Because a latched service pauses instead of exiting, the restart policy never loops on HTTP 403/451. Rate-limit responses defer further requests. A one-shot `capture` exits 0 only when everything due was captured.
 
 The all-symbol `premiumIndex` snapshot dominates storage at the default five-minute interval (roughly 150 KB per snapshot before compression). Check the database size during the first days of operation and keep enough free disk on the VPS. Capture uses only public market-data GET requests and requires no API credentials.
 

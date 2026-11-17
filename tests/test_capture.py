@@ -324,3 +324,68 @@ def test_malformed_records_are_retried_instead_of_captured(tmp_path: Path) -> No
         retry = FixedClock(NOW + timedelta(seconds=60))
         assert capture_due(connection, config, retry, recorded, no_wait) == ["CAPTURED"] * 4
     assert len(calls) == 8
+
+
+def test_capture_watch_pauses_on_restriction_and_resumes_after_clear(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    db = tmp_path / "capture.sqlite3"
+    calls: list[str] = []
+    state = {"restricted": True, "polls": 0}
+
+    def fake_fetch(url: str) -> PublicResponse:
+        calls.append(url)
+        return PublicResponse(451) if state["restricted"] else fixture_response(url)
+
+    def sleep(seconds: float) -> None:
+        if seconds != 30:
+            return
+        state["polls"] += 1
+        if state["polls"] == 3:
+            # Two paused polls have passed; the operator reviews and clears the latch.
+            state["restricted"] = False
+            with open_ledger(db) as operator:
+                assert clear_access_restriction(operator, Config(), FixedClock(NOW)) == 1
+        elif state["polls"] == 4:
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr("acgs.__main__.fetch_public", fake_fetch)
+    monkeypatch.setattr("acgs.__main__.SystemClock", lambda: FixedClock(NOW))
+    monkeypatch.setattr("time.sleep", sleep)
+
+    assert main(["--db", str(db), "capture", "--watch"]) == 130
+    output = capsys.readouterr()
+    assert len(calls) == 1 + 5  # one restricted request, none while paused, then resume
+    assert output.err.count("Capture is paused") == 1
+    assert "BLOCKED_ACCESS_RESTRICTED" not in output.out
+    assert "Capture CAPTURED=5" in output.out
+    assert "restriction cleared; resuming" in output.out
+
+
+def test_capture_watch_restarted_while_latched_sends_no_requests(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    db = tmp_path / "capture.sqlite3"
+    with open_ledger(db) as connection:
+        capture_due(
+            connection, CaptureConfig(), FixedClock(NOW), lambda url: PublicResponse(403), no_wait
+        )
+    polls = {"count": 0}
+
+    def unexpected(url: str) -> PublicResponse:
+        pytest.fail("A request was sent while the restriction latch was open")
+
+    def sleep(seconds: float) -> None:
+        polls["count"] += 1
+        if polls["count"] == 3:
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr("acgs.__main__.fetch_public", unexpected)
+    monkeypatch.setattr("acgs.__main__.SystemClock", lambda: FixedClock(NOW))
+    monkeypatch.setattr("time.sleep", sleep)
+
+    # A restart policy restarts the service; it must stay paused rather than exit and loop.
+    assert main(["--db", str(db), "capture", "--watch"]) == 130
+    output = capsys.readouterr()
+    assert output.out.count("BLOCKED_ACCESS_RESTRICTED") == 1
+    assert output.err.count("Capture is paused") == 1

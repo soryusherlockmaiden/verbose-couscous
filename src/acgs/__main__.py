@@ -50,6 +50,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 cleared = clear_access_restriction(connection, config, SystemClock())
                 print(f"Cleared {cleared} capture access restriction(s)")
                 return 0
+            latched = False
             while True:
                 outcomes = Counter(
                     capture_due(
@@ -60,18 +61,28 @@ def main(argv: Sequence[str] | None = None) -> int:
                         time.sleep,
                     )
                 )
-                if outcomes:
+                restricted = bool(outcomes.keys() & {RESTRICTED, BLOCKED})
+                # While latched, each poll only re-reads the latch; log the state once.
+                if outcomes and not (restricted and latched):
                     summary = " ".join(
                         f"{key}={value}" for key, value in sorted(outcomes.items())
                     )
                     print(f"Capture {summary}", flush=True)
-                if outcomes.keys() & {RESTRICTED, BLOCKED}:
-                    print(
-                        "Public access restricted (HTTP 403/451). Operator review "
-                        "required; after review run `capture --clear-restriction`.",
-                        file=sys.stderr,
-                    )
-                    return 1
+                if restricted:
+                    if not latched:
+                        message = (
+                            "Public access restricted (HTTP 403/451). Operator review "
+                            "required; after review run `capture --clear-restriction`."
+                        )
+                        if args.watch:
+                            message += " Capture is paused and sends no requests until then."
+                        print(message, file=sys.stderr, flush=True)
+                    if not args.watch:
+                        return 1
+                    latched = True
+                elif latched:
+                    print("Capture access restriction cleared; resuming.", flush=True)
+                    latched = False
                 if not args.watch:
                     return int(any(key != "CAPTURED" for key in outcomes))
                 time.sleep(30)
