@@ -99,6 +99,8 @@ README.md     Overview, operating modes, setup (this file)
 PRD.md        Product requirements (Approved & Locked)
 SPEC.md       System specification
 ROADMAP.md    Milestones and acceptance
+AGENTS.md     Instructions for AI coding agents (not a product document)
+CLAUDE.md     Claude Code pointer to AGENTS.md
 ```
 
 ## Workflow and change control
