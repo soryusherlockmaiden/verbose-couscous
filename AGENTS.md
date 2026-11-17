@@ -91,11 +91,11 @@ Sources: ROADMAP §3, PRD §10–§11, SPEC §1.1 (INV-01, INV-08, INV-10), §2�
   - Credentials are loaded only in the adapter composition root.
   - A test proves no order-submitting or transfer adapter can be instantiated in M0 (INV-08).
 - [ ] **Account eligibility pre-check (manual):**
-  - Create an operator checklist/record (e.g., `evidence/m0/account-eligibility.md`) covering every item in ROADMAP §3: USD-M Futures access in the operator's jurisdiction, isolated margin, dedicated account/sub-account, API permissions (read-only, trading, universal transfer, IP restriction) and futures test-order endpoint availability.
-  - Each item is `VERIFIED` (with date and evidence), `NOT_ELIGIBLE` or `UNVERIFIED`.
+  - Create an operator checklist/record (e.g., `evidence/m0/account-eligibility.md`) covering the items in ROADMAP §3: USD-M Futures access in the operator's jurisdiction, isolated margin, dedicated account/sub-account, API permissions (read-only if configured for PAPER, trading, universal transfer, IP restriction) and futures test-order endpoint availability.
+  - Each applicable item is `VERIFIED` (with date and evidence), `NOT_ELIGIBLE` or `UNVERIFIED`.
   - **An agent cannot verify these itself.** Leave unverifiable items `UNVERIFIED` and report them. Never mark them verified on assumption.
   - Any `NOT_ELIGIBLE` ⇒ project `BLOCKED` before M1. `UNVERIFIED` items do **not** block M0 `PASS` or OFFLINE M1/M2; report them as open blockers.
-  - Staged deadlines (ROADMAP §3): jurisdiction before M3; account settings and read-only key before M4; trading/transfer/test-order permissions before M5. All are re-verified at M5 start.
+  - Follow the verification deadlines in ROADMAP §3. PAPER can run on public data alone. Verify read-only key permissions and account settings for M4 when a key is configured. Verify all applicable items again at M5 start.
   - HTTP 451/403 from forward capture flags the jurisdiction item for operator review.
 - [ ] **Forward capture (credential-free, SPEC §4.3):**
   - A scheduled job fetches **public** Binance USD-M endpoints: daily `exchangeInfo` and `fundingInfo`, periodic `premiumIndex` (all symbols: next funding time, mark price), and periodic order-book depth samples for configured symbols (SPEC §4.3.1).
@@ -117,7 +117,7 @@ Sources: ROADMAP §3, PRD §10–§11, SPEC §1.1 (INV-01, INV-08, INV-10), §2�
 - no real exchange order/transfer path exists;
 - restart preserves the state fixture;
 - import contracts enforced in CI (T-13);
-- eligibility recorded (every item has a status; `UNVERIFIED` allowed and reported);
+- eligibility recorded (each applicable item has a status; `UNVERIFIED` allowed and reported);
 - forward capture stores provenance-tagged snapshots;
 - all checks reproducible on a clean environment.
 
