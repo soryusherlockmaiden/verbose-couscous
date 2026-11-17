@@ -267,11 +267,12 @@ def _evaluate(market: Market, o: Candidate, p: Policy) -> EligibilityDecision:
             )
         if minimum > liq_cap:
             reasons.append("LIQUIDATION_BUFFER")
+    # PRICE_FILTER bounds price and stopPrice. PERCENT_PRICE bounds a limit `price` only,
+    # so it never rejects the protective stop trigger (Binance USD-M symbol filters).
     if (
         stop <= ZERO or stressed_exit <= ZERO or stop == o.entry or o.entry % filters.tick
         or not filters.min_price <= stop <= filters.max_price
         or not filters.min_price <= o.entry <= filters.max_price
-        or not o.mark * filters.percent_down <= stop <= o.mark * filters.percent_up
         or not o.mark * filters.percent_down <= o.entry <= o.mark * filters.percent_up
     ):
         reasons.append("PRICE_TICK")

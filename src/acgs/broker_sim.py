@@ -267,7 +267,7 @@ class _Replay:
         trail = self.intents.get((end, Action.TRAIL))
         if trail is not None and j.position.quantity:
             if close_available:
-                self.trail(trail, stop_path.close, mark.close, filters)
+                self.trail(trail, stop_path.close, filters)
             else:
                 j.record(end, "REJECTED", detail="TRAIL_CLOSE_UNAVAILABLE")
         elif trail is not None:
@@ -440,16 +440,13 @@ class _Replay:
         self.snapshot(seq, time, snapshot_mark, source, not intrabar)
         return True
 
-    def trail(self, intent: Intent, closing_price: Decimal, mark: Decimal, filters: Filters) -> None:
+    def trail(self, intent: Intent, closing_price: Decimal, filters: Filters) -> None:
         pos = self.journal.position
         side = Side.LONG if pos.quantity > ZERO else Side.SHORT
         candidate = stop_price(closing_price, intent.distance, side, filters.tick)
         if intent.side != side:
             reason = "POSITION_SIDE"
-        elif not (
-            filters.min_price <= candidate <= filters.max_price and candidate > ZERO
-            and mark * filters.percent_down <= candidate <= mark * filters.percent_up
-        ):
+        elif not filters.min_price <= candidate <= filters.max_price or candidate <= ZERO:
             reason = "PRICE_TICK"
         elif side * (closing_price - candidate) <= ZERO:
             reason = "STOP_IMMEDIATELY_TRIGGERABLE"

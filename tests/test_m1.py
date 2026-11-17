@@ -146,6 +146,25 @@ def test_t41_margin_cap_binds_and_qty_meets_both_lot_steps(dataset: Dataset, pol
     assert ZERO < decision.risk_utilization < 1 and decision.reserve + decision.margin <= D(50)
 
 
+def test_t41_percent_price_band_does_not_reject_protective_stop_triggers(
+    dataset: Dataset, policy: Policy,
+) -> None:
+    # BTCUSDT's captured band is 0.97-1.03. It bounds a limit price, not a stopPrice.
+    band = replace(filters(), percent_down=D("0.97"), percent_up=D("1.03"))
+    market = Market(replace(dataset, filters=(band,)))
+    wide = evaluate(market, order(stop_distance=D(5)), policy)
+    assert wide.executable and wide.stop == D(95)
+    assert "PRICE_TICK" in evaluate(market, order(entry=D("103.1")), policy).reasons
+    floor = replace(band, min_price=D(96))
+    assert "PRICE_TICK" in evaluate(Market(replace(dataset, filters=(floor,))),
+                                    order(stop_distance=D(5)), policy).reasons
+    climb = change_bar(change_bar(dataset, 0, prices("100", "112", "99", "110")), 0,
+                       prices("100", "112", "99", "110"), mark=True)
+    run = replay(Market(replace(climb, filters=(band,))), "fixture", policy, clock(T + 2 * HOUR),
+                 plan(enter(distance="5"), Intent(T + HOUR, T + HOUR, Action.TRAIL, Side.LONG, D(6))))
+    assert [(e.time, e.price) for e in run.events if e.kind == "TRAIL_RATCHET"] == [(T + HOUR, D(104))]
+
+
 def test_t33_gap_preserves_risk_and_rounds_stop_toward_actual_fill(
     dataset: Dataset, policy: Policy,
 ) -> None:
