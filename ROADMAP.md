@@ -223,7 +223,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 | Milestone | Status | Owner | Evidence | Decision |
 |---|---|---|---|---|
-| M0 | IN PROGRESS | Operator | [M0 verification](evidence/m0/verification.md) | Code commit `460aed6` passed [hosted CI](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44189220716). Operator acceptance pending. |
+| M0 | IN PROGRESS | Operator | [M0 verification](evidence/m0/verification.md) | All acceptance checks pass at code commit `e16d08f` ([hosted CI](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44191231342)) except a live capture re-run on the operator's machine. Then operator acceptance and merge of PR #2. |
 | M1 | NOT STARTED | TBD | — | Pending |
 | M2 | NOT STARTED | TBD | — | Pending |
 | M3 | NOT STARTED | TBD | — | Pending |

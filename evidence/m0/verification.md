@@ -1,9 +1,25 @@
 # M0 verification
 
-Milestone acceptance is pending operator review. The baseline is `main` at `53992e0`.
+Status: every M0 acceptance check passes at code commit `e16d08f` except one. A live forward capture with the stricter record validation must still be run from the operator's machine (see the table). Milestone acceptance is pending operator review. The baseline is `main` at `53992e0`.
+
+## M0 acceptance summary (code commit `e16d08f`)
+
+| ROADMAP §3 criterion | Evidence | Result |
+|---|---|---|
+| Clean install and replay smoke test | CI `native` (Ubuntu 24.04, Windows 2025) and `container` jobs: locked install, smoke twice | Passed ([push run 44191219078](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44191219078), [PR run 44191231342](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44191231342)) |
+| CI green | All four hosted jobs | Passed on both runs |
+| Secret scan clean | CI `secrets` job: Gitleaks v8.24.3 by digest, full history | No leaks |
+| Invalid config fails safely | `tests/test_foundation.py` | Passed |
+| No real exchange order or transfer path | `tests/test_import_contracts.py` (T-16, INV-08) | Passed |
+| Restart preserves the state fixture | Smoke replay verification, v1 to v2 migration test | Passed |
+| Import contracts enforced in CI (T-13) | `tests/test_import_contracts.py` in both native jobs and the container `check` service | Passed; 118 tests in total |
+| Eligibility recorded | [Account eligibility record](account-eligibility.md) | Every item recorded as `UNVERIFIED`, which M0 allows. The jurisdiction item must be verified before M3. |
+| Forward capture stores provenance-tagged snapshots | Fixture tests at `e16d08f`. Live run with schema v2 on the Windows workstation at `22f01d6` | **Live re-run pending.** `e16d08f` tightened record validation, so one live `capture` from the operator's machine must confirm five `CAPTURED`/`VERIFIED` responses. The cloud agent's IP receives HTTP 451 from Binance (restricted location); the latch stopped capture after the first request, as designed. |
+| Reproducible on a clean environment | Fresh hosted runners | Passed |
 
 ## Wall-clock import contract verification
 
+- Code commit `e16d08ff5ceeead9906db2d83cea3f797b8e7f28` validates each capture record's structure and minimum field types and values before tagging it `VERIFIED`. Malformed bodies become `INVALID_PAYLOAD` and are retried after 60 seconds. In the cloud agent (Ubuntu 24.04), `uv run --locked ruff check .`, `uv run --locked mypy` and `uv run --locked pytest -q` passed with 118 tests. All four hosted jobs passed on the [push run 44191219078](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44191219078) and the [PR run 44191231342](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44191231342).
 - Code commit `460aed63ff2473162b2d60c953e57e03faad812b` scopes the injected-clock exemption to the function (or `self` field) where `Clock` is declared, removes it when a name is rebound or shadowed, and resolves `Clock` through import aliases and string annotations. In the cloud agent (Ubuntu 24.04), `uv run --locked ruff check .`, `uv run --locked mypy` and `uv run --locked pytest -q` passed with 92 tests. All four hosted jobs passed on the [push run 44189209005](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44189209005) and the [PR run 44189220716](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44189220716).
 - Code commit `c38cd0919096700a338cbddaf8c84a5f7efcc625` rejects `now`/`utcnow`/`today` on receivers other than the injected clock and argument-less `astimezone()`, and stops dependency traversal at capability modules. In the cloud agent, ruff, mypy and pytest passed with 81 tests. All four hosted jobs passed on the [push run 44188014146](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44188014146) and the [PR run 44188025872](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44188025872).
 - Code commit `df8f9a1d1353bf93db2baaf36e3c0a3eb134e728` closes the re-exported wall clock and helper I/O gaps. Tests cover direct and aliased clock re-exports, transitive file and SQLite access, and allowed imports of pure config and ledger types. On Windows native, `uv run --locked ruff check .`, `uv run --locked mypy`, and `uv run --locked pytest -q` passed with 77 tests. All four hosted jobs passed on the [push run 44126484575](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44126484575) and the [PR run 44126503728](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44126503728).

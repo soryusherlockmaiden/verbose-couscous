@@ -8,7 +8,7 @@ ACGS is a research-first, safety-first experiment with automated trading on **Bi
 
 | Item | State |
 |---|---|
-| Phase | **M0 Foundation**: implementation and verification in progress |
+| Phase | **M0 Foundation**: acceptance checks passed except a live capture re-run; operator acceptance pending |
 | `PRD.md` | v1.4, Approved & Locked |
 | `SPEC.md` | v0.4, engineering baseline candidate |
 | `ROADMAP.md` | v0.4, progress and evidence in §12 |
@@ -77,7 +77,7 @@ Test-order acceptance proves only that a request is valid. A protective-order ty
 
 | Milestone | Goal | Status |
 |---|---|---|
-| M0 Foundation | Offline skeleton, CI, config, account eligibility pre-check, forward data capture | In progress |
+| M0 Foundation | Offline skeleton, CI, config, account eligibility pre-check, forward data capture | Awaiting live capture re-run and acceptance |
 | M1 Market & Offline Execution | PIT data, deterministic simulator and equity ledger, 50 USDT feasibility report | Not started |
 | M2 Strategy Research | Preregistered research decision: `PASS` / `FAIL` / `INCONCLUSIVE` | Not started |
 | M3 Capital & Risk Engine | State machine, risk engine, recovery simulation, fault injection | Not started |
@@ -138,6 +138,8 @@ docker compose --profile capture stop capture
 ```
 
 Use one capture process per database. The scheduled service polls for due work. It records `exchangeInfo` and `fundingInfo` once per UTC day, and `premiumIndex` plus shallow order books at the configured interval (default five minutes, BTCUSDT and ETHUSDT for depth). Successful records carry the response (stored zlib-compressed), fixed-width UTC timestamps, source URL, the SHA-256 of the raw response bytes and observation provenance.
+
+A HTTP 200 response counts as captured only if every record passes minimum structure and value checks; otherwise it is stored as `INVALID_PAYLOAD` without provenance and retried after 60 seconds.
 
 HTTP 403/451 stops the capture process and latches: later runs refuse to send any request until the operator has reviewed the cause and runs `capture --clear-restriction`, which is recorded as an audit event. Rate-limit responses defer further requests. A one-shot `capture` exits 0 only when everything due was captured.
 
