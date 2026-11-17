@@ -6,6 +6,7 @@ from pathlib import Path
 
 from acgs.clock import utc_iso
 from acgs.config import Config
+from acgs.ledger_types import LedgerStateError as LedgerStateError
 
 # Each entry upgrades the schema by one version; never edit a released entry.
 MIGRATIONS: tuple[tuple[str, ...], ...] = (
@@ -47,10 +48,6 @@ MIGRATIONS: tuple[tuple[str, ...], ...] = (
     ),
 )
 SCHEMA_VERSION = len(MIGRATIONS)
-
-
-class LedgerStateError(Exception):
-    """Stored state does not match the expected record."""
 
 
 @contextmanager

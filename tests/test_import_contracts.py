@@ -35,7 +35,9 @@ DECISION_LAYERS = {"strategy", "features", "universe", "research"}
 CAPABILITY_MODULES = {
     "acgs.market_data",
     "acgs.capture",
+    "acgs.config_io",
     "acgs.execution",
+    "acgs.ledger",
     "acgs.transfers",
     "acgs.wallclock",
     "acgs.__main__",
@@ -48,12 +50,16 @@ DECISION_SAFE_IMPORTS = {
     "decimal",
     "enum",
     "functools",
+    "hashlib",
     "itertools",
+    "json",
     "math",
     "re",
     "typing",
 }
 DYNAMIC_CODE = {"__import__", "eval", "exec"}
+DECISION_IO_BUILTINS = {"input", "open"}
+WALL_CLOCK_CLASSES = {"datetime.date", "datetime.datetime"}
 WALL_CLOCK_CALLS = {"now", "utcnow", "today"}
 
 
@@ -88,8 +94,11 @@ def module_violations(source: str) -> list[str]:
     """Rules for every module, so the graph below sees every acgs import."""
     problems = []
     for node in ast.walk(ast.parse(source)):
-        if isinstance(node, ast.ImportFrom) and node.level:
-            problems.append("relative import")
+        if isinstance(node, ast.ImportFrom):
+            if node.level:
+                problems.append("relative import")
+            if any(alias.name == "*" for alias in node.names):
+                problems.append("wildcard import")
         elif isinstance(node, ast.Import):
             problems.extend(
                 f"import {alias.name} (use `from acgs... import ...`)"
@@ -101,44 +110,87 @@ def module_violations(source: str) -> list[str]:
     return problems
 
 
-def decision_violations(source: str, *, strict_imports: bool = True) -> list[str]:
-    """Check decision code and its helpers for wall-clock and dynamic access."""
-    tree = ast.parse(source)
-    problems = module_violations(source)
-    clock_classes: set[str] = set()  # names bound to datetime.datetime or datetime.date
-    clock_modules: set[str] = set()  # names bound to the datetime module
+def dotted_reference(node: ast.expr) -> str | None:
+    parts = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if isinstance(node, ast.Name):
+        return ".".join((node.id, *reversed(parts)))
+    return None
+
+
+def reference_bindings(module: str, tree: ast.AST) -> dict[str, set[str]]:
+    bindings: dict[str, set[str]] = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                root = alias.name.split(".")[0]
-                if root in {"time", "sys"} or (
-                    strict_imports and root not in DECISION_SAFE_IMPORTS
-                ):
-                    problems.append(f"import {alias.name}")
-                elif alias.name == "datetime":
-                    clock_modules.add(alias.asname or alias.name)
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            root = node.module.split(".")[0]
-            if root in {"time", "sys"} or (
-                strict_imports and root != "acgs" and root not in DECISION_SAFE_IMPORTS
-            ):
-                problems.append(f"from {node.module} import ...")
+                name = alias.asname or alias.name.partition(".")[0]
+                origin = alias.name if alias.asname else name
+                bindings.setdefault(f"{module}.{name}", set()).add(origin)
+        elif isinstance(node, ast.ImportFrom) and not node.level and node.module:
             for alias in node.names:
-                if node.module == "datetime" and alias.name in {"datetime", "date"}:
-                    clock_classes.add(alias.asname or alias.name)
+                name = alias.asname or alias.name
+                bindings.setdefault(f"{module}.{name}", set()).add(
+                    f"{node.module}.{alias.name}"
+                )
+        elif isinstance(node, ast.Assign | ast.AnnAssign) and node.value is not None:
+            origin = dotted_reference(node.value)
+            if origin is None:
+                continue
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            for target in targets:
+                if isinstance(target, ast.Name):
+                    bindings.setdefault(f"{module}.{target.id}", set()).add(
+                        f"{module}.{origin}"
+                    )
+    return bindings
+
+
+def is_wall_clock_class(
+    name: str, bindings: dict[str, set[str]], followed: frozenset[str] = frozenset()
+) -> bool:
+    if name in WALL_CLOCK_CLASSES:
+        return True
+    for prefix in module_and_packages(name):
+        if prefix in bindings:
+            if prefix in followed:
+                return False
+            suffix = name[len(prefix) :]
+            return any(
+                is_wall_clock_class(origin + suffix, bindings, followed | {prefix})
+                for origin in bindings[prefix]
+            )
+    return False
+
+
+def decision_violations(
+    source: str,
+    module: str = "acgs.strategy",
+    bindings: dict[str, set[str]] | None = None,
+) -> list[str]:
+    """Apply the same purity checks to decision modules and reachable helpers."""
+    tree = ast.parse(source)
+    if bindings is None:
+        bindings = reference_bindings(module, tree)
+    problems = module_violations(source)
     for node in ast.walk(tree):
-        if not isinstance(node, ast.Attribute) or node.attr not in WALL_CLOCK_CALLS:
-            continue
-        target = node.value
-        if isinstance(target, ast.Name) and target.id in clock_classes:
-            problems.append(f"{target.id}.{node.attr}")
-        elif (
-            isinstance(target, ast.Attribute)
-            and target.attr in {"datetime", "date"}
-            and isinstance(target.value, ast.Name)
-            and target.value.id in clock_modules
-        ):
-            problems.append(f"{target.value.id}.{target.attr}.{node.attr}")
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name.partition(".")[0] not in DECISION_SAFE_IMPORTS:
+                    problems.append(f"import {alias.name}")
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            root = node.module.partition(".")[0]
+            if root != "acgs" and root not in DECISION_SAFE_IMPORTS:
+                problems.append(f"from {node.module} import ...")
+        elif isinstance(node, ast.Name) and node.id in DECISION_IO_BUILTINS:
+            problems.append(node.id)
+        elif isinstance(node, ast.Attribute) and node.attr in WALL_CLOCK_CALLS:
+            target = dotted_reference(node.value)
+            if target is not None and is_wall_clock_class(
+                f"{module}.{target}", bindings
+            ):
+                problems.append(f"{target}.{node.attr}")
     return problems
 
 
@@ -195,12 +247,16 @@ def decision_dependency_violations(sources: dict[Path, str]) -> list[str]:
         f"Forbidden dependency: {module}"
         for module in sorted(CAPABILITY_MODULES & reachable)
     ]
-    for module, path in modules.items():
-        if module in reachable:
-            violations = decision_violations(
-                sources[path], strict_imports=module in decision_modules
-            )
-            problems.extend(f"{path.as_posix()}: {problem}" for problem in violations)
+    checked_modules = reachable - CAPABILITY_MODULES
+    reachable_sources = {
+        module: path for module, path in modules.items() if module in checked_modules
+    }
+    bindings: dict[str, set[str]] = {}
+    for module, path in reachable_sources.items():
+        bindings.update(reference_bindings(module, ast.parse(sources[path])))
+    for module, path in reachable_sources.items():
+        violations = decision_violations(sources[path], module, bindings)
+        problems.extend(f"{path.as_posix()}: {problem}" for problem in violations)
     return problems
 
 
@@ -257,14 +313,67 @@ def test_transitive_helpers_can_use_an_injected_clock() -> None:
 def test_decision_code_can_import_config_and_ledger_types() -> None:
     sources = {
         Path("strategy.py"): (
-            "from acgs.config import Config\nfrom acgs.ledger import LedgerStateError\n"
+            "from acgs.config import Config\nfrom acgs.ledger_types import LedgerStateError\n"
         ),
         **{
             Path(name): (SOURCE / name).read_text(encoding="utf-8")
-            for name in ("clock.py", "config.py", "ledger.py")
+            for name in ("config.py", "ledger_types.py")
         },
     }
     assert decision_dependency_violations(sources) == []
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("from acgs.clock import datetime\nstamp = datetime.now()", "datetime.now"),
+        ("from acgs import clock\nstamp = clock.datetime.now()", "clock.datetime.now"),
+        (
+            "from acgs.helper import DateTime\nstamp = DateTime.utcnow()",
+            "DateTime.utcnow",
+        ),
+    ],
+)
+def test_wall_clock_is_rejected_through_reexports(source: str, expected: str) -> None:
+    sources = {
+        Path("strategy.py"): source,
+        Path("clock.py"): (SOURCE / "clock.py").read_text(encoding="utf-8"),
+        Path("helper.py"): "from acgs.clock import datetime as dt\nDateTime = dt",
+    }
+    assert decision_dependency_violations(sources) == [f"strategy.py: {expected}"]
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        (
+            "from pathlib import Path\nload = Path('state.txt').read_text",
+            "from pathlib import ...",
+        ),
+        ("import sqlite3\nload = sqlite3.connect", "import sqlite3"),
+        ("load = open", "open"),
+        (
+            "from acgs.ledger import open_ledger as load",
+            "Forbidden dependency: acgs.ledger",
+        ),
+        (
+            "from acgs.config_io import load_config as load",
+            "Forbidden dependency: acgs.config_io",
+        ),
+    ],
+)
+def test_io_is_rejected_through_helpers(source: str, expected: str) -> None:
+    sources = {
+        Path("strategy.py"): "from acgs.helper import load",
+        Path("helper.py"): source,
+    }
+    violations = decision_dependency_violations(sources)
+    diagnostic = (
+        expected
+        if expected.startswith("Forbidden dependency:")
+        else f"helper.py: {expected}"
+    )
+    assert violations == [diagnostic]
 
 
 @pytest.mark.parametrize(
@@ -311,6 +420,7 @@ def test_wall_clock_is_rejected_through_the_package_initializer() -> None:
         "import acgs\nacgs.market_data.fetch_public\n",
         "import acgs.config\nacgs.market_data.fetch_public\n",
         "from .market_data import fetch_public\n",
+        "from acgs.clock import *\ndatetime.now()\n",
         "__import__('acgs.market_data')\n",
         "import sys\nsys.modules['acgs.market_data']\n",
         "import importlib\nimportlib.import_module('acgs.market_data')\n",

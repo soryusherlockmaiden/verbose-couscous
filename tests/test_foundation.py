@@ -6,7 +6,8 @@ import pytest
 
 from acgs.__main__ import main
 from acgs.clock import FixedClock, utc_iso
-from acgs.config import Config, Mode, load_config
+from acgs.config import Config, Mode
+from acgs.config_io import load_config
 from acgs.ledger import MIGRATIONS, SCHEMA_VERSION, open_ledger
 from acgs.smoke import run_smoke
 
