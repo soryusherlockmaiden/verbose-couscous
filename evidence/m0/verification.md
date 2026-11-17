@@ -1,20 +1,22 @@
 # M0 verification
 
-Status: **re-verification pending** after the PR #2 review fixes. Milestone acceptance is pending operator review. The baseline is `main` at `53992e0`.
+Status: the review-fix commit `6010a75` passed every check below except the live forward capture, which has not been re-run with schema v2. Milestone acceptance is pending operator review. The baseline is `main` at `53992e0`.
 
-## Re-verification after review fixes
+## Re-verification after review fixes (`6010a75`)
 
-The review fixes change capture storage (schema v2: zlib payloads, a persistent HTTP 403/451 latch), timestamps, smoke replay, the import contract, Docker targets and CI pinning. The earlier results below predate them.
+The review fixes change capture storage (schema v2: zlib payloads, a persistent HTTP 403/451 latch), timestamps, smoke replay, the import contract, Docker targets and CI pinning. The earlier results further down predate them.
 
-| Check | Result for the review-fix commit |
-|---|---|
-| Locked install, `ruff check .`, `mypy`, `pytest` on Linux (cloud agent, Ubuntu 24.04) | Passed: 63 tests |
-| Offline smoke twice on Linux | Recorded, then replayed with the same digest |
-| Native Windows checks | **Not yet run** |
-| `docker compose build`, smoke, `check` service | **Not yet run** (no Docker daemon in the cloud agent); hosted CI runs them |
-| Full-history secret scan | **Not yet run** locally; hosted CI runs it |
-| Live forward capture with schema v2 | **Not yet run** |
-| Hosted CI for the review-fix commit | **Pending** |
+| Check | Command or evidence | Result |
+|---|---|---|
+| Locked install, lint, types, tests on Linux | `uv sync --locked`, `uv run --locked ruff check .`, `uv run --locked mypy`, `uv run --locked pytest` in the cloud agent (Ubuntu 24.04) | Passed: 63 tests |
+| Offline smoke and restart on Linux | `uv run --locked python -m acgs --db <tmp> smoke` twice | Recorded, then replayed and verified with the same digest |
+| Hosted CI | [M0 checks run 44119751994](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44119751994) at `6010a75` | All four jobs passed (details in the rows below) |
+| Native Ubuntu 24.04 and Windows 2025 | CI `native` jobs: locked install, ruff, mypy, pytest, smoke twice | Passed on both runners |
+| Docker build, smoke and in-container checks | CI `container` job: `docker compose build acgs`, `docker compose run --rm acgs smoke` twice, `docker compose --profile check build check`, `docker compose --profile check run --rm check` | Passed |
+| Full-history secret scan | CI `secrets` job: Gitleaks v8.24.3 pinned by digest, `git --redact --log-opts=--all` | No leaks |
+| Live forward capture with schema v2 | `capture` against public endpoints | **Not yet run.** Run it from the operator's machine or VPS; the cloud agent's IP does not represent the operator's jurisdiction. |
+
+Open item: the `python:3.12.13-slim-bookworm` base image is pinned by tag only. Its digest lookup was rate-limited by Docker Hub (HTTP 429) during the fix. The uv image, the Gitleaks image and all CI actions are pinned by digest or commit SHA.
 
 ## Earlier verification (commits `0134e89`/`da12ab8`, before the review fixes)
 

@@ -223,7 +223,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 | Milestone | Status | Owner | Evidence | Decision |
 |---|---|---|---|---|
-| M0 | IN PROGRESS | Operator | [M0 verification](evidence/m0/verification.md) | Review fixes applied; Windows, Docker and hosted CI re-verification pending. Operator acceptance pending. |
+| M0 | IN PROGRESS | Operator | [M0 verification](evidence/m0/verification.md) | Review fixes verified at `6010a75` (hosted CI on Ubuntu, Windows and Docker). Live capture re-run with schema v2 pending. Operator acceptance pending. |
 | M1 | NOT STARTED | TBD | — | Pending |
 | M2 | NOT STARTED | TBD | — | Pending |
 | M3 | NOT STARTED | TBD | — | Pending |
