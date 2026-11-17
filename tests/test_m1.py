@@ -171,6 +171,10 @@ def test_t05_t17_t18_deterministic_cash_funding_and_partial_close(
     result = replay(market, "fixture", config, end, sequence)
     assert result == replay(market, "fixture", config, end, sequence)
     assert [e.kind for e in result.events].count("PARTIAL_FILL") == 2
+    # Each partial fill persists the full decision and the revalidated fraction it filled.
+    fills = [e.quantity for e in result.events if e.kind == "PARTIAL_FILL"]
+    assert [d.quantity for d in result.decisions[1::2]] == fills
+    assert all(d.executable for d in result.decisions) and len(result.decisions) == 4
     charges = [e for e in result.events if e.kind == "FUNDING"]
     assert [(e.time, e.quantity) for e in charges] == [
         (T + HOUR, D("0.5")), (T + 2 * HOUR, D("1.0")), (T + 3 * HOUR, D("0.7")),
@@ -309,6 +313,9 @@ def test_t19_t21_mark_retained_when_flat_and_unsupported_tier_aborts_exposure(
     no_filters = Market(replace(dataset, filters=()))
     decision = replay(no_filters, "fixture", policy, clock(T + HOUR), plan(enter()))
     assert any(e.detail == "PIT_INPUTS" for e in decision.events)
+    refused, = decision.decisions
+    assert refused.reasons == ("MISSING_PIT_FILTER",) and refused.filter_evidence is None
+    assert refused.provenance == Provenance.UNAVAILABLE
     snap = decision.snapshots[-1]
     assert snap.equity == snap.wallet == D(50)
     assert snap.mark == D(100) and snap.mark_source == MarkSource.MARK_KLINE_CLOSE

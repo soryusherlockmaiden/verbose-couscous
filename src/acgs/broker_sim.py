@@ -192,8 +192,10 @@ class _Replay:
         if marks is None or inputs is None:
             if j.position.quantity:
                 raise ReplayError(f"Mark, listing or maintenance data unavailable for open position at {start}")
-            if entry is not None:
-                j.record(start, "REJECTED", detail="MARK_UNAVAILABLE" if marks is None else "PIT_INPUTS")
+            if entry is not None and marks is not None:
+                self.reject_inputs(entry, trade.prices.opening, marks[0].opening)
+            elif entry is not None:
+                j.record(start, "REJECTED", detail="MARK_UNAVAILABLE")
             seq = j.record(end, "BAR_CLOSE")
             if marks is None:
                 self.snapshot(seq, end, None, MarkSource.MARK_UNAVAILABLE, False)
@@ -275,6 +277,23 @@ class _Replay:
         else:
             self.journal.record(event.time, "FUNDING_FLAT")
 
+    def reject_inputs(self, intent: Intent, price: Decimal, mark: Decimal) -> None:
+        """Persist the taxonomy reasons for an entry refused on point-in-time inputs (§5.1)."""
+        j = self.journal
+        filters = as_of(self.market.filters.get(self.inst, ()), intent.time)
+        execution = price if filters is None else slipped(
+            price, intent.side, self.slippage(intent.time, stress=False), filters.tick,
+        )
+        decision = evaluate(self.market, Candidate(
+            self.inst, intent.time, intent.side, execution, mark, intent.distance, j.wallet,
+            j.collateral, self.plan.risk_pct, self.plan.leverage, self.plan.halt_level,
+            max_quantity=intent.quantity,
+        ), self.p)
+        if decision.executable:
+            decision = replace(decision, reasons=("UNKNOWN_CONSTRAINT",))
+        self.decisions.append(decision)
+        j.record(intent.time, "REJECTED", detail="PIT_INPUTS")
+
     def enter(
         self, intent: Intent, price: Decimal, mark: Decimal, source: MarkSource, filters: Filters,
     ) -> None:
@@ -302,13 +321,17 @@ class _Replay:
         if not decision.executable:
             j.record(intent.time, "REJECTED", detail=",".join(decision.reasons))
             return
-        qty = quantize_down(decision.quantity * self.p.fill_fraction, order_step(filters))
-        if qty < decision.quantity:
+        ordered = decision.quantity
+        qty = quantize_down(ordered * self.p.fill_fraction, order_step(filters))
+        if qty < ordered:
+            # The revalidated fraction is the decision that authorizes the fill.
             partial = evaluate(self.market, replace(candidate, max_quantity=qty), self.p)
+            self.decisions.append(partial)
             if not partial.executable:
                 j.record(intent.time, "CANCELED", detail="PARTIAL_FILL_NOT_EXECUTABLE")
                 return
             decision = partial
+            qty = partial.quantity
         stop = decision.stop
         if pos.quantity:
             stop = max(stop, pos.stop) if intent.side == Side.LONG else min(stop, pos.stop)
@@ -333,7 +356,7 @@ class _Replay:
             ):
                 j.record(intent.time, "REJECTED", detail="COMBINED_LIQUIDATION_BUFFER")
                 return
-        kind = "PARTIAL_FILL" if qty < self.decisions[-1].quantity else "ENTRY_FILL"
+        kind = "PARTIAL_FILL" if qty < ordered else "ENTRY_FILL"
         seq = j.fill(
             intent.time, kind, qty * intent.side, execution, self.p.taker_fee,
             margin=decision.margin, reserve=decision.reserve, stop=stop,
