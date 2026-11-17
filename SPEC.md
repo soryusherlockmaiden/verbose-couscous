@@ -1,12 +1,12 @@
 # ACGS V2 — System Specification (SPEC)
 
-**Version:** 0.4 — Pre-M0 Capital Lifecycle Corrections  
+**Version:** 0.4 — Pre-M0 Corrections  
 **Date:** 2026-11-17  
 **Status:** Engineering baseline candidate; offline design and research only  
-**Source of truth for product intent:** `PRD.md` v1.3 (**Approved & Locked**)  
+**Source of truth for product intent:** `PRD.md` v1.4 (**Approved & Locked**)  
 **Target:** Binance USD-M USDT perpetuals; Python modular monolith; initial capital 50 USDT
 
-> **Authority:** This SPEC operationalizes PRD v1.3. It does not approve a trading strategy, risk parameters, live orders, or transfers. Items marked **OPEN** require a versioned decision and test before the relevant gate. Numeric candidates are research-only unless expressly identified as agreed product baselines.
+> **Authority:** This SPEC operationalizes PRD v1.4. It does not approve a trading strategy, risk parameters, live orders, or transfers. Items marked **OPEN** require a versioned decision and test before the relevant gate. Numeric candidates are research-only unless expressly identified as agreed product baselines.
 
 ## 1. Scope and system boundaries
 
@@ -19,14 +19,14 @@
 
 | ID | Invariant |
 |---|---|
-| INV-01 | Only the execution adapter can submit orders; only the transfer adapter can move funds. Strategy code has neither capability. |
+| INV-01 | Only the execution adapter can submit orders; only the transfer adapter can move funds. Strategy code has neither capability. Enforced per §2.1. |
 | INV-02 | Strategy authorization is **mode-specific**: `OFFLINE` may simulate a versioned, unapproved research candidate; `PAPER` requires explicit paper-pilot approval; `LIVE` requires separate live approval. Every mode enforces its applicable simulated/real risk gates, valid state, fresh data and provenance. No research result automatically promotes a strategy. |
 | INV-03 | An unresolved order, position, stop, balance, or transfer discrepancy blocks new exposure. |
 | INV-04 | Capital phase cannot silently move backward. The only permitted backward transition is the explicit, audited operator `RESUME_IGNITION` from `RECOVERY_PENDING` after a failed (shortfall) recovery attempt (§7.4.1). Successful recovery permanently prevents automatic re-Ignition. |
 | INV-05 | No transfer is marked complete without independently reconciled exchange evidence and durable ledger state. |
 | INV-06 | Historical decision at time *t* uses only observations available by *t*. |
-| INV-07 | Minimum-size rounding never increases modeled risk above the authorized budget. |
-| INV-08 | `OFFLINE` is the default mode; M0–M4 cannot instantiate a live order or transfer adapter. |
+| INV-07 | Neither quantity nor price/tick rounding may increase modeled risk above the authorized budget (§5.2). |
+| INV-08 | `OFFLINE` is the default mode; M0–M4 cannot instantiate a production order or transfer adapter. A testnet-only execution adapter (§3.1) is permitted from M3; it has no transfer capability and cannot reach production endpoints. |
 | INV-09 | A filled live position requires exchange-accepted protective exit coverage; failure invokes an emergency protocol and blocks entries. |
 | INV-10 | A halt cannot be cleared by a strategy, restart, config reload, or reconnect. |
 | INV-11 | Capital-phase triggers, halt checks and high-water marks use `cycle_equity` (§7.3.1), which excludes unapproved external inflows (§7.6). |
@@ -61,6 +61,13 @@ Cross-cutting: durable state, audit events, metrics, alerts, kill switch.
 
 **Ports:** market data, exchange metadata, order execution, account snapshots, transfers, clock, persistence and notifications. Implementations must be replaceable without changing strategy/risk logic.
 
+### 2.1 Capability boundary enforcement
+
+- CI import contracts (e.g., `import-linter`) forbid `strategy`, `features`, `universe` and `research` from importing `execution`, `transfers`, exchange client libraries or credential loaders.
+- Strategies are pure functions over immutable inputs that return signals; they never receive an adapter, client or session object.
+- Credentials are read only in the runtime composition root while constructing adapters; offline/research entry points never load them.
+- T-13 is therefore a static CI check plus a runtime test that a strategy cannot obtain an order-capable object.
+
 ## 3. Operating modes and authorization
 
 | Mode | Data | Fills | Strategy authorization | Orders/transfers | Gate |
@@ -75,6 +82,12 @@ Cross-cutting: durable state, audit events, metrics, alerts, kill switch.
 - Live requires separately provisioned credentials, approved live strategy/config digest, environment/account checks, and a manual arming procedure. **OPEN:** precise authorization mechanism, expiry, and dual confirmation.
 - An operator may pause/stop entries at any time. Recovery from `HALTED` requires reconciliation, an audit event, and explicit operator approval; approval does not imply automatic phase reset.
 
+### 3.1 Testnet execution backend
+
+- From M3, a `TESTNET` execution adapter may submit orders to the official Binance USD-M Futures testnet for the protective-order compatibility harness (§9.2). In M4 it may serve as an alternative `PAPER` fill backend.
+- It uses separate testnet credentials and an allowlist containing only testnet hosts; production hosts are rejected in code and tests (T-34). It has no transfer capability.
+- Testnet orders involve no real funds and are not real exchange orders under PRD §11. Testnet liquidity, fills and features may differ from production, so testnet results never establish production compatibility (§9.2 M5 gate).
+
 ## 4. Canonical time, data and provenance
 
 ### 4.1 Time semantics
@@ -88,9 +101,9 @@ Cross-cutting: durable state, audit events, metrics, alerts, kill switch.
 
 | Contract | Required fields (minimum) | Validation |
 |---|---|---|
-| `InstrumentSnapshot` | symbol, contract type, listing/delisting validity, trading status, filters, effective/as-of times, source/provenance | Time-appropriate USDT perpetual eligibility |
+| `InstrumentSnapshot` | instrument ID (symbol + listing epoch/onboard date), symbol, contract type, contract multiplier where encoded in the symbol, listing/delisting validity, trading status, filters, effective/as-of times, source/provenance | Time-appropriate USDT perpetual eligibility; a delisted-then-relisted ticker is a distinct instrument; no series stitching across epochs |
 | `Candle` | symbol, interval, open/close times, OHLCV, quote volume, source, availability time | Unique key, contiguous series, sane prices/volumes |
-| `FundingObservation` | symbol, funding rate, event/availability times, source | Never apply future funding in past decisions |
+| `FundingObservation` | instrument ID, funding rate, funding interval in effect, event/availability times, source | Never apply future funding; the funding interval is point-in-time per instrument and never assumed to be 8h |
 | `LiquidityObservation` | trailing quote-volume window, spread/order-book sample if present, as-of time | Complete lookback and known uncertainty |
 | `UniverseSnapshot` | decision time, eligible symbols, exclusion reasons, rank inputs, policy/config digest | Deterministically reproducible membership |
 | `SimulatedAccountSnapshot` (M1) | wallet/realized balance, realized PnL, unrealized PnL, fee/funding postings, margin usage, simulated equity, mark source, event/snapshot time, run digest | Deterministic cash/equity reconciliation; no exchange-transfer claims |
@@ -107,6 +120,8 @@ Each critical historical input is classified:
 
 Persist source, method, as-of time, coverage and limitations. Exploratory research may use documented reconstructions; promotion-grade research must test sensitivity to reconstruction error, separate verified-only results where feasible, and mark **INCONCLUSIVE** if critical uncertainty changes the pass/fail decision. Exclude symbol-periods with critical `UNAVAILABLE` inputs. Never use future information to fill gaps.
 
+**Expected coverage and forward capture:** Binance public endpoints are expected to expose only current instrument filters (to be confirmed in M1), so most historical filters will be `RECONSTRUCTED`. From M0, a credential-free forward-capture job records daily `exchangeInfo` and `fundingInfo` snapshots and periodic order-book/spread samples for the candidate universe. These are `VERIFIED` from their capture time onward and are the preferred basis for promotion-grade feasibility and cost evidence on later periods.
+
 ### 4.4 Data failure behavior
 
 Missing bars, stale feeds, uncertain exchange filters, invalid timestamps, or insufficient warm-up invalidate the affected signal. Critical uncertainty yields **no trade**. Backfills are versioned, never silently overwrite research evidence. A position with missing valuation data must not be silently marked at a stale price: fail the affected replay or use an explicitly specified and stress-tested conservative policy.
@@ -117,7 +132,8 @@ M1 must implement and test the **simulation accounting contract** before M1 is a
 
 - **Position and cash basis:** signed quantity `q` is positive for long and negative for short. Track executed fill prices, position cost basis, realized trading PnL, trade fees, funding cashflows and any other modeled cash adjustments as distinct immutable ledger events. Entry/exit commissions are charged on fills; a closed position realizes trading PnL exactly once. An open position's unrealized PnL is `Σ[q × (mark_price − cost_basis_price)]` under the declared linear USDT-perpetual contract convention.
 - **Canonical simulated equity:** `sim_wallet = initial_wallet + cumulative_realized_trading_PnL + cumulative_funding_cashflow − cumulative_fees + other_explicit_cash_adjustments`; `sim_equity = sim_wallet + unrealized_PnL`. Posted funding and fees must not be charged again at trade exit. Margin reservation reduces *available collateral* but is **not** subtracted a second time from equity. Realized PnL and mark-to-market PnL must not overlap.
-- **Mark price and source:** prefer timestamped historical exchange mark-price observations when available and causally valid. If unavailable, M1 may use an explicitly labeled deterministic `CANDLE_CLOSE_PROXY` for close-of-bar equity snapshots and a corresponding disclosed bar-open proxy for open-event valuation; proxies are **not** claimed to be Binance mark prices. Execution prices (including adverse slippage) remain distinct from valuation marks. The proxy limitation and margin/liquidation sensitivity must be disclosed in M2 evidence; a required mark missing at an open position must not silently reuse an old mark.
+- **Mark price and source:** M1 first assesses coverage of Binance historical mark-price klines (`markPriceKlines` endpoint and the public data archive) and uses them where available and causally valid. Only for documented coverage gaps may M1 use an explicitly labeled deterministic `CANDLE_CLOSE_PROXY` for close-of-bar equity snapshots and a corresponding disclosed bar-open proxy for open-event valuation; proxies are **not** claimed to be Binance mark prices. Execution prices (including adverse slippage) remain distinct from valuation marks. The proxy limitation and margin/liquidation sensitivity must be disclosed in M2 evidence; a required mark missing at an open position must not silently reuse an old mark.
+- **Stop trigger and liquidation price basis:** liquidation is evaluated on the mark-price path using point-in-time, provenance-tagged maintenance-margin tiers. Protective stops trigger on the price type declared by the versioned `stop_working_type` (`MARK_PRICE` or `CONTRACT_PRICE`), which must equal the planned live setting. The simulator evaluates each on its own price path and flags bars where liquidation could precede the stop.
 - **Event ordering:** resolve an explicit, deterministic timestamp/priority ordering for exchange settlement, pending order fills, protective stops, funding postings and snapshots. Apply each event once to the position held at the actual modeled settlement time. When intrabar order/funding/stop chronology cannot be reconstructed from OHLC, enforce a documented conservative rule and flag the ambiguity; never imply that OHLC provides unseen tick ordering. The chosen rule and tied-timestamp behavior must be frozen and regression-tested before M1 exit.
 - **Snapshot cadence and trigger semantics:** emit reconciled simulated snapshots after each modeled fill/funding/stop event and at each completed bar close, with timestamp, mark source, position state and wallet/equity breakdown; record which snapshots are eligible for M2's 100 USDT observation and 30 USDT halt checks, evaluated on `cycle_equity` (§7.3.1). Do **not** infer a trigger merely from a candle's favorable high/low when no eligible event-time equity is observable. If the model restricts trigger evaluation cadence, declare it before M2 research and measure sensitivity; do not retroactively change it after observing outcomes.
 - **Accounting acceptance:** for each event/snapshot, cash ledger totals reconcile to `sim_wallet`, and `sim_equity − sim_wallet == unrealized_PnL` within a predeclared numerical tolerance. Verify flat-position equity equals wallet, realized/unrealized transition on partial and complete closes, funding charged to the correct holder, fee/slippage accounting, and deterministic replay with adverse gaps. **OPEN before M1 acceptance:** exact event priority at ties, source/proxy policy, rounding/tolerances and valuation timestamp rules (SC-02).
@@ -133,7 +149,7 @@ The universe pipeline at each decision time:
 5. Test symbol-specific filters, order quantity, stop distance, margin, fee/funding reserve, and liquidation buffer at **50 USDT**. A major such as BTC/ETH has no exemption.
 6. Persist selected symbols, ranks, exclusion reasons, input provenance and config hash. No eligible symbol means no trade.
 
-**Sizing feasibility:** Let `risk_budget` be approved maximum modeled loss, `stop_distance` be the absolute entry-to-stop price distance, and `cost_buffer(q)` conservative costs and stressed fill loss. Find an exchange-compliant quantity `q` such that `q × stop_distance + cost_buffer(q) <= risk_budget`, while satisfying margin, liquidation distance and symbol filters. Quantize down to allowed steps; if minimum order cannot satisfy all constraints, reject. Exact formulas and maintenance-margin tiers are **OPEN** pending exchange compatibility and research.
+**Sizing feasibility:** Let `risk_budget` be approved maximum modeled loss, `stop_distance` be the absolute entry-to-stop price distance, and `cost_buffer(q)` conservative costs and stressed fill loss. Find an exchange-compliant quantity `q` such that `q × stop_distance + cost_buffer(q) <= risk_budget`, while satisfying margin, liquidation distance and symbol filters. Quantize down to allowed steps; if minimum order cannot satisfy all constraints, reject. Exact sizing rules are fixed in §5.2; maintenance-margin tiers remain **OPEN** pending exchange compatibility and research.
 
 ### 5.1 Micro-capital execution eligibility contract (M1 hard gate)
 
@@ -141,7 +157,17 @@ For every candidate entry, compute and persist a deterministic `EligibilityDecis
 
 **Deterministic rejection taxonomy:** `MISSING_PIT_FILTER`, `UNVERIFIED_CRITICAL_FILTER`, `STALE_METADATA`, `INSUFFICIENT_HISTORY`, `MIN_NOTIONAL`, `MIN_QTY`, `STEP_SIZE`, `PRICE_TICK`, `RISK_BUDGET`, `INSUFFICIENT_COLLATERAL`, `FEE_FUNDING_RESERVE`, `LIQUIDATION_BUFFER`, `HALT_HEADROOM`, `SPREAD_COST_UNCERTAIN`, `UNKNOWN_CONSTRAINT`. Multiple reasons may be reported; critical unknowns fail closed. Filter uncertainty and reconstruction-dependent eligibility must be explicitly separated from verified cases.
 
-**M1 mandatory evidence:** Produce a versioned **50 USDT Execution Feasibility Report** covering the candidate point-in-time universe and research windows: attempted candidates, executable count and rate, rejection counts by reason/symbol/regime, size/notional/margin distributions, and cost/stop-distance sensitivities. Distinguish *technical eligibility* from *strategy profitability*; report coverage and uncertainty rather than treating reconstructed filters as verified. M1 acceptance requires the report and correct rejection behavior, **not a preselected minimum pass rate**. A numeric promotion-grade feasibility threshold is preregistered before the M2 holdout (SC-03). If no feasible orders exist under defensible assumptions, record a no-trade/feasibility blocker rather than weakening risk controls.
+**M1 mandatory evidence:** Produce a versioned **50 USDT Execution Feasibility Report** covering the candidate point-in-time universe and research windows. Compute it for every Ignition **and Growth** risk candidate at 50 USDT (Growth also starts at 50 USDT) and at representative Growth equity levels (e.g., 100 and 250 USDT). Include: attempted candidates, executable count and rate, rejection counts by reason/symbol/regime, size/notional/margin distributions, cost/stop-distance sensitivities, and the binding side of the feasibility window (§5.2: leverage cap versus minimum order) per symbol. Distinguish *technical eligibility* from *strategy profitability*; report coverage and uncertainty rather than treating reconstructed filters as verified. M1 acceptance requires the report and correct rejection behavior, **not a preselected minimum pass rate**. A numeric promotion-grade feasibility threshold is preregistered before the M2 holdout (SC-03). If no feasible orders exist under defensible assumptions, record a no-trade/feasibility blocker rather than weakening risk controls.
+
+
+### 5.2 Risk base, initial stop and rounding
+
+- **Risk base:** `phase_risk_budget = risk_pct × cycle_equity` (§7.3.1) at decision time, in every phase, then capped by the halt-headroom rule (§8.1). A fixed-reference variant (`risk_pct × 50 USDT`) may be studied only as a preregistered research variant.
+- **Initial stop distance:** `d = k × ATR(14)` from the completed signal bar (candidate `k = 2.5`, the same multiplier as the trailing exit).
+- **Quantity:** `q = floor_to_step(risk_budget / (d + c))`, where `c` is the conservative per-unit cost (entry and exit fees at taker rate plus stressed slippage on both sides).
+- **Stop placement preserves distance:** the initial stop is placed at `actual_fill_price − d` for longs and `+ d` for shorts, not at a level fixed from the signal close, so a gap between signal and fill does not change per-unit risk.
+- **Price rounding:** stop prices are rounded to the tick **toward** the entry (tighter, never wider), so the realized distance is `<= d`. Quantity is rounded down to the step. If either rounding makes the order non-compliant, reject.
+- **Feasibility window (diagnostic):** ignoring costs, an entry is feasible only if `risk_budget / (E × L_max × u) <= d / price <= risk_budget / N_min`, with `E` = cycle equity, `L_max` = leverage ceiling, `u` = permitted margin utilization and `N_min = max(minNotional, minQty × price)`. SC-12 reports which side binds.
 
 ## 6. Strategy contract — MVP candidate only
 
@@ -159,7 +185,8 @@ For every candidate entry, compute and persist a deterministic `EligibilityDecis
 
 - Signal engine returns `NO_SIGNAL`, `LONG_CANDIDATE`, or `SHORT_CANDIDATE` with timestamp, source bars, feature values, strategy/config digest and reason codes.
 - Strategy cannot calculate final authorized order quantity or submit an order.
-- **OPEN before M2:** exact candle-close decision time, next-bar execution, volume-window indexing, Donchian band exclusion of signal candle, ADX/ATR/EMA warm-up, intrabar stop ordering, stop updates, funding timing, and tie-breaking for simultaneous events.
+- **OPEN before M2:** exact candle-close decision time, next-bar execution, volume-window indexing, Donchian band exclusion of signal candle, ADX/ATR/EMA warm-up, intrabar stop ordering, stop updates, funding timing, tie-breaking for simultaneous events, and handling of open positions when a symbol leaves the universe or its momentum sign flips.
+- **Trailing-stop implementation (decided):** the ATR trailing stop updates only at completed bar close and ratchets only in the favorable direction. Live, it is an exchange-hosted stop order replaced by placing the new order before cancelling the old (§9.2). Research models exactly this step-wise level, never continuous intrabar trailing. Exchange-native percentage-callback trailing orders are not used for the ATR exit.
 - Evaluate baseline without pyramiding first. Additional families and adaptive selector are research-only until separately promoted.
 
 ### 6.1 Adaptive selector promotion contract (future)
@@ -180,6 +207,20 @@ Before selector holdout, freeze features, selection cadence, costs, multiple-tes
 **Ignition fixed-loss policy:** Reference is fixed at 50 USDT throughout the authorized cycle. `cycle_equity <= 30 USDT` (§7.3.1) triggers an operational halt and protective/flattening procedure. This is **40% loss from initial capital**, **not** 40% drawdown from peak equity. A path 50→80→45 does not trip this fixed threshold; additional peak-drawdown controls are **OPEN**. The 30 USDT threshold is not a guaranteed loss floor.
 
 **Growth/Vault candidate preventive halts:** 12% / 8% from phase high-water mark, respectively; **research-only**, not approved live values. Exact phase-high reset and treatment of ACGS-initiated transfers are **OPEN**; the equity basis is `cycle_equity` (§7.3.1) and external inflows are excluded per §7.6.
+
+### 7.1.1 Capital-cycle records and lifetime limits (PRD §5.2.1)
+
+- `capital_cycles` stores cycle ID, start time, committed capital (initial or top-up), status `OPEN`/`CLOSED`, closure reason (`FIXED_LOSS_HALT` or `OPERATOR_CLOSE`), residual, and post-mortem reference/digest. Lifetime counters (`cycles_started`, `committed_capital_total`) are derived from the ledger, never stored as editable configuration.
+- `FIXED_LOSS_HALT` closes the cycle only after exposure is flat and reconciled. The operational `HALTED` latch remains until operator acknowledgment. Other halts do not close the cycle.
+- New-cycle authorization is rejected unless all hold:
+  - the previous cycle is `CLOSED` and its post-mortem is recorded;
+  - live approval is not suspended;
+  - there is no open exposure or order, and the USD-M wallet holds between 50.00 and 50.50 USDT;
+  - `cycles_started < 2` and `committed_capital_total + top_up <= 100`.
+
+  The reference remains exactly 50 USDT.
+- Residual funds of a closed cycle are never traded. ACGS never deposits or tops up by itself. A top-up is an operator action, classified through §7.6 and recorded as committed capital.
+- Lifetime limits are code constants checked against the ledger. Configuration cannot raise them; a PRD revision is required.
 
 ### 7.2 Orthogonal operational states
 
@@ -236,9 +277,9 @@ Only these explicit, audited operator resolutions are permitted, each preceded b
 |---|---|---|
 | `RECHECK` | Re-run reconciliation and the eligibility check without trading (e.g., after a pending posting settles) | Remains `RECOVERY_PENDING`; proceeds to `TRANSFER_PENDING` only if eligibility now passes |
 | `RESUME_IGNITION` | Close the attempt as `CLOSED_UNRECOVERED`; capital phase returns to `IGNITION` in the **same** capital cycle | Fixed 50 USDT reference and 30 USDT halt unchanged; no counter or reference reset; recovery trigger re-arms under §7.3.1 |
-| `CLOSE_CYCLE` | Close the attempt and end the capital cycle without recovery | Terminal handling pending PRD decision (SC-15) |
+| `CLOSE_CYCLE` | Close the attempt and the capital cycle (`OPERATOR_CLOSE`, §7.1.1) | A new cycle only under PRD §5.2.1 lifetime limits |
 
-Never permitted: a transfer below 50 USDT counted as recovery; a transfer leaving less than `50 + additional_operational_reserve` active; entry into `GROWTH`; lowering the reserve to pass the check without a versioned approval made before the attempt; counting an external top-up toward eligibility (any inflow follows §7.6 until SC-15 decides otherwise).
+Never permitted: a transfer below 50 USDT counted as recovery; a transfer leaving less than `50 + additional_operational_reserve` active; entry into `GROWTH`; lowering the reserve to pass the check without a versioned approval made before the attempt; counting an external top-up toward eligibility (top-ups are permitted only between cycles, PRD §5.2.1).
 
 **Repeated shortfall:** two consecutive `CLOSED_UNRECOVERED` attempts in one capital cycle block further `RESUME_IGNITION` until the cost/slippage model used in `conservative_NLV` is reviewed and re-versioned, recorded as an audit event.
 
@@ -260,7 +301,7 @@ In `OFFLINE` and `PAPER` these are declared configuration assumptions exercised 
 **External cash flows:** any USD-M wallet balance change not explained by ledger events (realized PnL, fees, funding, ACGS-initiated transfers) is an `EXTERNAL_CASH_FLOW`, identified from exchange income/transfer history (exact fields under SC-06).
 - On detection: latch `PAUSED`, block entries, alert, and record the flow in the ledger as an explicit external adjustment.
 - External **inflows** are subtracted from `cycle_equity` (§7.3.1) and never count toward the 100 USDT trigger, the 500 USDT Vault threshold or a new high-water mark. External **outflows** are not added back, so they lower cycle equity and bring the halt closer. Both choices are conservative.
-- Resume requires operator classification of the flow. Whether an inflow may ever be approved as new cycle capital (top-up) is a PRD decision (SC-15); until then, no inflow is approved.
+- Resume requires operator classification of the flow. An inflow may be approved as committed capital only as a between-cycles top-up under PRD §5.2.1 and §7.1.1; any inflow during an open cycle remains unapproved and excluded.
 - In `OFFLINE`/`PAPER`, external flows occur only as explicit labeled test adjustments (`other_explicit_cash_adjustments`, §4.5) and follow the same rules.
 
 ## 8. Risk authorization
@@ -289,6 +330,7 @@ open_risk       = Σ stressed loss from current mark to stop (open positions + r
 risk_budget_eff = min(phase_risk_budget, halt_headroom − open_risk)
 ```
 
+- `phase_risk_budget = risk_pct × cycle_equity` (§5.2).
 - `halt_level` is 30 USDT in Ignition. In Growth/Vault it is the approved HWM-based halt level once OD-04 is resolved; until then, labeled research configs use the candidate values.
 - Closing costs already deducted in `cycle_equity` are not counted again in `open_risk`.
 - If `risk_budget_eff <= 0` or no exchange-compliant quantity fits it, reject with `HALT_HEADROOM`.
@@ -312,9 +354,9 @@ risk_budget_eff = min(phase_risk_budget, halt_headroom − open_risk)
 
 ### 9.2 Protective-order compatibility and emergency contract (M3 mock; M5 exchange gate)
 
-Maintain a versioned compatibility matrix for the **actual** Binance account and API configuration: one-way versus hedge position mode, supported conditional-order endpoints and trigger types, `reduceOnly`/`closePosition` applicability, quantity rules, margin/position-mode requirements, cancel/replace semantics and protective-order visibility after fills. Do not assume a specific `STOP_MARKET` parameter combination works universally. Exchange-native protective coverage must be independently confirmed from exchange state, not merely from an order-submission acknowledgment.
+Maintain a versioned compatibility matrix for the **actual** Binance account and API configuration: one-way versus hedge position mode, supported conditional-order endpoints and trigger types, `reduceOnly`/`closePosition` applicability, quantity rules, margin/position-mode requirements, cancel/replace semantics (including place-new-then-cancel-old trailing updates without a coverage gap), supported stop `workingType` values and protective-order visibility after fills. Do not assume a specific `STOP_MARKET` parameter combination works universally. Exchange-native protective coverage must be independently confirmed from exchange state, not merely from an order-submission acknowledgment.
 
-On a fill with missing, rejected, expired, insufficient or uncertain stop coverage: immediately block new entries, latch the configured safety state, attempt the preapproved bounded emergency flattening procedure where safe, and reconcile residual positions and contingent orders. Repeated blind submissions are forbidden; unresolved exposure requires alerting and operator intervention. Partial fills, stop-size adjustments, rejected conditional orders, reconnects and crash-between-fill-and-stop are mandatory mock/fault scenarios by M3/M4.
+On a fill with missing, rejected, expired, insufficient or uncertain stop coverage: immediately block new entries, latch the configured safety state, attempt the preapproved bounded emergency flattening procedure where safe, and reconcile residual positions and contingent orders. Repeated blind submissions are forbidden; unresolved exposure requires alerting and operator intervention. Partial fills, stop-size adjustments, rejected conditional orders, reconnects and crash-between-fill-and-stop are mandatory mock/fault scenarios by M3/M4. From M3, the matrix may additionally be exercised on testnet (§3.1).
 
 **M5 hard gate:** Validate the compatibility matrix and emergency behavior against current Binance endpoints in an appropriate supported test environment/account mode, then explicitly sign off the account-specific live configuration before arming. Test-environment success alone does not establish production account compatibility; unresolved restrictions or unsupported protection => **NO-GO**. No real orders are authorized by this SPEC.
 
@@ -332,11 +374,14 @@ Disabled in Ignition. Growth/Vault candidate: add after favorable 1.5 ATR moveme
 - Minimal logical records: `config_versions`, `dataset_versions`, `universe_snapshots`, `research_evidence`, `capital_cycles`, `state_events`, `order_intents`, `fills`, `position_snapshots`, `risk_decisions`, `transfer_intents`, `transfer_attempts`, `capital_ledger`, `reconciliation_events`.
 - Every risk decision and live order links to strategy version, data/config digest, phase, account snapshot and reason codes.
 - Secrets injected at runtime; never in repo, logs, datasets or test fixtures. Restrict API permissions; no withdrawal permission; separate paper/live identity and credentials.
+- **Transfer capability:** in `LIVE`, trading and transfer use separate API keys where the exchange supports separate permissions. The trading key has no transfer or withdrawal permission; the transfer key is used only by the transfer adapter; both are IP-restricted. The transfer adapter accepts only USD-M Futures → Spot transfers with amounts produced by the recovery/Vault workflows; any other direction or type is rejected in code and tested (T-32). ACGS never initiates Spot → Futures. After a confirmed recovery, the operator moves protected funds out of the bot account's reach per runbook. If separate permissions are unsupported, SC-10 must document the residual risk before arming.
 - Backup and restore tests must preserve safety latches and transfer-intent history. **OPEN:** retention, backup cadence, recovery point and alert delivery SLAs.
 
 ## 11. Research protocol and promotion gates
 
 Research must use chronological development/validation windows, walk-forward tests, and an untouched holdout. Costs include fees, funding, slippage/spread uncertainty, margin/filter feasibility and realistic fills. Compare no-trade and simple baselines, parameter sensitivity, regime breakdowns, and incremental value of universe ranking, filters and pyramiding.
+
+**Required baselines and resampling:** (a) no-trade; (b) seeded random entry with identical universe, sizing, exits and costs, replicated enough to estimate its distribution; (c) the breakout with each filter removed (ablation). Bootstrap/Monte Carlo resamples **calendar-time blocks across all symbols** to preserve cross-sectional correlation and regime clustering. Report an effective sample size that accounts for concurrently open, correlated trades.
 
 **Before opening a holdout**, pre-register numeric thresholds in a versioned protocol referenced by this SPEC:
 
@@ -346,7 +391,8 @@ Research must use chronological development/validation windows, walk-forward tes
 4. Cost/slippage stress grid and survival criterion.
 5. 50 USDT executable-order feasibility/pass rate.
 6. Rules for multiple comparisons, reconstruction coverage and `PASS`/`FAIL`/`INCONCLUSIVE`.
-7. For M2, simulated probability of 100 USDT observation **before** 30 USDT halt, and conditional feasibility of a settled 50 USDT recovery with 50 USDT retained plus reserve, including the recovery shortfall rate (§7.3.1) at the declared trigger cadence.
+7. For M2, simulated probability of 100 USDT observation **before** 30 USDT halt, and conditional feasibility of a settled 50 USDT recovery with 50 USDT retained plus reserve, including the recovery shortfall rate (§7.3.1) at the declared trigger cadence, and the probability of recovery success within the PRD §5.2.1 lifetime limits (at most two cycles).
+8. Execution-model tolerance used in live-cycle post-mortems (PRD §5.2.1): maximum acceptable deviation of realized fees, slippage and stop behavior from the model.
 
 **No numeric thresholds are invented in this draft.** They are an explicit M2 prerequisite; post-hoc thresholds are prohibited. A reference-account backtest alone cannot promote a 50 USDT strategy. `INCONCLUSIVE` does not authorize live trading.
 
@@ -384,12 +430,20 @@ Research must use chronological development/validation windows, walk-forward tes
 | T-28 | Settlement shortfall (e.g., settled 98) | `SHORTFALL_HOLD`; only `RECHECK`/`RESUME_IGNITION`/`CLOSE_CYCLE`; resume keeps 50 reference and 30 halt; no transfer or `GROWTH`; second consecutive shortfall blocks resume until cost-model review | M3 |
 | T-29 | External deposit lifts mark equity >=100 in Ignition; Multi-Assets mode or BNB fee deduction found enabled | Inflow excluded, no trigger, `PAUSED` pending classification; precondition mismatch blocks entries | M3 (sim); M5 (account) |
 | T-30 | Cycle equity 34, halt 30, buffer 0.5, budget 5; second entry while a position is open | Effective budget 3.5 minus open risk; reject `HALT_HEADROOM` when no compliant quantity fits | M2/M3 |
+| T-31 | Fixed-loss halt; new cycle with residual 28 + top-up 22; then a third cycle; top-up during an open cycle | Cycle `CLOSED` only after flat; second cycle only with post-mortem and wallet 50.00–50.50; third cycle or committed capital >100 rejected; mid-cycle inflow unapproved and excluded | M3 |
+| T-32 | Transfer adapter asked for Spot→Futures, another transfer type or an arbitrary amount; trading key used for a transfer | Rejected in code; no request sent | M3 (sim); M5 |
+| T-33 | Signal close 100, fill gaps to 101; stop price falls between ticks | Stop placed at fill − d, rounded toward entry; realized risk <= budget | M1 |
+| T-34 | Testnet adapter configured with a production host | Startup refuses; no request sent | M3 |
+| T-35 | Ticker delisted and later relisted; multiplier contract symbol | Distinct instrument IDs; no stitched history or indicators across epochs | M1 |
+| T-36 | Funding interval changes from 8h to 4h inside a research window | Funding applied at the point-in-time interval; no 8h assumption | M1 |
+| T-37 | ATR trailing update | Updates only at bar close and only in the favorable direction; live replacement places the new stop before cancelling the old | M1 (sim); M3 (mock/testnet) |
+| T-38 | Mark-price path reaches liquidation before the stop triggers on its declared price type | Liquidation modeled and flagged; no optimistic stop fill | M1 |
 
 ## 13. Open contract register
 
 | ID | Must be resolved by | Decision |
 |---|---|---|
-| SC-01 | M1 | Candle availability, PIT filters, provenance and gap handling |
+| SC-01 | M1 | Candle availability, PIT filters, provenance and gap handling, instrument epochs, PIT funding intervals, mark-price kline coverage, liquidation/stop price basis, forward capture (§4.2/§4.3/§4.5; T-35/T-36/T-38) |
 | SC-02 | **M1, before M1 acceptance** | Simulated equity accounting (`sim_wallet`, realized/unrealized PnL, fee/funding ledger, mark source/proxies, snapshot cadence), deterministic fill/stop/funding priority, slippage, order filters and liquidation assumptions; verify with T-17–T-19/T-21 |
 | SC-03 | Before M2 holdout | Pre-registered numeric gates, sample size, confidence and multiplicity |
 | SC-04 | **M2, frozen before holdout** (with SC-03) | Strategy indexing, intrabar stop semantics, universe ranking cadence |
@@ -400,10 +454,10 @@ Research must use chronological development/validation windows, walk-forward tes
 | SC-09 | M4 | Paper pilot duration, alerts, fault-response and operational acceptance |
 | SC-10 | M5 | Binance endpoint/permission/position-mode compatibility, account isolation and preconditions (§7.6), and live arming |
 | SC-11 | Optional P1/P2 | Vault locking, pyramiding and adaptive selector promotion |
-| SC-12 | M1 | Micro-capital eligibility reason codes, exchange-filter provenance, feasibility report and sensitivities (T-22/T-23) |
-| SC-13 | M3 mock; M5 live | Protective-order compatibility matrix, emergency flatten safety contract, account-mode validation (T-24/T-26) |
+| SC-12 | M1 | Micro-capital eligibility reason codes, exchange-filter provenance, feasibility report and sensitivities across Ignition and Growth risk levels, risk base, stop placement/rounding and feasibility window (§5.2) (T-22/T-23/T-33) |
+| SC-13 | M3 mock/testnet; M5 live | Protective-order compatibility matrix, emergency flatten safety contract, account-mode validation, trailing replacement without coverage gap, testnet host allowlist (T-24/T-26/T-34/T-37) |
 | SC-14 | M3 | Recovery workflow substates including `SHORTFALL_HOLD` and operator resolutions (§7.4.1), durable intent, retry ambiguity and fault-injection suite (T-25, T-28) |
-| SC-15 | **PRD decision before M3** | Capital-cycle termination after a halt or `CLOSE_CYCLE`: residual funds, new-cycle funding/top-up rules, maximum cycles or lifetime loss cap. Blocked on PRD review; SPEC implements mechanics only |
+| SC-15 | M3 | Capital-cycle closure, new-cycle authorization and lifetime limits: policy decided in PRD v1.4 §5.2.1, mechanics in §7.1.1; transfer key separation and direction restriction (§10) (T-31/T-32) |
 
 A contract is not considered resolved merely by selecting a value: it requires rationale, versioned configuration, and tests/evidence appropriate to its gate.
 
@@ -420,7 +474,12 @@ A contract is not considered resolved merely by selecting a value: it requires r
 - Added `SHORTFALL_HOLD` and the only permitted operator resolutions after a recovery shortfall (§7.4.1); clarified INV-04.
 - Added account isolation, account preconditions and external cash-flow handling (§7.6, INV-11).
 - Added the halt-headroom risk cap and `HALT_HEADROOM` reason code (§8.1).
-- Added T-27–T-30 and SC-15 (capital-cycle termination, pending PRD decision). PRD v1.3 baselines preserved.
+- Added T-27–T-30 and SC-15.
+- Aligned with PRD v1.4: capital-cycle records and lifetime limits (§7.1.1), transfer key separation and Futures→Spot-only adapter (§10), testnet execution backend (§3.1, INV-08).
+- Added capability-boundary enforcement (§2.1) and risk base, distance-preserving initial stop, tick rounding toward entry and feasibility window (§5.2, INV-07); SC-12 report now covers Growth risk levels.
+- Data: instrument epochs, point-in-time funding intervals, forward capture, mark-price kline coverage, liquidation versus stop price basis (§4.2/§4.3/§4.5).
+- Strategy: step-wise ATR trailing implementation decided; universe-exit handling added to the open list (§6). Research: random-entry and ablation baselines, calendar-block resampling, lifetime-limit success probability, post-mortem tolerance (§11).
+- Added T-31–T-38. PRD v1.4 baselines preserved.
 
 ## Appendix — v0.3 targeted change notes
 

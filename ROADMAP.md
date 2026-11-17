@@ -1,25 +1,26 @@
 # ACGS V2 — Engineering Roadmap
 
-**Version:** 0.4 — Pre-M0 Capital Lifecycle Corrections  
+**Version:** 0.4 — Pre-M0 Corrections  
 **Date:** 2026-11-17  
 **Status:** Engineering baseline candidate; no milestone accepted  
-**Basis:** `PRD.md` v1.3 (**Approved & Locked**) and `SPEC.md` v0.4  
+**Basis:** `PRD.md` v1.4 (**Approved & Locked**) and `SPEC.md` v0.4  
 **Execution principle:** Research-first, risk-before-order, evidence-based stop/go.
 
 ## 1. Delivery rules
 
 1. The goal is **not** to ship a trading bot at any cost; the goal is to determine whether a 50 USDT Binance USD-M strategy is executable and has credible net-of-cost edge, then build safe operation only if justified.
-2. `OFFLINE` by default. M0–M4 must never place real orders or real transfers. M5 is optional and requires separate approval.
+2. `OFFLINE` by default. M0–M4 must never place real orders or real transfers. Testnet orders (no real funds, no transfers) are permitted from M3 per SPEC §3.1. M5 is optional and requires separate approval.
 3. Milestones require **working code, reproducible tests, and concise evidence**; no governance-only milestone or mandatory standalone CANON/ADR/audit packs.
 4. A milestone may report `PASS`, `FAIL`, `INCONCLUSIVE`, or `BLOCKED`. `FAIL`/`INCONCLUSIVE` do not permit live promotion. `BLOCKED` requires resolving dependencies before proceeding.
 5. The untouched holdout is opened only after research protocol and numeric promotion thresholds are frozen.
 6. Changes to PRD product baselines require explicit review; technical detail belongs in SPEC, progress in ROADMAP.
+7. Stopping after M2 (no edge) or after M4 (paper only) is a legitimate, successful outcome (PRD §12.4).
 
 ## 2. Milestone map
 
 | Milestone | Goal | Key dependency | Exit outcome |
 |---|---|---|---|
-| **M0 Foundation** | Reproducible, safe offline repo | PRD v1.3 baseline | CI, tests, OFFLINE-by-default |
+| **M0 Foundation** | Reproducible, safe offline repo; account eligibility; forward data capture | PRD v1.4 baseline | CI, tests, OFFLINE-by-default, eligibility recorded |
 | **M1 Market & Offline Execution** | Trustworthy data, cost-aware replay and **simulated equity accounting** | M0 | PIT universe, deterministic simulator, reconciled wallet/equity and event-order regression tests |
 | **M2 Strategy Research** | Test whether breakout has credible edge at 50 USDT | M1; preregistered gates before holdout | `PASS`/`FAIL`/`INCONCLUSIVE`; may stop project |
 | **M3 Capital & Risk Engine** | Implement safety and capital lifecycle | M2 strategy evidence for promotion; M1 contracts | State machine, transfer simulation, fault tests |
@@ -36,17 +37,20 @@
 - SQLite single-writer storage skeleton, deterministic clock and test fixtures.
 - GitHub Actions: unit tests, lint, secret scanning; no production credentials in CI.
 - Clear separation of offline, paper, and future live adapters; no live adapter implementation required.
+- Import contracts enforcing the capability boundary (SPEC §2.1).
+- **Account eligibility pre-check** (manual, no trading credentials): confirm the operator's account and jurisdiction permit Binance USD-M Futures, isolated margin, a dedicated account or sub-account, the needed API permissions (trading, universal transfer, IP restriction) and testnet access. Ineligible ⇒ project `BLOCKED` before M1.
+- **Forward capture** (credential-free): scheduled job recording daily `exchangeInfo`/`fundingInfo` snapshots and periodic order-book/spread samples with provenance (SPEC §4.3).
 
-**Deliverables:** runnable offline skeleton, CI workflow, README quickstart, config validation, first invariant tests.
+**Deliverables:** runnable offline skeleton, CI workflow, README quickstart, config validation, first invariant tests, account eligibility record, running forward-capture job.
 
-**Acceptance:** clean install/replay smoke test; CI green; secret scan clean; invalid config fails safely; no real exchange order/transfer path exists; restart preserves state fixture.
+**Acceptance:** clean install/replay smoke test; CI green; secret scan clean; invalid config fails safely; no real exchange order/transfer path exists; restart preserves state fixture; import contracts enforced in CI (T-13); eligibility recorded; forward capture stores provenance-tagged snapshots.
 
 **Exit decision:** accept M0 only when all checks are reproducible on a clean environment.
 
 ## 4. M1 — Market & Offline Execution
 
 **Scope**
-- Historical OHLCV, funding, instrument status/filter ingestion with provenance.
+- Historical OHLCV, funding, instrument status/filter ingestion with provenance. Instruments keyed by listing epoch; funding intervals point-in-time; historical mark-price kline coverage assessed before any proxy is used (SPEC §4.2/§4.5).
 - Point-in-time symbol discovery including delisted symbols when evidence permits; missingness tags `VERIFIED`/`RECONSTRUCTED`/`UNAVAILABLE`.
 - Universe snapshots: 30-day quote-volume/top-30 and 14-day signed momentum as configurable **research candidates**.
 - Time-appropriate eligibility: contiguous history, min notional/quantity/step/tick, 50 USDT margin/stop-risk feasibility.
@@ -54,7 +58,7 @@
 - **M1 simulated equity accounting (SPEC §4.5 / SC-02):** wallet balance, realized/unrealized PnL, fee/funding postings, mark/source proxies, margin reservation, snapshot timestamps and exact equity reconciliation. Freeze event priority and mark/snapshot sampling rules **before M1 acceptance**; exchange account reconciliation remains M3.
 - Allow **versioned unapproved research candidates in OFFLINE simulation** with simulated risk checks and no real side effects; paper/live approval is separate.
 - Immutable dataset/config hashes and replay outputs.
-- Explicit `EligibilityDecision` with deterministic rejection reasons and a **50 USDT Execution Feasibility Report** (SPEC §5.1 / SC-12); distinguish verified from reconstruction-dependent feasibility.
+- Explicit `EligibilityDecision` with deterministic rejection reasons and a **50 USDT Execution Feasibility Report** (SPEC §5.1 / SC-12); distinguish verified from reconstruction-dependent feasibility. Cover Ignition and Growth risk levels and report the binding side of the feasibility window (SPEC §5.2).
 
 **Deliverables:** PIT datasets, provenance report, universe snapshots, deterministic broker/backtester, simulated wallet/equity ledger and event snapshots, exclusion reason report, **50 USDT Execution Feasibility Report**.
 
@@ -70,6 +74,7 @@
 - Unapproved versioned research strategy can execute **only in OFFLINE simulation**; no implicit PAPER/LIVE approval.
 - No exchange credentials or live orders required.
 - Candidate order rejected when satisfying minimum notional would breach risk after quantity rounding; margin/leverage does not waive stop-risk or reserve checks.
+- Stop distance preserved from the actual fill and tick rounding never widens the stop; relisted tickers, funding-interval changes, step-wise trailing and liquidation-before-stop handled per T-33 and T-35–T-38.
 - Feasibility report reproducibly enumerates executable candidates, rejection reasons, cost/stop-distance sensitivities and provenance limitations; no unsupported claim that 50 USDT is sufficient.
 
 **Exit decision:** M1 can pass without profitable strategy or a minimum executable-order rate, but **not** without the feasibility report (SC-12) or with unresolved simulated equity/event-order accounting (SPEC SC-02). Data-quality and mark-price-proxy limitations are recorded and promotion constraints identified.
@@ -79,7 +84,7 @@
 **Scope**
 - Volatility Breakout baseline **without pyramiding**: candidate 15m/1h, ADX(14), prior Donchian(20), EMA(200), prior-volume filter, ATR-based exit. Run as a **versioned OFFLINE research candidate**; promotion approval is not required to investigate it.
 - Freeze precise signal timing, indexing, warm-up and fill/stop semantics in SPEC.
-- Evaluate Major + Dynamic Top Movers universe against simple and no-trade baselines; isolate incremental value of ranking and filters.
+- Evaluate Major + Dynamic Top Movers universe against no-trade, seeded random-entry and filter-ablation baselines with calendar-block resampling (SPEC §11); isolate incremental value of ranking and filters.
 - Chronological development/validation, walk-forward, untouched holdout.
 - Cost-aware 50 USDT execution feasibility, regime sensitivity, tail-risk and parameter robustness.
 - **Minimal simulated Ignition:** 50 USDT start, 100 USDT observation target, fixed 30 USDT halt, research-only sizing/exposure, costs; compute using the **M1 accepted equity ledger and snapshot-trigger rules**. Estimate target-before-halt and conditional recovery feasibility; no real/simulated wallet transfer workflow is required here. Evaluate trigger/halt on `cycle_equity` with the halt-headroom cap (SPEC §7.3.1/§8.1) and report the recovery shortfall rate.
@@ -91,7 +96,7 @@
 4. Run holdout once under preregistered rules; retain results even if unfavorable.
 5. Produce concise `PASS`, `FAIL`, or `INCONCLUSIVE` evidence and decision.
 
-**Deliverables:** reproducible research command, evidence report with config/dataset hashes, uncertainty estimates, verified/reconstructed coverage, 50 USDT feasibility and failure reasons.
+**Deliverables:** reproducible research command, evidence report with config/dataset hashes, uncertainty estimates, verified/reconstructed coverage, 50 USDT feasibility and failure reasons, recovery shortfall rate and recovery probability within the lifetime limits.
 
 **Acceptance:** meets all preregistered numeric gates, survives specified stress cases, has credible net-of-cost edge on executable 50 USDT sizing, and is not dependent on unsupported historical assumptions. No threshold may be invented after seeing holdout.
 
@@ -106,10 +111,11 @@
 - Fixed Ignition initial-capital loss halt at 30 USDT (not peak drawdown); research/approve additional preventive limits separately.
 - Recovery simulation: observed equity >=100 triggers freeze/settlement; 50 USDT transfer only if settled funds allow 50 USDT retained **plus additional reserve**; durable idempotent intent and ledger.
 - Candidate Growth/Vault high-water mark halts and Vault profit locking remain research-pending until separately approved.
+- Capital-cycle closure, new-cycle authorization and lifetime limits (SPEC §7.1.1); Futures→Spot-only transfer adapter with separate key (SPEC §10).
 - **Exchange-account reconciliation contract (SPEC SC-06):** map exchange mark-based unrealized PnL, wallet/realized balances, available/transferable funds, snapshot freshness, remaining costs and recovery reserve. Simulate/mock these exchange responses and failure modes in M3; actual exchange adapter stays gated to M5. Do not reopen M1's simulated accounting rules.
 - Restart-safe order/position/stop reconciliation and fault injection.
 - Recovery workflow substates with atomic entry freeze, durable intent/attempt records, authoritative restart reconciliation and explicit ambiguous-result handling (SPEC §7.4 / SC-14).
-- Mock protective-order compatibility matrix and emergency flatten contract for position modes, partial fills, rejected/unknown stops and crash-between-fill-and-protection (SPEC §9.2 / SC-13).
+- Mock protective-order compatibility matrix and emergency flatten contract for position modes, partial fills, rejected/unknown stops and crash-between-fill-and-protection (SPEC §9.2 / SC-13). May additionally be exercised on Binance Futures testnet (SPEC §3.1).
 
 **Deliverables:** tested capital state machine, risk engine, recovery simulator, transfer ledger, operator halt/resume controls, recovery fault-injection suite and mock protective-order compatibility evidence.
 
@@ -117,6 +123,7 @@
 - 50→80→45 does not trigger the fixed 30 USDT halt; 30 or lower does.
 - Observed 100 but settled 98 remains `RECOVERY_PENDING` with no transfer.
 - Shortfall enters `SHORTFALL_HOLD` with only the SPEC §7.4.1 resolutions; external inflows never trigger recovery; entries beyond halt headroom are rejected (T-27–T-30).
+- Cycle closure and lifetime limits, transfer-direction restriction and the testnet host allowlist pass T-31, T-32 and T-34.
 - Insufficient reserve or uncertain transfer status blocks transition.
 - Lost acknowledgment/restart never causes blind duplicate transfer.
 - No strategy can bypass risk engine or clear a latched halt.
@@ -129,7 +136,7 @@
 ## 7. M4 — Paper Pilot
 
 **Scope**
-- Public live market data, simulated exchange fills and costs, persistent position/order/stop lifecycle.
+- Public live market data, simulated exchange fills and costs, persistent position/order/stop lifecycle. Testnet may serve as an alternative fill backend (SPEC §3.1).
 - Shared strategy/risk logic with offline mode; paper adapter with zero real-money permissions. A **paper-pilot-approved strategy/config digest** is required even if an unapproved candidate was allowed in OFFLINE research.
 - Monitoring, stale-feed detection, restart recovery, alerts and emergency handling.
 - Full simulated Capital Recovery rehearsal and operator procedures.
@@ -172,6 +179,8 @@
 
 | Risk / dependency | Earliest affected gate | Mitigation / decision |
 |---|---|---|
+| Account/jurisdiction ineligible for USD-M Futures or transfers | M0 | Eligibility pre-check; `BLOCKED` before M1 |
+| Repeated manual refunding after losses | M5 | PRD §5.2.1 lifetime limits enforced from the ledger |
 | Historical listing/filter/spread coverage incomplete | M1/M2 | Provenance tiers, exclusion, sensitivity bounds, `INCONCLUSIVE` |
 | 50 USDT cannot meet compliant stop-risk sizing | M1/M2 | Mandatory feasibility report, rejection taxonomy and sensitivity; reject symbols; may terminate project; never round up risk |
 | Strategy net expectancy not positive after costs | M2 | No-trade / stop research cycle; no forced promotion |
@@ -203,12 +212,11 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 ### Immediate next actions
 
-1. **PRD v1.3 is Approved & Locked** as the product baseline; no further PRD approval task remains.
+1. **PRD v1.4 is Approved & Locked** as the product baseline; no further PRD approval task remains.
 2. Review SPEC open contracts **SC-01/SC-02** and M0 scope; ensure M1 simulator accounting/event priority is resolved before M1 exit; do not pre-approve research-only risk settings.
-3. Create `README.md`, then implement M0 with OFFLINE-only safety tests and CI.
+3. Create `README.md` (next step), then implement M0 with OFFLINE-only safety tests, CI, the account eligibility pre-check and forward capture.
 4. Begin M1 data provenance and exchange-feasibility research before investing in live execution.
 5. Pre-register M2 numeric promotion criteria **before** holdout evaluation.
-6. Decide SC-15 (capital-cycle termination and lifetime limits) through PRD review before M3.
 
 **Roadmap acceptance:** This document plans work; it does not authorize live orders, real transfers, or a production deployment.
 
@@ -217,7 +225,9 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 - Basis updated to `SPEC.md` v0.4.
 - M2 evaluates trigger/halt on `cycle_equity` with the halt-headroom cap and reports the recovery shortfall rate.
 - M3 acceptance adds shortfall hold, external-inflow and halt-headroom tests (T-27–T-30).
-- Next actions: `README.md` before M0; SC-15 PRD decision before M3.
+- Next actions: `README.md` before M0.
+- Aligned with PRD v1.4: M0 adds account eligibility pre-check, forward capture and import contracts; testnet permitted from M3/M4; M3 adds cycle closure/lifetime limits and Futures→Spot-only transfer; delivery rule 7 (stopping after M2/M4 is success).
+- M1 adds instrument epochs, funding intervals, mark-kline coverage, Growth-level feasibility and T-33/T-35–T-38; M2 adds random-entry/ablation baselines and lifetime-limit success probability.
 
 ## Appendix — v0.3 targeted change notes
 

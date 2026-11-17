@@ -1,7 +1,7 @@
 # ACGS V2 — Product Requirements Document (PRD)
 
 **Product:** Adaptive Capital Growth System (ACGS V2)  
-**Version:** 1.3 — Approved & Locked  
+**Version:** 1.4 — Approved & Locked  
 **Date:** 2026-11-17  
 **Status:** Approved & Locked as the product baseline (2026-11-17); strategy and risk parameters remain unvalidated and research-pending  
 **Target exchange:** Binance USD-M Futures  
@@ -35,6 +35,8 @@ ACGS V2 addresses these through a validated strategy pipeline, explicit capital-
 
 Build a reliable automated system that **attempts** to grow 50 USDT to 100 USDT under an explicitly bounded Ignition policy, then recovers 50 USDT of original capital and compounds only the remaining active trading capital.
 
+The primary deliverable is reproducible research and safe operating infrastructure, plus evidence on whether a 50 USDT strategy is viable. Stopping after M2 (no credible edge) or after M4 (paper pilot only) is a legitimate, successful outcome (§12.4).
+
 ### 3.2 Secondary goals
 
 1. Preserve ACGS research rigor while simplifying the runtime to a Python modular monolith.
@@ -64,10 +66,11 @@ Build a reliable automated system that **attempts** to grow 50 USDT to 100 USDT 
 
 | State | Entry condition | Objective | Exit condition |
 |---|---|---|---|
-| `IGNITION` | New authorized capital cycle funded with 50 USDT | Attempt growth to 100 USDT | Observed eligible equity reaches 100 USDT -> `RECOVERY_PENDING`; risk breach -> operational `HALTED` |
-| `RECOVERY_PENDING` | Recovery trigger observed | Freeze entries; settle exposure, verify transferable balance and reserve, attempt one 50 USDT Spot transfer | Verified transfer, sufficient remaining reserve and reconciled ledger -> `GROWTH`; otherwise remain pending and pause/halt |
+| `IGNITION` | New authorized capital cycle funded with 50 USDT | Attempt growth to 100 USDT | Observed eligible equity reaches 100 USDT -> `RECOVERY_PENDING`; fixed-loss halt -> operational `HALTED`, then `CYCLE_CLOSED` (§5.2.1); other risk breach -> operational `HALTED` |
+| `RECOVERY_PENDING` | Recovery trigger observed | Freeze entries; settle exposure, verify transferable balance and reserve, attempt one 50 USDT Spot transfer | Verified transfer, sufficient remaining reserve and reconciled ledger -> `GROWTH`; otherwise remain pending with entries blocked until the operator explicitly resumes Ignition in the same cycle or closes the cycle (§5.3) |
 | `GROWTH` | Confirmed recovery of initial 50 USDT | Lower-risk compounding of remaining active capital | Active Futures equity reaches 500 USDT -> `VAULT`; breach -> pause/halt |
 | `VAULT` | Active Futures equity reaches 500 USDT | Preserve capital and selectively lock realized profits | Continues until manually disabled or halted |
+| `CYCLE_CLOSED` (terminal cycle status) | Fixed-loss halt after flattening and reconciliation, or explicit operator closure from `RECOVERY_PENDING` | No trading; preserve the cycle record and residual funds | None; a new cycle only under §5.2.1 |
 
 **Important:** Growth starts with **at least 50 USDT active Futures capital** after the one-time 50 USDT recovery transfer. The baseline reserve requirement is 50 USDT **after transfer and reconciliation**, subject to stricter operational reserves if research warrants. If settled funds do not meet both requirements, do not transfer or transition to Growth automatically. The Vault threshold refers to active Futures equity, not combined Spot + Futures balances. Capital phase and operational state are separate: a `HALTED` operation never silently changes the capital phase.
 
@@ -76,10 +79,23 @@ Build a reliable automated system that **attempts** to grow 50 USDT to 100 USDT 
 - Initial reference equity: **50 USDT** per authorized capital cycle; the reference is fixed throughout Ignition and is not reset when equity makes a new high.
 - **Fixed loss-from-initial-capital limit:** 40% of the 50 USDT initial reference, equivalent to a **20 USDT loss** and a **30 USDT equity halt trigger**. This is **not** a 40% maximum drawdown measured from the running equity high-water mark.
 - **Halt trigger:** observed eligible Futures equity at or below **30 USDT** (or a more conservative pre-emptive risk rule). If equity rises to 80 USDT and then falls to 45 USDT, the fixed 30 USDT halt has **not** fired, even though the peak-to-trough drawdown exceeds 40%; independent drawdown/exposure controls may halt sooner.
-- On trigger: block new entries, initiate approved protective/flattening procedures, record the event, and require manual authorization to restart a new capital cycle.
+- On trigger: block new entries, initiate approved protective/flattening procedures, record the event, and require manual authorization to restart a new capital cycle. The cycle then closes under §5.2.1.
 - This is an **operational trigger, not a guaranteed 30 USDT floor**: gaps, liquidation, slippage, fees, and API faults can lead to worse outcomes.
 - No automatic top-up or restart of Ignition. State transitions are sticky after successful recovery.
 - The fixed 20 USDT initial-capital loss limit is a **maximum operational boundary to test**, **not** a per-trade risk allowance or a guaranteed realized-loss cap. Separate, potentially stricter peak-drawdown, per-trade and portfolio preventive limits remain research-pending.
+
+### 5.2.1 Capital-cycle closure and lifetime limits
+
+- A capital cycle **closes** (`CYCLE_CLOSED`) when the fixed-loss halt fires and all exposure has been flattened and reconciled, or when the operator explicitly closes the cycle from `RECOVERY_PENDING`. Other operational halts (stale data, reconciliation faults, etc.) do not close the cycle.
+- Residual funds of a closed cycle are not trading capital. ACGS leaves them untouched until the operator withdraws them or applies them to a new cycle.
+- A new cycle requires **all** of the following:
+  - explicit operator authorization;
+  - a written post-mortem of the closed cycle covering cause, realized execution versus the cost/slippage model, and rule compliance;
+  - confirmation that live approval remains valid. An execution-model deviation beyond the preregistered tolerance suspends live approval and returns the strategy to research;
+  - funding of exactly 50 USDT. The residual counts toward it; any top-up is recorded as newly committed capital, never as profit. Any excess above 50 USDT must first be moved out of the bot's Futures wallet.
+- Top-ups are permitted **only between cycles**, never during an open cycle and never toward recovery eligibility.
+- **Lifetime limits:** at most **two** Ignition cycles in total, and at most **100 USDT** cumulative committed capital (the initial 50 USDT plus all top-ups). When either limit would be exceeded, no new cycle may start and the live experiment ends. Raising either limit requires a PRD revision, not a runtime or configuration override.
+- Rationale: repeated manual refunding after losses would otherwise act as a manual martingale, contrary to §3.3.
 
 ### 5.3 Capital recovery transaction
 
@@ -99,13 +115,13 @@ Build a reliable automated system that **attempts** to grow 50 USDT to 100 USDT 
    - `transferable_funds >= 50 USDT`;
    - after transferring 50 USDT and accounting for remaining costs, **active Futures equity >= 50 USDT + additional_operational_reserve**;
    - no unresolved exposure, transfer attempt, or reconciliation mismatch.
-5. If any condition fails (for example, the initial 100 USDT observed equity becomes 98 USDT after settlement), **do not transfer, do not count recovery as completed, and do not return automatically to Ignition**. Remain `RECOVERY_PENDING`, block new entries, alert the operator, and require an explicit recovery/resume decision.
+5. If any condition fails (for example, the initial 100 USDT observed equity becomes 98 USDT after settlement), **do not transfer, do not count recovery as completed, and do not return automatically to Ignition**. Remain `RECOVERY_PENDING`, block new entries, alert the operator, and require an explicit recovery/resume decision. The permitted decisions are: re-check without trading; explicitly resume Ignition in the same cycle with the unchanged 50 USDT reference and 30 USDT halt; or close the cycle (§5.2.1). External top-ups never count toward recovery eligibility.
 6. If all conditions pass, transfer **exactly 50 USDT** Futures -> Spot using an explicitly authorized exchange capability. Verify via transfer history and both wallet balances; persist the exchange transfer identifier and update the protected-capital ledger exactly once.
 7. Enter `GROWTH` only after confirmed transfer, verified post-transfer reserve, and ledger reconciliation. No automatic re-entry into Ignition is permitted after successful recovery.
 
 On timeout or ambiguous acknowledgment, **reconcile the previous attempt before retrying**; never retry blindly. A transfer failure is not success, and a 100 USDT balance reading is not a transfer authorization on its own. Exact exchange balance fields, reserve calculation (including avoidance of double-counting costs), and equity sampling cadence are to be defined in `SPEC.md` and tested with fault injection before live operation.
 
-**Protected capital** means removed from the bot's Futures trading exposure; it remains exposed to exchange/custody risk while on Spot.
+**Protected capital** means removed from the bot's Futures trading exposure; it remains exposed to exchange/custody risk while on Spot. ACGS never initiates a Spot-to-Futures transfer. After a confirmed recovery, the operator should move protected funds out of the bot account's reach (for example to a separate account) following the runbook.
 
 ### 5.4 Growth and Vault drawdown policies (provisional)
 
@@ -220,7 +236,7 @@ Do not implement or optimize additional candidates merely because the initial br
 8. **Recovery:** after restart or connection loss, reconcile exchange orders, positions, balances, and transfers before allowing entries.
 9. **Limits:** enforce max aggregate exposure, max concurrent positions, correlated exposure, available collateral, funding/fee reserve, liquidation buffers, and maximum combined stop-loss exposure across all active positions and pyramiding layers.
 10. **Fail-closed:** stale market data, inconsistent positions, missing stop protection, or uncertain transfer status must suspend new entries.
-11. **Permissions:** separate paper/live environments; least-privilege API keys, no withdrawal permissions, and only explicitly needed internal transfer permissions where supported.
+11. **Permissions:** separate paper/live environments; least-privilege API keys, no withdrawal permissions, and only explicitly needed internal transfer permissions where supported. Trading and transfer use separate keys where the exchange supports it, and the transfer capability is restricted in code to Futures-to-Spot only.
 12. **Exchange compatibility:** validate current Binance Futures conditional-order endpoints, supported flags, trigger semantics, and regional/account restrictions during implementation. Do not assume `STOP_MARKET` + `reduceOnly` works identically in all modes/endpoints.
 
 ## 9. Non-Functional Requirements
@@ -276,14 +292,14 @@ Implementation order is intentionally **research-first and risk-before-order**. 
 
 | Milestone | Scope | Exit evidence |
 |---|---|---|
-| M0 — Foundation | Minimal repository, Docker, config, CI, local SQLite and test harness; OFFLINE default and secret safety | Reproducible setup, automated tests, secret scan |
+| M0 — Foundation | Minimal repository, Docker, config, CI, local SQLite and test harness; OFFLINE default and secret safety; account eligibility pre-check; forward capture of public exchange metadata | Reproducible setup, automated tests, secret scan; account eligibility recorded (ineligible => `BLOCKED`) |
 | M1 — Market & Offline Execution | Historical ingestion, data integrity, PIT universe, exchange filter snapshots, deterministic offline broker/backtester with fee/funding/slippage/order constraints; **no live order adapter** | Real-source provenance, replay correctness, gap/lookahead tests, cost and small-order rejection tests |
 | M2 — Strategy Research | Volatility Breakout hypothesis without pyramiding; dynamic universe/selection, comparative net-of-cost results, chronological walk-forward/holdout, tail-risk and 50 USDT feasibility; **minimal simulated Ignition risk/target/halt policy** for research only | Reproducible research with explicit pass/fail/no-trade decision; 50-to-100-before-30 and conditional recovery-feasibility estimates; forward holdout remains untouched until preregistered |
 | M3 — Capital & Risk Engine | Full Ignition/Recovery/Growth/Vault state machine, production-oriented risk authorization, aggregate exposure/margin safety, halt, **recovery transfer simulator and ledger**, optional pyramiding research only after baseline validation | State-transition and restart tests; settlement/reserve calculations; duplicate-transfer and fault-injection tests; no external transfer |
 | M4 — Paper Pilot | Persistent paper trading on public live candles, simulated fills, order/position lifecycle, reconciled state, alerts and recovery rehearsal | Demonstrated stability and safety over a predeclared observation window; no real exchange orders |
 | M5 — Optional Controlled Live Pilot | Separate Binance live adapter and internal transfer capability with current API compatibility checks, exchange-hosted protective exits, explicit authorization and emergency procedure | Prior gates passed, account and regional eligibility checked, test-environment rehearsals, reconciliation/fault tests, explicit manual launch approval |
 
-**Release rules:** M1 may pass without a profitable strategy; M2 may legitimately conclude **no edge**. No strategy is auto-promoted to M4/M5. A failed research or operational gate blocks deployment; M5 may be canceled if no validated edge exists or 50 USDT cannot safely satisfy exchange constraints. No real exchange order or real internal transfer may be executed during M0–M4; simulated fills and simulated transfers are permitted in offline/paper modes.
+**Release rules:** M1 may pass without a profitable strategy; M2 may legitimately conclude **no edge**. No strategy is auto-promoted to M4/M5. A failed research or operational gate blocks deployment; M5 may be canceled if no validated edge exists or 50 USDT cannot safely satisfy exchange constraints. No real exchange order or real internal transfer may be executed during M0–M4; simulated fills and simulated transfers are permitted in offline/paper modes. Orders on the official Binance Futures testnet (separate credentials, no real funds, no transfers) are not real exchange orders; they are permitted from M3 for protective-order compatibility checks and in M4. Testnet success does not establish production compatibility.
 
 ## 12. Success Metrics and Decision Criteria
 
@@ -307,6 +323,12 @@ Implementation order is intentionally **research-first and risk-before-order**. 
 - Post-recovery active-equity return and maximum drawdown.
 - Total capital recovered to Spot and total net equity across wallets, reported separately.
 - Trading cost drag and uptime/reconciliation incidents.
+
+### 12.4 Interpretation of outcomes
+
+- Under aggressive Ignition sizing, a single cycle resolves in roughly 15 trades, so its outcome says little about whether an edge exists. Live success or failure is **not** validation; M2 research evidence remains the only basis for an edge claim.
+- Illustration only, not a forecast: with fixed 10% risk, a 35% win rate, 1R losses and no costs, a simple simulation gives P(100 before 30) ≈ 29% at zero expectancy and ≈ 56% at +0.225R per trade, with a median of 14–17 trades per cycle.
+- The expected monetary outcome is small relative to the engineering effort. The main value is the research and operating infrastructure and the evidence it produces. Ending after M2 (no edge) or after M4 (paper only) is a successful outcome.
 
 ## 13. Dependencies, Risks, and Assumptions
 
@@ -332,6 +354,7 @@ Implementation order is intentionally **research-first and risk-before-order**. 
 | OD-10 | Whether 50 USDT supports safe, compliant minimum orders for target symbols | Exchange feasibility test |
 | OD-11 | Live transfer permissions and operational custody safeguards | Exchange/API verification |
 | OD-12 | Predeclared adaptive-selector comparator, multiplicity correction and incremental-value threshold | Research protocol before selector holdout |
+| OD-13 | Capital-cycle closure, top-up rules and lifetime limits | **Resolved in v1.4** (§5.2.1) |
 
 ## 15. Lightweight Documentation and Source of Truth
 
@@ -347,7 +370,7 @@ ACGS V2 maintains four authoritative core documents: `README.md`, `PRD.md`, `SPE
 Do **not** create mandatory standalone CANON, ADR, Build Plan, audit packs or governance reports. Record material architecture tradeoffs briefly in `SPEC.md` when needed; ordinary decisions can live alongside code and tests. Workflow: **Define → Implement → Test → Review → Fix → Merge**. Focus on working, tested deliverables and avoid repeated documentation-only review cycles.
 
 **Decision status legend:**
-- **Agreed baseline:** initial 50 USDT, Ignition observed-equity trigger 100 USDT, **fixed 40% loss from initial reference equity** halt trigger (30 USDT; not peak-based drawdown or a guaranteed floor), **conditional** one-time 50 USDT Capital Recovery with >=50 USDT remaining active reserve, no automatic re-Ignition, research-first live approval.
+- **Agreed baseline:** initial 50 USDT, Ignition observed-equity trigger 100 USDT, **fixed 40% loss from initial reference equity** halt trigger (30 USDT; not peak-based drawdown or a guaranteed floor), **conditional** one-time 50 USDT Capital Recovery with >=50 USDT remaining active reserve, no automatic re-Ignition, research-first live approval, capital-cycle closure with at most **two** Ignition cycles and **100 USDT** lifetime committed capital (§5.2.1).
 - **Proposed design:** 30-day top-30 liquidity and 14-day directional momentum ranking, Growth/Vault drawdown thresholds, leverage ceilings, **research-only** per-trade risk ranges, Vault profit locking, modular-monolith technology choices.
 - **Research pending:** strategy profitability, exact parameters, exchange feasibility, and release thresholds.
 
@@ -357,6 +380,15 @@ Do **not** create mandatory standalone CANON, ADR, Build Plan, audit packs or go
 
 
 ## Appendix A — Change Log
+
+### v1.4 — Approved & Locked (2026-11-17)
+
+- Added §5.2.1: capital-cycle closure (`CYCLE_CLOSED`), new-cycle conditions, between-cycle-only top-ups, and lifetime limits of two cycles / 100 USDT committed capital (OD-13).
+- §5.3: enumerated the permitted operator decisions after a recovery shortfall; ACGS never transfers Spot to Futures; protected funds should leave the bot account's reach.
+- §8: separate trading and transfer keys; transfer restricted in code to Futures-to-Spot.
+- §11: account eligibility pre-check and forward data capture in M0; Binance Futures testnet orders permitted from M3/M4.
+- §3.1 and §12.4: research and infrastructure are the primary deliverable; a single live cycle is not validation; stopping after M2 or M4 is a successful outcome.
+- Unchanged: 50 USDT start, 100 USDT trigger, 30 USDT fixed-loss halt, 50 USDT recovery with >= 50 USDT retained, no automatic re-Ignition.
 
 ### v1.3 — Approved & Locked
 
