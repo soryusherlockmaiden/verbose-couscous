@@ -94,9 +94,11 @@ Sources: ROADMAP §3, PRD §10–§11, SPEC §1.1 (INV-01, INV-08, INV-10), §2�
   - Create an operator checklist/record (e.g., `evidence/m0/account-eligibility.md`) covering every item in ROADMAP §3: USD-M Futures access in the operator's jurisdiction, isolated margin, dedicated account/sub-account, API permissions (read-only, trading, universal transfer, IP restriction) and futures test-order endpoint availability.
   - Each item is `VERIFIED` (with date and evidence), `NOT_ELIGIBLE` or `UNVERIFIED`.
   - **An agent cannot verify these itself.** Leave unverifiable items `UNVERIFIED` and report them. Never mark them verified on assumption.
-  - Any `NOT_ELIGIBLE` ⇒ project `BLOCKED` before M1.
+  - Any `NOT_ELIGIBLE` ⇒ project `BLOCKED` before M1. `UNVERIFIED` items do **not** block M0 `PASS` or OFFLINE M1/M2; report them as open blockers.
+  - Staged deadlines (ROADMAP §3): jurisdiction before M3; account settings and read-only key before M4; trading/transfer/test-order permissions before M5. All are re-verified at M5 start.
+  - HTTP 451/403 from forward capture flags the jurisdiction item for operator review.
 - [ ] **Forward capture (credential-free, SPEC §4.3):**
-  - A scheduled job fetches **public** Binance USD-M endpoints: daily `exchangeInfo` and `fundingInfo`, and periodic order-book depth samples for configured symbols.
+  - A scheduled job fetches **public** Binance USD-M endpoints: daily `exchangeInfo` and `fundingInfo`, periodic `premiumIndex` (all symbols: next funding time, mark price), and periodic order-book depth samples for configured symbols (SPEC §4.3.1).
   - It stores raw payload, request time, response time, source URL, content hash and provenance tag `VERIFIED` (observed at capture time).
   - It uses no API key, is idempotent, rate-limit aware, and fails closed on errors (it records the failure and never fabricates data).
   - Tests use fixtures.
@@ -115,7 +117,7 @@ Sources: ROADMAP §3, PRD §10–§11, SPEC §1.1 (INV-01, INV-08, INV-10), §2�
 - no real exchange order/transfer path exists;
 - restart preserves the state fixture;
 - import contracts enforced in CI (T-13);
-- eligibility recorded;
+- eligibility recorded (every item has a status; `UNVERIFIED` allowed and reported);
 - forward capture stores provenance-tagged snapshots;
 - all checks reproducible on a clean environment.
 
@@ -137,9 +139,9 @@ Milestone gates (details in ROADMAP §3–§8):
 | Milestone | Gate summary |
 |---|---|
 | M0 | §E acceptance list above |
-| M1 | Deterministic replay; no lookahead; PIT provenance; simulated equity ledger and event order frozen (SC-02); 50 USDT Execution Feasibility Report (SC-12); T-01–T-05, T-17–T-23, T-33, T-35–T-38, T-41 (T-13/T-16 stay green) |
+| M1 | Deterministic replay; no lookahead; PIT provenance; simulated equity ledger and event order frozen (SC-02); 50 USDT Execution Feasibility Report (SC-12); T-01–T-05, T-17–T-23, T-33, T-35–T-38, T-41, T-42 (T-13/T-16 stay green) |
 | M2 | Research protocol and numeric gates preregistered **before** the holdout opens; holdout run once; `PASS`/`FAIL`/`INCONCLUSIVE` decision with evidence; T-05–T-07, T-14, T-15, T-21, T-27, T-30. A failing result may end the project |
-| M3 | Capital/risk state machine, recovery simulation and fault injection (SC-06–SC-08, SC-13–SC-15); T-04, T-06–T-12, T-24, T-25, T-27–T-32, T-37 (mock), T-40; **no real transfer capability** |
+| M3 | Capital/risk state machine, recovery simulation and fault injection (SC-06–SC-08, SC-13–SC-15); T-04, T-06–T-12, T-24, T-25, T-27–T-32, T-37 (mock), T-40, T-43; **no real transfer capability** |
 | M4 | Mainnet shadow `PAPER` over the predeclared observation window; no order request of any kind sent (T-34); T-11, T-12, T-20, T-24 and the restart/disconnect/transfer-timeout scenarios pass |
 | M5 | Optional and operator-authorized only: `LIVE_SHADOW` → protective-order smoke test (T-39, INV-12) → `LIVE_ARMED`; T-10, T-26, T-29, T-32, T-37, T-39, T-40 on the production account. Operator go/no-go |
 
