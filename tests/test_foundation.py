@@ -1,12 +1,13 @@
+import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
 from acgs.__main__ import main
-from acgs.clock import FixedClock
+from acgs.clock import FixedClock, utc_iso
 from acgs.config import Config, Mode, load_config
-from acgs.ledger import open_ledger
+from acgs.ledger import MIGRATIONS, SCHEMA_VERSION, open_ledger
 from acgs.smoke import run_smoke
 
 
@@ -60,8 +61,8 @@ def test_smoke_uses_injected_clock_and_replays_after_restart(tmp_path: Path) -> 
         assert not run_smoke(connection, Config(), clock)
         assert connection.execute(
             "SELECT event_time, kind FROM state_events"
-        ).fetchall() == [(clock.now().isoformat(), "OFFLINE_SMOKE")]
-        assert connection.execute("PRAGMA user_version").fetchone() == (1,)
+        ).fetchall() == [(utc_iso(clock.now()), "OFFLINE_SMOKE")]
+        assert connection.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
 
 
 def test_smoke_does_not_call_http(
@@ -72,3 +73,53 @@ def test_smoke_does_not_call_http(
 
     monkeypatch.setattr("acgs.__main__.fetch_public", unexpected_fetch)
     assert main(["--db", str(tmp_path / "smoke.sqlite3"), "smoke"]) == 0
+
+
+def test_smoke_replay_detects_a_changed_state_fixture(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    db = tmp_path / "smoke.sqlite3"
+    assert main(["--db", str(db), "smoke"]) == 0
+    assert main(["--db", str(db), "smoke"]) == 0
+    assert "replayed" in capsys.readouterr().out
+    with open_ledger(db) as connection, connection:
+        connection.execute("UPDATE state_events SET event_time = '2000-01-01T00:00:00+00:00'")
+    assert main(["--db", str(db), "smoke"]) == 1
+    assert capsys.readouterr().err.startswith("Ledger state check failed:")
+
+
+def test_version_1_ledger_migrates_and_keeps_its_records(tmp_path: Path) -> None:
+    db = tmp_path / "v1.sqlite3"
+    connection = sqlite3.connect(db)
+    with connection:
+        for statement in MIGRATIONS[0]:
+            connection.execute(statement)
+        connection.execute("PRAGMA user_version = 1")
+        connection.execute(
+            "INSERT INTO config_versions VALUES (?, ?)",
+            (Config().digest(), Config().canonical_json()),
+        )
+        connection.execute(
+            "INSERT INTO state_events VALUES (?, ?, ?, 'OFFLINE_SMOKE')",
+            (f"offline-smoke:{Config().digest()}", Config().digest(), "2026-01-01T00:00:00+00:00"),
+        )
+        connection.execute(
+            """INSERT INTO capture_attempts (source_url, slot, requested_at, received_at,
+               status, http_status, payload, sha256, provenance)
+               VALUES ('u', 's', 'r', 'r', 'CAPTURED', 200, x'7b7d', 'h', 'VERIFIED')"""
+        )
+    connection.close()
+    with open_ledger(db) as migrated:
+        assert migrated.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
+        assert migrated.execute(
+            "SELECT payload, payload_encoding, cleared_at FROM capture_attempts"
+        ).fetchall() == [(b"{}", None, None)]
+    assert main(["--db", str(db), "smoke"]) == 0
+
+
+def test_newer_ledger_schema_is_refused(tmp_path: Path) -> None:
+    db = tmp_path / "future.sqlite3"
+    connection = sqlite3.connect(db)
+    connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION + 1}")
+    connection.close()
+    assert main(["--db", str(db), "smoke"]) == 1

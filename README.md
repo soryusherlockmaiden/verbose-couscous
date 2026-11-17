@@ -116,9 +116,11 @@ cd acgs
 docker compose build acgs
 docker compose run --rm acgs smoke
 docker compose run --rm acgs smoke
+docker compose --profile check build check
+docker compose --profile check run --rm check
 ```
 
-Compose stores SQLite in the `acgs-data` named volume. The smoke job only records and replays a deterministic state fixture. Historical market replay arrives in M1.
+Compose stores SQLite in the `acgs-data` named volume. The smoke job records a deterministic state fixture, and on replay it verifies that the stored record still matches; a changed record exits with an error. Historical market replay arrives in M1. The `check` service runs the same ruff, mypy and pytest checks as the native workflow inside the container.
 
 ### Public forward capture
 
@@ -127,18 +129,24 @@ Defaults are in [config/m0.toml](config/m0.toml). M0 supports `OFFLINE` only. A 
 ```text
 uv run --locked python -m acgs --config config/m0.toml capture
 uv run --locked python -m acgs --config config/m0.toml capture --watch
+uv run --locked python -m acgs --config config/m0.toml capture --clear-restriction
 docker compose run --rm acgs capture
+docker compose run --rm acgs capture --clear-restriction
 docker compose --profile capture up -d capture
 docker compose --profile capture logs -f capture
 docker compose --profile capture stop capture
 ```
 
-Use one capture process per database. The scheduled service polls for due work. It records `exchangeInfo` and `fundingInfo` once per UTC day, and `premiumIndex` plus shallow order books at the configured interval (default five minutes, BTCUSDT and ETHUSDT for depth). Successful records carry the raw response, UTC timestamps, source URL, SHA-256 and observation provenance. HTTP 403/451 stops the capture process and calls for operator review. Rate-limit responses defer further requests. Capture uses only public market-data GET requests and requires no API credentials.
+Use one capture process per database. The scheduled service polls for due work. It records `exchangeInfo` and `fundingInfo` once per UTC day, and `premiumIndex` plus shallow order books at the configured interval (default five minutes, BTCUSDT and ETHUSDT for depth). Successful records carry the response (stored zlib-compressed), fixed-width UTC timestamps, source URL, the SHA-256 of the raw response bytes and observation provenance.
+
+HTTP 403/451 stops the capture process and latches: later runs refuse to send any request until the operator has reviewed the cause and runs `capture --clear-restriction`, which is recorded as an audit event. Rate-limit responses defer further requests. A one-shot `capture` exits 0 only when everything due was captured.
+
+The all-symbol `premiumIndex` snapshot dominates storage at the default five-minute interval (roughly 150 KB per snapshot before compression). Check the database size during the first days of operation and keep enough free disk on the VPS. Capture uses only public market-data GET requests and requires no API credentials.
 
 To scan the full Git history from a checkout with Docker, run the same Gitleaks image as CI:
 
 ```text
-docker run --rm --env GIT_CONFIG_COUNT=1 --env GIT_CONFIG_KEY_0=safe.directory --env GIT_CONFIG_VALUE_0=/repo --mount "type=bind,source=${PWD},target=/repo,readonly" ghcr.io/gitleaks/gitleaks:v8.24.3 git --redact --log-opts=--all /repo
+docker run --rm --env GIT_CONFIG_COUNT=1 --env GIT_CONFIG_KEY_0=safe.directory --env GIT_CONFIG_VALUE_0=/repo --mount "type=bind,source=${PWD},target=/repo,readonly" ghcr.io/gitleaks/gitleaks:v8.24.3@sha256:e1b35e12a8c6fa8901f060459cfb6b2fc4c484d3afbe3b029733a3bbfab07055 git --redact --log-opts=--all /repo
 ```
 
 ## Repository layout

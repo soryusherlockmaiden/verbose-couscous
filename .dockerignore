@@ -10,5 +10,4 @@
 **/__pycache__
 data
 evidence
-tests
 *.sqlite3*

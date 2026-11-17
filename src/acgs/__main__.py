@@ -7,10 +7,10 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
-from acgs.capture import capture_due
+from acgs.capture import BLOCKED, RESTRICTED, capture_due, clear_access_restriction
 from acgs.clock import FixedClock, SystemClock
 from acgs.config import ConfigError, load_config
-from acgs.ledger import open_ledger
+from acgs.ledger import LedgerStateError, open_ledger
 from acgs.market_data import fetch_public
 from acgs.smoke import run_smoke
 
@@ -24,7 +24,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         "smoke", help="Write or replay the deterministic offline state fixture"
     )
     capture = commands.add_parser("capture", help="Capture public exchange data")
-    capture.add_argument("--watch", action="store_true", help="Poll for due snapshots")
+    options = capture.add_mutually_exclusive_group()
+    options.add_argument("--watch", action="store_true", help="Poll for due snapshots")
+    options.add_argument(
+        "--clear-restriction",
+        action="store_true",
+        help="Record operator review of an HTTP 403/451 stop and clear it",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -36,6 +42,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 print(
                     f"OFFLINE smoke {'recorded' if created else 'replayed'} {config.digest()}"
                 )
+                return 0
+            if args.clear_restriction:
+                cleared = clear_access_restriction(connection, config, SystemClock())
+                print(f"Cleared {cleared} capture access restriction(s)")
                 return 0
             while True:
                 outcomes = Counter(
@@ -52,9 +62,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                         f"{key}={value}" for key, value in sorted(outcomes.items())
                     )
                     print(f"Capture {summary}", flush=True)
-                if "ACCESS_RESTRICTED" in outcomes:
+                if outcomes.keys() & {RESTRICTED, BLOCKED}:
                     print(
-                        "Public access restricted (HTTP 403/451). Operator review required.",
+                        "Public access restricted (HTTP 403/451). Operator review "
+                        "required; after review run `capture --clear-restriction`.",
                         file=sys.stderr,
                     )
                     return 1
@@ -64,6 +75,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ConfigError as error:
         print(f"Configuration refused: {error}", file=sys.stderr)
         return 2
+    except LedgerStateError as error:
+        print(f"Ledger state check failed: {error}", file=sys.stderr)
+        return 1
     except (OSError, sqlite3.Error):
         print("Cannot open or update the SQLite ledger.", file=sys.stderr)
         return 1

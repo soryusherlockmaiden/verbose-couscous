@@ -18,3 +18,10 @@ class FixedClock:
 class SystemClock:
     def now(self) -> datetime:
         return datetime.now(UTC)
+
+
+def utc_iso(instant: datetime) -> str:
+    """Fixed-width UTC timestamp whose string order matches time order."""
+    if instant.utcoffset() is None:
+        raise ValueError("Timestamps must be timezone-aware")
+    return instant.astimezone(UTC).isoformat(timespec="microseconds")
