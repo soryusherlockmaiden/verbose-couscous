@@ -126,36 +126,174 @@ def dotted_reference(node: ast.expr) -> str | None:
     return None
 
 
-def clock_names(tree: ast.AST) -> set[str]:
-    """Names and attributes annotated as the injected `Clock`."""
-    names: set[str] = set()
+SCOPE_NODES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)
+
+
+def clock_spellings(tree: ast.AST) -> set[str]:
+    """Annotation spellings that resolve to `acgs.clock.Clock`, including aliases."""
+    spellings = {"acgs.clock.Clock"}
     for node in ast.walk(tree):
-        if isinstance(node, ast.arg):
-            annotated, annotation = node.arg, node.annotation
-        elif isinstance(node, ast.AnnAssign):
-            target = node.target
-            if isinstance(target, ast.Name):
-                annotated = target.id
-            elif isinstance(target, ast.Attribute):
-                annotated = target.attr
-            else:
-                continue
-            annotation = node.annotation
-        else:
-            continue
-        if isinstance(annotation, ast.Constant) and annotation.value == "Clock":
-            names.add(annotated)
-        elif annotation is not None:
-            reference = dotted_reference(annotation)
-            if reference is not None and reference.rpartition(".")[2] == "Clock":
-                names.add(annotated)
-    return names
+        if isinstance(node, ast.ImportFrom) and not node.level:
+            for alias in node.names:
+                bound = alias.asname or alias.name
+                if node.module == "acgs.clock" and alias.name == "Clock":
+                    spellings.add(bound)
+                elif node.module == "acgs" and alias.name == "clock":
+                    spellings.add(f"{bound}.Clock")
+    return spellings
+
+
+def in_scope(nodes: list[ast.AST]) -> Iterator[ast.AST]:
+    """Nodes of one scope; nested functions and classes are yielded but not entered."""
+    pending = list(nodes)
+    while pending:
+        node = pending.pop()
+        yield node
+        if not isinstance(node, SCOPE_NODES):
+            pending.extend(ast.iter_child_nodes(node))
+
+
+def parameters(arguments: ast.arguments) -> list[ast.arg]:
+    extra = [arg for arg in (arguments.vararg, arguments.kwarg) if arg is not None]
+    return [*arguments.posonlyargs, *arguments.args, *arguments.kwonlyargs, *extra]
+
+
+def wall_clock_violations(tree: ast.Module) -> list[str]:
+    """`now`/`utcnow`/`today` read the wall clock on any datetime class or instance.
+
+    Only a name that holds the injected `Clock` in the current scope (a parameter or
+    variable annotated as `acgs.clock.Clock`, under any import alias) or a `self`
+    field annotated or assigned from such a parameter may provide the time.
+    """
+    spellings = clock_spellings(tree)
+    problems: list[str] = []
+
+    def is_clock(annotation: ast.expr | None) -> bool:
+        if isinstance(annotation, ast.Constant) and isinstance(annotation.value, str):
+            try:
+                annotation = ast.parse(annotation.value, mode="eval").body
+            except SyntaxError:
+                return False
+        return annotation is not None and dotted_reference(annotation) in spellings
+
+    def scope_clocks(
+        body: list[ast.AST], inherited: frozenset[str], params: list[ast.arg]
+    ) -> frozenset[str]:
+        bound = {param.arg for param in params}
+        clocks = {param.arg for param in params if is_clock(param.annotation)}
+        annotated_targets = set()
+        rebound = set()
+        for node in in_scope(body):
+            if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                if is_clock(node.annotation):
+                    clocks.add(node.target.id)
+                    annotated_targets.add(id(node.target))
+            elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+                bound.add(node.name)
+            elif isinstance(node, ast.alias):
+                bound.add((node.asname or node.name).partition(".")[0])
+            if (
+                isinstance(node, ast.Name)
+                and isinstance(node.ctx, ast.Store)
+                and id(node) not in annotated_targets
+            ):
+                bound.add(node.id)
+                rebound.add(node.id)
+        return frozenset((inherited - bound) | (clocks - rebound))
+
+    def class_fields(node: ast.ClassDef) -> frozenset[str]:
+        fields = set()
+        for statement in node.body:
+            if (
+                isinstance(statement, ast.AnnAssign)
+                and isinstance(statement.target, ast.Name)
+                and is_clock(statement.annotation)
+            ):
+                fields.add(statement.target.id)
+            elif isinstance(statement, ast.FunctionDef | ast.AsyncFunctionDef):
+                params = parameters(statement.args)
+                if not params:
+                    continue
+                owner = params[0].arg
+                clock_params = {p.arg for p in params if is_clock(p.annotation)}
+                for inner in in_scope(statement.body):
+                    if isinstance(inner, ast.AnnAssign) and is_clock(inner.annotation):
+                        targets = [inner.target]
+                    elif (
+                        isinstance(inner, ast.Assign)
+                        and isinstance(inner.value, ast.Name)
+                        and inner.value.id in clock_params
+                    ):
+                        targets = inner.targets
+                    else:
+                        continue
+                    fields.update(
+                        target.attr
+                        for target in targets
+                        if isinstance(target, ast.Attribute)
+                        and isinstance(target.value, ast.Name)
+                        and target.value.id == owner
+                    )
+        return frozenset(fields)
+
+    def visit_function(
+        node: ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda,
+        clocks: frozenset[str],
+        fields: frozenset[str],
+        owner: str | None,
+    ) -> None:
+        arguments = node.args
+        outer = [*arguments.defaults, *(d for d in arguments.kw_defaults if d is not None)]
+        if not isinstance(node, ast.Lambda):
+            outer.extend(node.decorator_list)
+        for expression in outer:
+            visit(expression, clocks, fields, owner)
+        body = node.body if isinstance(node.body, list) else [node.body]
+        inner = scope_clocks(body, clocks, parameters(arguments))
+        for child in body:
+            visit(child, inner, fields, owner)
+
+    def visit(
+        node: ast.AST, clocks: frozenset[str], fields: frozenset[str], owner: str | None
+    ) -> None:
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
+            visit_function(node, clocks, fields, owner)
+            return
+        if isinstance(node, ast.ClassDef):
+            for expression in [*node.decorator_list, *node.bases]:
+                visit(expression, clocks, fields, owner)
+            own_fields = class_fields(node)
+            for statement in node.body:
+                if isinstance(statement, ast.FunctionDef | ast.AsyncFunctionDef):
+                    params = parameters(statement.args)
+                    method_owner = params[0].arg if params else None
+                    visit_function(statement, clocks, own_fields, method_owner)
+                else:
+                    visit(statement, clocks, frozenset(), None)
+            return
+        if isinstance(node, ast.Attribute) and node.attr in WALL_CLOCK_CALLS:
+            receiver = node.value
+            injected = (isinstance(receiver, ast.Name) and receiver.id in clocks) or (
+                owner is not None
+                and isinstance(receiver, ast.Attribute)
+                and isinstance(receiver.value, ast.Name)
+                and receiver.value.id == owner
+                and receiver.attr in fields
+            )
+            if not injected:
+                problems.append(f"{dotted_reference(receiver) or '<expression>'}.{node.attr}")
+        for child in ast.iter_child_nodes(node):
+            visit(child, clocks, fields, owner)
+
+    module_clocks = scope_clocks(list(tree.body), frozenset(), [])
+    for statement in tree.body:
+        visit(statement, module_clocks, frozenset(), None)
+    return problems
 
 
 def decision_violations(source: str) -> list[str]:
     """Apply the same purity checks to decision modules and reachable helpers."""
     tree = ast.parse(source)
-    injected_clocks = clock_names(tree)
     problems = module_violations(source)
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -168,15 +306,6 @@ def decision_violations(source: str) -> list[str]:
                 problems.append(f"from {node.module} import ...")
         elif isinstance(node, ast.Name) and node.id in DECISION_IO_BUILTINS:
             problems.append(node.id)
-        elif isinstance(node, ast.Attribute) and node.attr in WALL_CLOCK_CALLS:
-            # `now`/`utcnow`/`today` read the wall clock on any datetime class or
-            # instance; only the injected clock may provide the time.
-            receiver = node.value
-            injected = (
-                isinstance(receiver, ast.Name) and receiver.id in injected_clocks
-            ) or (isinstance(receiver, ast.Attribute) and receiver.attr in injected_clocks)
-            if not injected:
-                problems.append(f"{dotted_reference(receiver) or '<expression>'}.{node.attr}")
         elif (
             isinstance(node, ast.Call)
             and isinstance(node.func, ast.Attribute)
@@ -185,6 +314,7 @@ def decision_violations(source: str) -> list[str]:
             and not node.keywords
         ):
             problems.append("astimezone() without an explicit time zone")
+    problems.extend(wall_clock_violations(tree))
     return problems
 
 
@@ -454,3 +584,56 @@ def test_traversal_stops_at_capability_modules() -> None:
     assert decision_dependency_violations(sources) == [
         "Forbidden dependency: acgs.__main__"
     ]
+
+
+def test_clock_exemption_follows_function_scope() -> None:
+    source = (
+        "from datetime import datetime\n\n"
+        "from acgs.clock import Clock\n\n\n"
+        "def stamp(clock: Clock) -> datetime:\n"
+        "    return clock.now()\n\n\n"
+        "def wall(clock: type[datetime]) -> datetime:\n"
+        "    return clock.now()\n"
+    )
+    assert decision_violations(source) == ["clock.now"]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "from datetime import datetime\nfrom acgs.clock import Clock\n"
+        "def f(clock: Clock):\n    clock = datetime\n    return clock.now()\n",
+        "from acgs.clock import Clock\n"
+        "def f(clock: Clock):\n    return (lambda clock: clock.now())(None)\n",
+        "from datetime import datetime\nfrom acgs.clock import Clock\nclock: Clock\n"
+        "def f():\n    clock = datetime\n    return clock.now()\n",
+        "from acgs.clock import Clock\nclass Job:\n    clock: Clock\n"
+        "    def run(self):\n        return self.other.now()\n",
+    ],
+)
+def test_rebound_or_unrelated_names_are_not_exempt(source: str) -> None:
+    assert decision_violations(source)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "from acgs.clock import Clock as ReplayClock\n"
+        "def f(clock: ReplayClock):\n    return clock.now()\n",
+        "from acgs.clock import Clock as ReplayClock\n"
+        "def f(clock: 'ReplayClock'):\n    return clock.now()\n",
+        "from acgs import clock as clocks\n"
+        "def f(source: clocks.Clock):\n    return source.now()\n",
+        "from acgs.clock import Clock\n"
+        "def outer(clock: Clock):\n    def inner():\n        return clock.now()\n"
+        "    return inner\n",
+        "from dataclasses import dataclass\nfrom acgs.clock import Clock\n"
+        "@dataclass\nclass Job:\n    clock: Clock\n"
+        "    def run(self):\n        return self.clock.now()\n",
+        "from acgs.clock import Clock\nclass Job:\n"
+        "    def __init__(self, clock: Clock):\n        self.clock = clock\n"
+        "    def run(self):\n        return self.clock.now()\n",
+    ],
+)
+def test_injected_clock_aliases_and_fields_are_allowed(source: str) -> None:
+    assert decision_violations(source) == []
