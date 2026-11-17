@@ -57,7 +57,7 @@ Read this file completely at the start of every session. Do not rely on memory o
   - No bash-only or Makefile-only workflows. Commands are `docker compose run …` or Python module entry points (`python -m …`) that run unchanged on Linux and Windows.
   - Keep SQLite databases on a Docker named volume or a Linux filesystem path, never on a Windows bind mount (file locking is unreliable there).
   - Treat file names as case-sensitive, avoid symlinks, and avoid `fork`-dependent multiprocessing.
-  - Windows developers use WSL2 + Docker Desktop with the repository inside the WSL filesystem. Native Windows Python must still pass CI (see §E).
+  - Use a checkout inside the WSL filesystem for the Windows Docker workflow. A native Windows checkout can run the Python checks directly (see §E and README).
 
 ## D. Agent working protocol
 
@@ -90,7 +90,7 @@ Sources: ROADMAP §3, PRD §10–§11, SPEC §1.1 (INV-01, INV-08, INV-10), §2�
 - [ ] **SQLite storage skeleton:** single writer, transactional, with a schema migration mechanism. Include minimal tables needed for M0 (e.g., `config_versions`, `state_events` and the forward-capture records). A restart preserves a state fixture.
 - [ ] **Deterministic clock:** an injected clock interface with a fixed/simulated implementation for tests. A test proves decision code does not read wall time.
 - [ ] **Fixtures:** recorded, credential-free fixtures for exchange metadata responses, so tests never need the network.
-- [ ] **CI (GitHub Actions):** lint, type check, unit tests, import contracts, secret scan and Docker build on every push/PR. Lint, type check and tests run on an `ubuntu-latest` + `windows-latest` matrix; Docker build and secret scan run on Ubuntu. No credentials in CI.
+- [ ] **CI (GitHub Actions):** lint, type check, unit tests, import contracts, secret scan and Docker build on every push/PR. Lint, type check and tests run on an `ubuntu-24.04` + `windows-2025` matrix. Docker build and secret scan run on `ubuntu-24.04`. No exchange credentials in CI.
 - [ ] **Cross-platform hygiene (§C):** `.gitattributes` (LF), `.editorconfig`, pinned Python version, UTF-8 file I/O, and no bash-only or Makefile-only commands.
 - [ ] **Lint / types / tests:** e.g., `ruff`, `mypy` (strict on new code), `pytest`. Any equivalent mainstream tool is fine; document the commands.
 - [ ] **Secret scanning:** e.g., `gitleaks` in CI over the full history, plus a test that config/log output never contains key-like values.

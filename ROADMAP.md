@@ -223,7 +223,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 | Milestone | Status | Owner | Evidence | Decision |
 |---|---|---|---|---|
-| M0 | NOT STARTED | TBD | — | Pending |
+| M0 | IN PROGRESS | Operator | [M0 verification](evidence/m0/verification.md) | GitHub Actions and operator acceptance pending |
 | M1 | NOT STARTED | TBD | — | Pending |
 | M2 | NOT STARTED | TBD | — | Pending |
 | M3 | NOT STARTED | TBD | — | Pending |
@@ -242,6 +242,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 ## 13. v0.4 targeted change notes
 
+- M0 foundation implemented on a topic branch. CI uses `ubuntu-24.04` and `windows-2025`, and README covers Windows native and WSL2 workflows.
 - M0 requires identical lint/type/test results on Ubuntu 24.04 and Windows, with Docker canonical and a two-OS CI matrix. M2 preregisters exact operational reserve candidates.
 - Clarified the optional read-only key in M4, decision-time funding evidence in M1, and validation of the exact operational reserve against the M2 criteria.
 - Account eligibility: `UNVERIFIED` does not block M0 or OFFLINE M1/M2; `NOT_ELIGIBLE` blocks M1. Staged deadlines are in §3. HTTP 451/403 triggers operator review.
