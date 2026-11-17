@@ -223,7 +223,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 | Milestone | Status | Owner | Evidence | Decision |
 |---|---|---|---|---|
-| M0 | IN PROGRESS | Operator | [M0 verification](evidence/m0/verification.md) | GitHub Actions and operator acceptance pending |
+| M0 | IN PROGRESS | Operator | [M0 verification](evidence/m0/verification.md) | Checks passed. Operator acceptance pending. |
 | M1 | NOT STARTED | TBD | — | Pending |
 | M2 | NOT STARTED | TBD | — | Pending |
 | M3 | NOT STARTED | TBD | — | Pending |
