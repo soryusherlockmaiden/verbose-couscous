@@ -7,7 +7,15 @@ from decimal import Decimal, localcontext
 from typing import Any
 
 from acgs.clock import Clock, FixedClock
-from acgs.eligibility import Candidate, EligibilityDecision, Side, evaluate, slipped
+from acgs.eligibility import (
+    Candidate,
+    EligibilityDecision,
+    Side,
+    current_spread,
+    evaluate,
+    execution_slippage,
+    slipped,
+)
 from acgs.pit import DAY, ZERO, Candle, Market, Provenance, as_of
 from acgs.sim_config import EPOCH, Policy, instant_ms
 from acgs.universe import snapshot
@@ -136,11 +144,12 @@ def _feasibility(
             atr = _atr(bars)
             regime = "POSITIVE_14D" if side == Side.LONG else "NEGATIVE_14D"
             filters = as_of(market.filters.get(inst, ()), time)
+            spread = current_spread(market, inst, time, policy)
             for case in cases:
                 config = policy_variants[case.cost_factor]
                 price = last.prices.close
                 if filters is not None:
-                    price = slipped(price, side, config.slippage, filters.tick)
+                    price = slipped(price, side, execution_slippage(spread, config.slippage), filters.tick)
                 decision = evaluate(market, Candidate(
                     inst, time, side, price, mark.prices.close, case.stop_factor * policy.atr_multiple * atr,
                     case.equity, case.equity, case.risk, case.leverage,

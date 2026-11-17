@@ -9,7 +9,9 @@ from acgs.eligibility import (
     Candidate,
     EligibilityDecision,
     Side,
+    current_spread,
     evaluate,
+    execution_slippage,
     order_step,
     quantize_down,
     slipped,
@@ -166,6 +168,13 @@ class _Replay:
             return bar.prices, MarkSource.CANDLE_OPEN_PROXY, MarkSource.CANDLE_CLOSE_PROXY
         return None
 
+    def close_available(self, trade: Candle, source: MarkSource) -> bool:
+        mark_bar = self.market.bar(self.inst, trade.start, self.plan.interval, mark=True)
+        return trade.available <= trade.end and (
+            source == MarkSource.CANDLE_CLOSE_PROXY
+            or (mark_bar is not None and mark_bar.available <= trade.end)
+        )
+
     def bar(self, start: int) -> None:
         end = start + self.plan.interval
         j = self.journal
@@ -185,7 +194,12 @@ class _Replay:
                 raise ReplayError(f"Mark, listing or maintenance data unavailable for open position at {start}")
             if entry is not None:
                 j.record(start, "REJECTED", detail="MARK_UNAVAILABLE" if marks is None else "PIT_INPUTS")
-            self.snapshot(j.record(end, "BAR_CLOSE"), end, None, MarkSource.MARK_UNAVAILABLE, False)
+            seq = j.record(end, "BAR_CLOSE")
+            if marks is None:
+                self.snapshot(seq, end, None, MarkSource.MARK_UNAVAILABLE, False)
+            else:
+                prices, _, source = marks
+                self.snapshot(seq, end, prices.close, source, self.close_available(trade, source))
             return
         mark, source_open, source_close = marks
         filters, tiers = inputs
@@ -215,6 +229,8 @@ class _Replay:
             closing_listing = as_of(self.market.listings[self.inst], end)
             if closing_listing is None or not closing_listing.tradable:
                 raise ReplayError(f"Position crosses an unresolved listing boundary at {end}")
+            if tiers.tier(abs(j.position.quantity) * mark.high) is None:
+                raise ReplayError(f"Mark path exceeds observed maintenance tier coverage at {start}")
             if not funding_complete(self.funding, start, end, self.p):
                 raise ReplayError(f"Funding coverage unavailable during exposure at {start}")
             long = j.position.quantity > ZERO
@@ -239,11 +255,7 @@ class _Replay:
                 cost_time=start,
             )
         seq = j.record(end, "BAR_CLOSE")
-        mark_bar = self.market.bar(self.inst, start, self.plan.interval, mark=True)
-        close_available = trade.available <= end and (
-            source_close == MarkSource.CANDLE_CLOSE_PROXY
-            or (mark_bar is not None and mark_bar.available <= end)
-        )
+        close_available = self.close_available(trade, source_close)
         self.snapshot(seq, end, mark.close, source_close, close_available)
         trail = self.intents.get((end, Action.TRAIL))
         if trail is not None and j.position.quantity:
@@ -399,9 +411,4 @@ class _Replay:
 
     def slippage(self, time: int, *, stress: bool) -> Decimal:
         rate = self.p.stressed_slippage if stress else self.p.slippage
-        spread = next(
-            (x for x in reversed(self.market.spreads.get(self.inst, ()))
-             if 0 <= time - x.evidence.as_of < self.p.metadata_age_ms
-             and x.evidence.provenance != Provenance.UNAVAILABLE), None,
-        )
-        return max(rate, spread.bps / 20_000) if spread is not None else rate
+        return execution_slippage(current_spread(self.market, self.inst, time, self.p), rate)

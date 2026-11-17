@@ -14,6 +14,7 @@ from acgs.pit import (
     Maintenance,
     Market,
     Provenance,
+    Spread,
     as_of,
 )
 from acgs.sim_config import Policy
@@ -107,6 +108,19 @@ def slipped(price: Decimal, direction: Side, rate: Decimal, tick: Decimal) -> De
     return quantize_up(adverse, tick) if direction == Side.LONG else quantize_down(adverse, tick)
 
 
+def current_spread(market: Market, instrument: Instrument, time: int, policy: Policy) -> Spread | None:
+    return next(
+        (x for x in reversed(market.spreads.get(instrument, ()))
+         if 0 <= time - x.evidence.as_of < policy.metadata_age_ms), None,
+    )
+
+
+def execution_slippage(spread: Spread | None, modeled_rate: Decimal) -> Decimal:
+    if spread is None or spread.evidence.provenance == Provenance.UNAVAILABLE:
+        return modeled_rate
+    return max(modeled_rate, spread.bps / 20_000)
+
+
 def _liquidation_cap(
     maintenance: Maintenance, entry: Decimal, boundary: Decimal, mark: Decimal,
     side: Side, leverage: int, liquidation_fee: Decimal,
@@ -148,10 +162,7 @@ def _evaluate(market: Market, o: Candidate, p: Policy) -> EligibilityDecision:
     filters = as_of(market.filters.get(o.instrument, ()), o.time)
     maintenance = as_of(market.maintenance.get(o.instrument, ()), o.time)
     view = funding_view(market, o.instrument, o.time, p)
-    spread = next(
-        (x for x in reversed(market.spreads.get(o.instrument, ()))
-         if 0 <= o.time - x.evidence.as_of < p.metadata_age_ms), None,
-    )
+    spread = current_spread(market, o.instrument, o.time, p)
     spread_evidence = spread.evidence if spread is not None else None
     # A declared adverse slippage scenario can cover missing historical order books.
     if spread_evidence is None and p.allow_reconstructed and p.stressed_slippage > ZERO:
@@ -204,8 +215,7 @@ def _evaluate(market: Market, o: Candidate, p: Policy) -> EligibilityDecision:
         return EligibilityDecision(o, p.digest, *evidence, (reason,), risk_budget=budget)
     exit_side = Side(-o.side)
     stop = stop_price(o.entry, o.stop_distance, o.side, filters.tick)
-    spread_rate = spread.bps / 20_000 if spread is not None else ZERO
-    slip = max(p.stressed_slippage, spread_rate)
+    slip = execution_slippage(spread, p.stressed_slippage)
     stressed_exit = slipped(stop, exit_side, slip, filters.tick) if stop else ZERO
     fee_per_unit = p.taker_fee * (o.entry + max(o.entry, stressed_exit))
     # Both directions can pay funding. A published cap/floor can require more reserve.

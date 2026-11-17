@@ -1,18 +1,26 @@
 # M1 verification
 
-Branch `codex/m1-market-offline` from `origin/main` at `0903329ead42ed3097a14c4e8ba15c97157c2e5d`. The implementation commit is `7d8af7f20773e400362e45e90a974613f64441b4`. The implementation and evidence await independent review and operator acceptance. [50 USDT report](feasibility.md).
+Branch `codex/m1-market-offline` from `origin/main` at `0903329ead42ed3097a14c4e8ba15c97157c2e5d`. The initial implementation commit is `7d8af7f20773e400362e45e90a974613f64441b4`. The implementation and evidence await independent review and operator acceptance. [PR #4](https://github.com/soryusherlockmaiden/verbose-couscous/pull/4) · [50 USDT report](feasibility.md).
 
 ## Checks
 
 | Environment | Commands and result |
 |---|---|
-| Windows native | `uv python install`, `uv sync --locked`, `uv run --locked ruff check .`, `uv run --locked mypy`, `uv run --locked pytest -q` passed. CPython 3.12.13, 135 tests. Import contracts ran in the suite. |
+| Windows native | `uv python install`, `uv sync --locked`, `uv run --locked ruff check .`, `uv run --locked mypy`, `uv run --locked pytest -q` passed. CPython 3.12.13, 136 tests. Import contracts ran in the suite. |
 | SQLite regression | `uv run --locked python -m acgs --db data/m1/verification-smoke.sqlite3 smoke` twice recorded and replayed the same M0 state digest. M0 migration tests passed. |
-| Docker | `docker compose config --quiet`, `docker compose --profile check build acgs check`, `docker compose run --rm acgs smoke` twice, and `docker compose --profile check run --rm check` passed. CPython 3.12.13, 135 tests. |
+| Docker | `docker compose config --quiet`, `docker compose --profile check build acgs check`, `docker compose run --rm acgs smoke` twice, and `docker compose --profile check run --rm check` passed. CPython 3.12.13, 136 tests. |
+| Secret scan | The [README Gitleaks command](../../README.md#public-forward-capture) ran locally using the pinned image with `git --redact --log-opts=--all /repo`. No leaks found. The PR's `secrets` job repeats it. |
+| Hosted CI | The initial PR head `27106e4` passed all four jobs. The PR checks track the last self-review commit. [Run 44199858421](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44199858421). |
 | Forward capture ingestion | `python -m acgs historical --manifest evidence/m1/m0-capture.json --assets data/m1/archive --capture-db data/m0-capture.sqlite3` yielded two epochs with one verified filter, one depth sample and two schedule observations each. The second schedule observation per symbol is the explicit unknown interval from absence in `fundingInfo`. No capture DB migration or mutation was needed. The raw local capture database is excluded from Git. |
 | Real sample reproducibility | Ran the report command twice on Windows and ran `docker compose run --rm -v "${PWD}:/sample:ro" acgs feasibility --manifest /sample/evidence/m1/binance-2024.json --assets /sample/data/m1/archive --policy /app/config/m1.json --start 2024-03-01T00:00:00Z --end 2024-04-11T00:00:00Z --out /data/m1-feasibility-2024-v1.json`. Both environments emitted the same data and output digests in the report. |
 
 No stochastic fills are used. The deterministic fixture entry/exit run using `config/m1.json` has run digest `58294990f235395a7b717006f9ccccaec2a83ad1951ddc51bf736fbe2a74176b` and canonical replay hash `3a4cbe6c11e66912fa1da3c56ce59c10d5fb87f5d8bcaa801907d811297f5b01`. The runtime regression compares artifacts with the wall clock disabled through direct and transitive module paths and uses a different ambient Decimal context.
+
+The public-sample CLI regression rejects the entry for incomplete PIT metadata and keeps the actual mark source in each flat close snapshot. Re-running the same plan yields canonical output hash `501a6622b7adf16fd39e2fdf53b94851f4f2333a35bdc35ee4662caad9c44845`.
+
+```text
+uv run --locked python -m acgs replay --manifest evidence/m1/binance-2024.json --assets data/m1/archive --policy config/m1.json --start 2024-03-01T00:00:00Z --end 2024-03-04T00:00:00Z --plan evidence/m1/replay-plan.json --out data/m1/replay-public-v2.json
+```
 
 ## ROADMAP §4 acceptance coverage
 

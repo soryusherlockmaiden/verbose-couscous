@@ -269,6 +269,20 @@ def test_t19_delisting_boundary_refuses_open_position(dataset: Dataset, policy: 
         replay(market, "fixture", policy, clock(T + HOUR), plan(enter()))
 
 
+def test_t19_t21_mark_retained_when_flat_and_unsupported_tier_aborts_exposure(
+    dataset: Dataset, policy: Policy,
+) -> None:
+    no_filters = Market(replace(dataset, filters=()))
+    decision = replay(no_filters, "fixture", policy, clock(T + HOUR), plan(enter()))
+    assert any(e.detail == "PIT_INPUTS" for e in decision.events)
+    snap = decision.snapshots[-1]
+    assert snap.equity == snap.wallet == D(50)
+    assert snap.mark == D(100) and snap.mark_source == MarkSource.MARK_KLINE_CLOSE
+    extreme = change_bar(dataset, 0, prices("100", "5200", "99", "100"), mark=True)
+    with pytest.raises(ReplayError, match="tier coverage"):
+        replay(Market(extreme), "fixture", policy, clock(T + HOUR), plan(enter()))
+
+
 def test_t36_t42_causal_interval_change_default_and_missing_record(dataset: Dataset, policy: Policy) -> None:
     prior = tuple(funding(T + n * HOUR) for n in (-16, -8, 0))
     changed = tuple(funding(T + n * HOUR, hours=4, delay=500) for n in (4, 8, 12))
