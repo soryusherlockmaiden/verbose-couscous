@@ -294,3 +294,33 @@ def test_capture_cli_watch_polls_until_interrupted(
         assert connection.execute(
             "SELECT COUNT(*) FROM capture_attempts WHERE status = 'CAPTURED'"
         ).fetchone() == (5,)
+
+
+def test_malformed_records_are_retried_instead_of_captured(tmp_path: Path) -> None:
+    malformed = {
+        "exchangeInfo": b'{"symbols":[null]}',
+        "fundingInfo": b'[{"symbol":null,"fundingIntervalHours":8}]',
+        "premiumIndex": b'[{"symbol":null,"markPrice":"not-a-price","nextFundingTime":null}]',
+        "depth": b'{"lastUpdateId":1,"bids":[null],"asks":[]}',
+    }
+    calls: list[str] = []
+
+    def broken(url: str) -> PublicResponse:
+        calls.append(url)
+        return PublicResponse(200, malformed[urlsplit(url).path.rsplit("/", 1)[-1]])
+
+    def recorded(url: str) -> PublicResponse:
+        calls.append(url)
+        return fixture_response(url)
+
+    config = CaptureConfig(("BTCUSDT",), 300)
+    with open_ledger(tmp_path / "capture.sqlite3") as connection:
+        assert capture_due(connection, config, FixedClock(NOW), broken, no_wait) == [
+            "INVALID_PAYLOAD"
+        ] * 4
+        assert connection.execute(
+            "SELECT COUNT(*) FROM capture_attempts WHERE provenance IS NOT NULL"
+        ).fetchone() == (0,)
+        retry = FixedClock(NOW + timedelta(seconds=60))
+        assert capture_due(connection, config, retry, recorded, no_wait) == ["CAPTURED"] * 4
+    assert len(calls) == 8

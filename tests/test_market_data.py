@@ -2,6 +2,7 @@ import io
 import urllib.request
 from email.message import Message
 from email.utils import formatdate
+from pathlib import Path
 from typing import Any
 from urllib.error import URLError
 from urllib.response import addinfourl
@@ -9,7 +10,7 @@ from urllib.response import addinfourl
 import pytest
 
 from acgs import market_data
-from acgs.market_data import PublicResponse, fetch_public, retry_delay
+from acgs.market_data import PublicResponse, fetch_public, retry_delay, valid_payload
 
 URL = "https://fapi.binance.com/fapi/v1/premiumIndex"
 
@@ -90,3 +91,58 @@ def test_network_failures_map_to_status_zero(
 )
 def test_retry_delay(header: str | None, expected: float) -> None:
     assert retry_delay(header, 1_000_000, 300) == expected
+
+
+FIXTURES = Path(__file__).parent / "fixtures"
+PREMIUM = '{"symbol":"BTCUSDT","markPrice":"64626.2","nextFundingTime":1794931200000}'
+
+
+@pytest.mark.parametrize("endpoint", ["exchangeInfo", "fundingInfo", "premiumIndex", "depth"])
+def test_recorded_public_responses_are_valid(endpoint: str) -> None:
+    assert valid_payload(endpoint, (FIXTURES / f"{endpoint}.json").read_bytes())
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "payload"),
+    [
+        ("fundingInfo", "[]"),
+        ("premiumIndex", '[{"symbol":"BTCUSDQ","markPrice":"0","nextFundingTime":0}]'),
+        ("depth", '{"lastUpdateId":1,"bids":[],"asks":[]}'),
+    ],
+)
+def test_legitimate_edge_responses_are_valid(endpoint: str, payload: str) -> None:
+    assert valid_payload(endpoint, payload.encode())
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "payload"),
+    [
+        ("exchangeInfo", '{"symbols":[null]}'),
+        ("exchangeInfo", '{"symbols":[]}'),
+        ("exchangeInfo", '{"symbols":[{"symbol":"BTCUSDT","status":"TRADING"}]}'),
+        (
+            "exchangeInfo",
+            '{"symbols":[{"symbol":"BTCUSDT","status":"TRADING","contractType":"PERPETUAL",'
+            '"filters":[{"minQty":"0.001"}]}]}',
+        ),
+        ("fundingInfo", '[{"symbol":null,"fundingIntervalHours":8}]'),
+        ("fundingInfo", '[{"symbol":"BTCUSDT","fundingIntervalHours":"8"}]'),
+        ("fundingInfo", '[{"symbol":"BTCUSDT","fundingIntervalHours":0}]'),
+        ("fundingInfo", '[{"symbol":"BTCUSDT","fundingIntervalHours":true}]'),
+        ("premiumIndex", "[]"),
+        (
+            "premiumIndex",
+            '[{"symbol":null,"markPrice":"not-a-price","nextFundingTime":null}]',
+        ),
+        ("premiumIndex", PREMIUM.replace('"64626.2"', '"NaN"').join("[]")),
+        ("premiumIndex", PREMIUM.replace('"64626.2"', '"-1"').join("[]")),
+        ("premiumIndex", PREMIUM.replace("1794931200000", "null").join("[]")),
+        ("depth", '{"lastUpdateId":1,"bids":[null],"asks":[]}'),
+        ("depth", '{"lastUpdateId":1,"bids":[["64628.6"]],"asks":[]}'),
+        ("depth", '{"lastUpdateId":1,"bids":[["0","1"]],"asks":[]}'),
+        ("depth", '{"lastUpdateId":1,"bids":[],"asks":[["1","x"]]}'),
+        ("depth", '{"lastUpdateId":true,"bids":[],"asks":[]}'),
+    ],
+)
+def test_malformed_records_are_rejected(endpoint: str, payload: str) -> None:
+    assert not valid_payload(endpoint, payload.encode())

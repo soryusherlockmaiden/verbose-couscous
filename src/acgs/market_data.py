@@ -1,6 +1,8 @@
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC
+from decimal import Decimal, InvalidOperation
 from email.utils import parsedate_to_datetime
 from http.client import HTTPException, HTTPMessage
 from typing import IO
@@ -72,25 +74,87 @@ def valid_payload(endpoint: str, payload: bytes) -> bool:
         return False
     match endpoint:
         case "exchangeInfo":
-            return (
-                isinstance(value, dict)
-                and isinstance(value.get("symbols"), list)
-                and bool(value["symbols"])
+            return isinstance(value, dict) and _records(
+                value.get("symbols"), _symbol_info, allow_empty=False
             )
         case "fundingInfo":
-            fields = {"symbol", "fundingIntervalHours"}
+            return _records(value, _funding_info, allow_empty=True)
         case "premiumIndex":
-            if not value:
-                return False
-            fields = {"symbol", "markPrice", "nextFundingTime"}
+            return _records(value, _premium_index, allow_empty=False)
         case "depth":
             return (
                 isinstance(value, dict)
-                and type(value.get("lastUpdateId")) is int
-                and all(isinstance(value.get(side), list) for side in ("bids", "asks"))
+                and _count(value.get("lastUpdateId"))
+                and all(_book_side(value.get(side)) for side in ("bids", "asks"))
             )
         case _:
             return False
-    return isinstance(value, list) and all(
-        isinstance(item, dict) and fields <= item.keys() for item in value
+
+
+def _records(
+    value: object, check: Callable[[object], bool], *, allow_empty: bool
+) -> bool:
+    return isinstance(value, list) and (allow_empty or bool(value)) and all(
+        check(item) for item in value
+    )
+
+
+def _name(value: object) -> bool:
+    return isinstance(value, str) and bool(value)
+
+
+def _count(value: object, minimum: int = 0) -> bool:
+    return type(value) is int and value >= minimum
+
+
+def _decimal(value: object, *, positive: bool = False) -> bool:
+    """A finite decimal string, as Binance sends prices and quantities."""
+    if not isinstance(value, str):
+        return False
+    try:
+        number = Decimal(value)
+    except InvalidOperation:
+        return False
+    return number.is_finite() and (number > 0 if positive else number >= 0)
+
+
+def _symbol_info(item: object) -> bool:
+    return (
+        isinstance(item, dict)
+        and _name(item.get("symbol"))
+        and isinstance(item.get("status"), str)
+        and isinstance(item.get("contractType"), str)
+        and isinstance(item.get("filters"), list)
+        and all(
+            isinstance(entry, dict) and _name(entry.get("filterType"))
+            for entry in item["filters"]
+        )
+    )
+
+
+def _funding_info(item: object) -> bool:
+    return (
+        isinstance(item, dict)
+        and _name(item.get("symbol"))
+        and _count(item.get("fundingIntervalHours"), 1)
+    )
+
+
+def _premium_index(item: object) -> bool:
+    # Delivery contracts report nextFundingTime 0, so only negative values are invalid.
+    return (
+        isinstance(item, dict)
+        and _name(item.get("symbol"))
+        and _decimal(item.get("markPrice"))
+        and _count(item.get("nextFundingTime"))
+    )
+
+
+def _book_side(levels: object) -> bool:
+    return isinstance(levels, list) and all(
+        isinstance(level, list)
+        and len(level) == 2
+        and _decimal(level[0], positive=True)
+        and _decimal(level[1], positive=True)
+        for level in levels
     )
