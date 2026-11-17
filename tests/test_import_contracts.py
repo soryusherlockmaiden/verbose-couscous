@@ -53,8 +53,8 @@ def source_files() -> list[Path]:
     return sorted(SOURCE.rglob("*.py"))
 
 
-def layer_of(path: Path) -> str:
-    return path.relative_to(SOURCE).with_suffix("").parts[0]
+def layer_of(relative_path: Path) -> str:
+    return relative_path.with_suffix("").parts[0]
 
 
 def imported_modules(source: str) -> set[str]:
@@ -141,13 +141,6 @@ def test_m0_has_only_public_http_and_no_order_or_transfer_adapter() -> None:
             assert common or public_http, (path.name, name)
 
 
-def test_decision_layers_are_deterministic_and_capability_free() -> None:
-    for path in source_files():
-        if layer_of(path) in DECISION_LAYERS:
-            source = path.read_text(encoding="utf-8")
-            assert not decision_violations(source), (path.name, decision_violations(source))
-
-
 def reachable_layers(start: str, graph: dict[str, set[str]]) -> set[str]:
     reached: set[str] = set()
     pending = [start]
@@ -159,20 +152,82 @@ def reachable_layers(start: str, graph: dict[str, set[str]]) -> set[str]:
     return reached
 
 
-def test_strategy_and_research_cannot_import_capabilities_transitively() -> None:
+def decision_dependency_violations(sources: dict[Path, str]) -> list[str]:
     graph: dict[str, set[str]] = {}
-    for path in source_files():
-        imports = imported_modules(path.read_text(encoding="utf-8"))
+    for path, source in sources.items():
+        imports = imported_modules(source)
         graph.setdefault(layer_of(path), set()).update(
             name.split(".")[1] for name in imports if name.startswith("acgs.")
         )
-    for layer in DECISION_LAYERS:
-        assert CAPABILITY_LAYERS.isdisjoint(reachable_layers(layer, graph))
+
+    # Importing a decision module also runs the acgs package initializer.
+    roots = (DECISION_LAYERS & graph.keys()) | {"__init__"}
+    dependencies: set[str] = set()
+    for root in roots:
+        dependencies.update(reachable_layers(root, graph))
+    problems = [
+        f"Forbidden dependency: {layer}" for layer in sorted(CAPABILITY_LAYERS & dependencies)
+    ]
+    for path, source in sources.items():
+        if layer_of(path) in dependencies:
+            problems.extend(
+                f"{path.as_posix()}: {problem}" for problem in decision_violations(source)
+            )
+    return problems
+
+
+def test_decision_dependencies_are_deterministic_and_capability_free() -> None:
+    sources = {path.relative_to(SOURCE): path.read_text(encoding="utf-8") for path in source_files()}
+    assert decision_dependency_violations(sources) == []
 
 
 def test_import_contract_detects_indirect_capability_access() -> None:
-    graph = {"strategy": {"helper"}, "helper": {"market_data"}}
-    assert CAPABILITY_LAYERS & reachable_layers("strategy", graph) == {"market_data"}
+    sources = {
+        Path("strategy.py"): "from acgs.helper import fetch_public\n",
+        Path("helper.py"): "from acgs.market_data import fetch_public\n",
+    }
+    assert decision_dependency_violations(sources) == ["Forbidden dependency: market_data"]
+
+
+@pytest.mark.parametrize(
+    ("helper_source", "expected"),
+    [
+        ("from datetime import datetime\nread_clock = datetime.now\n", "datetime.now"),
+        ("import time\nread_clock = time.time\n", "import time"),
+    ],
+)
+def test_wall_clock_is_rejected_through_transitive_helpers(
+    helper_source: str, expected: str
+) -> None:
+    sources = {
+        Path("strategy.py"): "from acgs.helper import read_clock\n",
+        Path("helper.py"): "from acgs.support.stamp import read_clock\n",
+        Path("support/stamp.py"): helper_source,
+    }
+    assert decision_dependency_violations(sources) == [f"support/stamp.py: {expected}"]
+
+
+def test_transitive_helpers_can_use_an_injected_clock() -> None:
+    sources = {
+        Path("strategy.py"): "from acgs.helper import stamp\n",
+        Path("helper.py"): (
+            "from acgs.clock import Clock\n"
+            "def stamp(clock: Clock):\n"
+            "    return clock.now()\n"
+        ),
+        Path("clock.py"): (SOURCE / "clock.py").read_text(encoding="utf-8"),
+        Path("unrelated.py"): "from datetime import datetime\nstamp = datetime.now\n",
+    }
+    assert decision_dependency_violations(sources) == []
+
+
+def test_wall_clock_is_rejected_through_the_package_initializer() -> None:
+    sources = {
+        Path("strategy.py"): "",
+        Path("__init__.py"): "from acgs.helper import stamp\n",
+        Path("helper.py"): "from datetime import datetime\nstamp = datetime.now()\n",
+    }
+    assert decision_dependency_violations(sources) == ["helper.py: datetime.now"]
 
 
 @pytest.mark.parametrize(
@@ -188,8 +243,8 @@ def test_import_contract_detects_indirect_capability_access() -> None:
         "from datetime import UTC, datetime\ndatetime.now(UTC)\n",
         "from datetime import datetime as moment\nmoment.utcnow()\n",
         "import datetime\ndatetime.date.today()\n",
-        "from acgs.clock import SystemClock\n",
-        "from acgs import clock\nclock.SystemClock()\n",
+        "from acgs.__main__ import SystemClock\n",
+        "from acgs import __main__\n__main__.SystemClock()\n",
     ],
 )
 def test_decision_rules_reject_capability_and_wall_clock_bypasses(source: str) -> None:

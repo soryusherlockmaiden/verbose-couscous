@@ -15,11 +15,6 @@ class FixedClock:
         return self.instant
 
 
-class SystemClock:
-    def now(self) -> datetime:
-        return datetime.now(UTC)
-
-
 def utc_iso(instant: datetime) -> str:
     """Fixed-width UTC timestamp whose string order matches time order."""
     if instant.utcoffset() is None:

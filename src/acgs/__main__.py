@@ -8,11 +8,16 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from acgs.capture import BLOCKED, RESTRICTED, capture_due, clear_access_restriction
-from acgs.clock import FixedClock, SystemClock
+from acgs.clock import FixedClock
 from acgs.config import ConfigError, load_config
 from acgs.ledger import LedgerStateError, open_ledger
 from acgs.market_data import fetch_public
 from acgs.smoke import run_smoke
+
+
+class SystemClock:
+    def now(self) -> datetime:
+        return datetime.now(UTC)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
