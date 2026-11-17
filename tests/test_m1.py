@@ -217,6 +217,9 @@ def test_t19_t21_gap_and_missing_mark_or_candle_fail_closed(dataset: Dataset, po
     result = replay(Market(dataset), "fixture", policy, clock(T + 2 * HOUR), plan(enter()))
     stop = next(e for e in result.events if e.kind == "STOP")
     assert stop.time == T + HOUR and stop.price == D("89.7")
+    gapped = replay(Market(dataset), "fixture", policy, clock(T + 2 * HOUR),
+                    plan(enter(), exit_(T + HOUR)))
+    assert [e.detail for e in gapped.events if e.kind == "REJECTED"] == ["PROTECTIVE_EXIT_AT_OPEN"]
     for mark in (False, True):
         incomplete = replace(dataset, candles=tuple(
             b for b in dataset.candles if (b.start, b.is_mark) != (T + HOUR, mark)
@@ -245,6 +248,15 @@ def test_t37_trailing_stop_only_at_completed_available_close_and_only_ratchets(
     assert [(e.time, e.price) for e in result.events if e.kind == "TRAIL_RATCHET"] == [
         (T + HOUR, D(99))
     ]
+    # The ratcheted stop at 99 is hit in the next bar, so the later update finds no position.
+    assert [(e.time, e.detail) for e in result.events if e.kind == "REJECTED"] == [
+        (T + 2 * HOUR, "NO_POSITION")
+    ]
+    wider = replay(market, "fixture", policy, clock(T + 2 * HOUR),
+                   plan(enter(), Intent(T + HOUR, T + HOUR, Action.TRAIL, Side.LONG, D(8))))
+    assert [(e.time, e.price, e.detail) for e in wider.events if e.kind == "REJECTED"] == [
+        (T + HOUR, D(95), "TRAIL_NOT_FAVORABLE")
+    ]
     lagged = replace(dataset, candles=tuple(
         replace(b, available=b.end + 1000) if b.start == T and not b.is_mark else b
         for b in dataset.candles
@@ -252,6 +264,8 @@ def test_t37_trailing_stop_only_at_completed_available_close_and_only_ratchets(
     run = replay(Market(lagged), "fixture", policy, clock(T + 2 * HOUR), plan(*trade))
     assert not any(e.kind == "TRAIL_RATCHET" for e in run.events)
     assert any(e.detail == "TRAIL_CLOSE_UNAVAILABLE" for e in run.events)
+    flat = replay(market, "fixture", policy, clock(T + 2 * HOUR), plan(*trade[1:]))
+    assert [e.detail for e in flat.events if e.kind == "REJECTED"] == ["NO_POSITION"] * 2
 
 
 @pytest.mark.parametrize("stop_basis", [StopBasis.CONTRACT_PRICE, StopBasis.MARK_PRICE])

@@ -219,6 +219,8 @@ class _Replay:
         )
         if exit_ is not None and not open_protection:
             self.exit_intent(exit_, trade.prices.opening, mark.opening, source_open, filters)
+        elif exit_ is not None:
+            j.record(start, "REJECTED", detail="PROTECTIVE_EXIT_AT_OPEN")
         if entry is not None:
             if self.liquidated:
                 j.record(start, "REJECTED", detail="LIQUIDATION_LATCH")
@@ -264,6 +266,8 @@ class _Replay:
                 self.trail(trail, stop_path.close, mark.close, filters)
             else:
                 j.record(end, "REJECTED", detail="TRAIL_CLOSE_UNAVAILABLE")
+        elif trail is not None:
+            j.record(end, "REJECTED", detail="NO_POSITION")
 
     def listing_boundary(self, start: int, end: int) -> bool:
         """Exposure follows the exchange's effective state, even if evidence arrived later.
@@ -435,16 +439,24 @@ class _Replay:
     def trail(self, intent: Intent, closing_price: Decimal, mark: Decimal, filters: Filters) -> None:
         pos = self.journal.position
         side = Side.LONG if pos.quantity > ZERO else Side.SHORT
-        if intent.side != side:
-            return
         candidate = stop_price(closing_price, intent.distance, side, filters.tick)
-        if (
+        if intent.side != side:
+            reason = "POSITION_SIDE"
+        elif not (
             filters.min_price <= candidate <= filters.max_price and candidate > ZERO
             and mark * filters.percent_down <= candidate <= mark * filters.percent_up
-            and side * (closing_price - candidate) > ZERO and side * (candidate - pos.stop) > ZERO
         ):
+            reason = "PRICE_TICK"
+        elif side * (closing_price - candidate) <= ZERO:
+            reason = "STOP_IMMEDIATELY_TRIGGERABLE"
+        elif side * (candidate - pos.stop) <= ZERO:
+            reason = "TRAIL_NOT_FAVORABLE"
+        else:
             self.journal.position = replace(pos, stop=candidate)
             self.journal.record(intent.time, "TRAIL_RATCHET", price=candidate)
+            return
+        # Keep the existing stop and record why the step-wise update was not applied.
+        self.journal.record(intent.time, "REJECTED", price=candidate, detail=reason)
 
     def slippage(self, time: int, *, stress: bool) -> Decimal:
         rate = self.p.stressed_slippage if stress else self.p.slippage
