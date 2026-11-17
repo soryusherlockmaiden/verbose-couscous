@@ -1,6 +1,6 @@
 # M0 verification
 
-Status: the review-fix commit `6010a75` passed every check below except the live forward capture, which has not been re-run with schema v2. Milestone acceptance is pending operator review. The baseline is `main` at `53992e0`.
+Status: hosted CI passed at `6010a75`. The subsequent Python image digest pin passed local checks, and live forward capture passed with schema v2. Milestone acceptance is pending operator review. The baseline is `main` at `53992e0`.
 
 ## Re-verification after review fixes (`6010a75`)
 
@@ -14,9 +14,9 @@ The review fixes change capture storage (schema v2: zlib payloads, a persistent 
 | Native Ubuntu 24.04 and Windows 2025 | CI `native` jobs: locked install, ruff, mypy, pytest, smoke twice | Passed on both runners |
 | Docker build, smoke and in-container checks | CI `container` job: `docker compose build acgs`, `docker compose run --rm acgs smoke` twice, `docker compose --profile check build check`, `docker compose --profile check run --rm check` | Passed |
 | Full-history secret scan | CI `secrets` job: Gitleaks v8.24.3 pinned by digest, `git --redact --log-opts=--all` | No leaks |
-| Live forward capture with schema v2 | `capture` against public endpoints | **Not yet run.** Run it from the operator's machine or VPS; the cloud agent's IP does not represent the operator's jurisdiction. |
+| Live forward capture with schema v2 | `uv run --locked python -m acgs --config config/m0.toml --db data/m0-schema2-review.sqlite3 capture` on the Windows workstation | Five HTTP 200 responses tagged `VERIFIED`. Verified stored schema version 2, zlib decompression and raw SHA-256 for each response. |
 
-Open item: the `python:3.12.13-slim-bookworm` base image is pinned by tag only. Its digest lookup was rate-limited by Docker Hub (HTTP 429) during the fix. The uv image, the Gitleaks image and all CI actions are pinned by digest or commit SHA.
+The Python digest came from the existing Docker Desktop image's `RepoDigests` and matches the digest resolved by the earlier build. With the pinned reference, `docker compose --profile check build acgs check` built both targets. `docker compose run --rm acgs smoke` replayed the fixture from the existing v1 ledger, and `docker compose --profile check run --rm check` passed lint, types and 63 tests. Native Windows lint, types and 63 tests also passed.
 
 ## Earlier verification (commits `0134e89`/`da12ab8`, before the review fixes)
 
