@@ -1,9 +1,9 @@
 # ACGS V2 — Engineering Roadmap
 
-**Version:** 0.3 — Pre-Implementation Safety Gates  
+**Version:** 0.4 — Pre-M0 Capital Lifecycle Corrections  
 **Date:** 2026-11-17  
 **Status:** Engineering baseline candidate; no milestone accepted  
-**Basis:** `PRD.md` v1.3 (**Approved & Locked**) and `SPEC.md` v0.3  
+**Basis:** `PRD.md` v1.3 (**Approved & Locked**) and `SPEC.md` v0.4  
 **Execution principle:** Research-first, risk-before-order, evidence-based stop/go.
 
 ## 1. Delivery rules
@@ -82,7 +82,7 @@
 - Evaluate Major + Dynamic Top Movers universe against simple and no-trade baselines; isolate incremental value of ranking and filters.
 - Chronological development/validation, walk-forward, untouched holdout.
 - Cost-aware 50 USDT execution feasibility, regime sensitivity, tail-risk and parameter robustness.
-- **Minimal simulated Ignition:** 50 USDT start, 100 USDT observation target, fixed 30 USDT halt, research-only sizing/exposure, costs; compute using the **M1 accepted equity ledger and snapshot-trigger rules**. Estimate target-before-halt and conditional recovery feasibility; no real/simulated wallet transfer workflow is required here.
+- **Minimal simulated Ignition:** 50 USDT start, 100 USDT observation target, fixed 30 USDT halt, research-only sizing/exposure, costs; compute using the **M1 accepted equity ledger and snapshot-trigger rules**. Estimate target-before-halt and conditional recovery feasibility; no real/simulated wallet transfer workflow is required here. Evaluate trigger/halt on `cycle_equity` with the halt-headroom cap (SPEC §7.3.1/§8.1) and report the recovery shortfall rate.
 
 **Required sequence**
 1. Publish versioned research protocol and numeric acceptance thresholds **before opening holdout**.
@@ -116,6 +116,7 @@
 **Acceptance tests**
 - 50→80→45 does not trigger the fixed 30 USDT halt; 30 or lower does.
 - Observed 100 but settled 98 remains `RECOVERY_PENDING` with no transfer.
+- Shortfall enters `SHORTFALL_HOLD` with only the SPEC §7.4.1 resolutions; external inflows never trigger recovery; entries beyond halt headroom are rejected (T-27–T-30).
 - Insufficient reserve or uncertain transfer status blocks transition.
 - Lost acknowledgment/restart never causes blind duplicate transfer.
 - No strategy can bypass risk engine or clear a latched halt.
@@ -204,13 +205,21 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 1. **PRD v1.3 is Approved & Locked** as the product baseline; no further PRD approval task remains.
 2. Review SPEC open contracts **SC-01/SC-02** and M0 scope; ensure M1 simulator accounting/event priority is resolved before M1 exit; do not pre-approve research-only risk settings.
-3. Implement M0 with OFFLINE-only safety tests and CI.
+3. Create `README.md`, then implement M0 with OFFLINE-only safety tests and CI.
 4. Begin M1 data provenance and exchange-feasibility research before investing in live execution.
 5. Pre-register M2 numeric promotion criteria **before** holdout evaluation.
+6. Decide SC-15 (capital-cycle termination and lifetime limits) through PRD review before M3.
 
 **Roadmap acceptance:** This document plans work; it does not authorize live orders, real transfers, or a production deployment.
 
-## 13. v0.3 targeted change notes
+## 13. v0.4 targeted change notes
+
+- Basis updated to `SPEC.md` v0.4.
+- M2 evaluates trigger/halt on `cycle_equity` with the halt-headroom cap and reports the recovery shortfall rate.
+- M3 acceptance adds shortfall hold, external-inflow and halt-headroom tests (T-27–T-30).
+- Next actions: `README.md` before M0; SC-15 PRD decision before M3.
+
+## Appendix — v0.3 targeted change notes
 
 - M1 now requires a reproducible 50 USDT execution-feasibility report and explicit rejection taxonomy (SC-12), without inventing an M1 pass-rate target.
 - M3/M4 mock stop-protection failures; M5 requires account-specific Binance protective-order compatibility sign-off (SC-13).
