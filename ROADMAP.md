@@ -223,7 +223,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 | Milestone | Status | Owner | Evidence | Decision |
 |---|---|---|---|---|
-| M0 | IN PROGRESS | Operator | [M0 verification](evidence/m0/verification.md) | [PR #2 checks](https://github.com/soryusherlockmaiden/verbose-couscous/pull/2/checks). Operator acceptance pending. |
+| M0 | IN PROGRESS | Operator | [M0 verification](evidence/m0/verification.md) | Code commit `df8f9a1` passed [hosted CI](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44126503728). Operator acceptance pending. |
 | M1 | NOT STARTED | TBD | — | Pending |
 | M2 | NOT STARTED | TBD | — | Pending |
 | M3 | NOT STARTED | TBD | — | Pending |

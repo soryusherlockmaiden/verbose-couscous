@@ -1,11 +1,12 @@
 # M0 verification
 
-Milestone acceptance is pending operator review. The baseline is `main` at `53992e0`. See [PR #2 checks](https://github.com/soryusherlockmaiden/verbose-couscous/pull/2/checks) for hosted CI on the current head.
+Milestone acceptance is pending operator review. The baseline is `main` at `53992e0`.
 
 ## Wall-clock import contract verification
 
+- Code commit `df8f9a1d1353bf93db2baaf36e3c0a3eb134e728` closes the re-exported wall clock and helper I/O gaps. Tests cover direct and aliased clock re-exports, transitive file and SQLite access, and allowed imports of pure config and ledger types. On Windows native, `uv run --locked ruff check .`, `uv run --locked mypy`, and `uv run --locked pytest -q` passed with 77 tests. All four hosted jobs passed on the [push run 44126484575](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44126484575) and the [PR run 44126503728](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44126503728).
+- At `fc20e77`, 68 tests passed locally. All four hosted jobs passed on the [push run 44123400742](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44123400742) and the [PR run 44123414721](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44123414721).
 - At `9eee5c9`, 66 tests passed locally. All four hosted jobs passed on the [push run](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44121775884) and the [PR run](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44121791094).
-- The follow-up to the review checks imports at module granularity, including package initializers. Regression tests cover transitive wall-clock reads, legitimate imports of config and ledger types, and isolation from unimported sibling modules. Windows native `uv run --locked ruff check .`, `uv run --locked mypy` and `uv run --locked pytest -q` passed (68 tests).
 
 ## Re-verification after review fixes (`6010a75`)
 
