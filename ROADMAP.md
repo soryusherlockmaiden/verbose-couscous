@@ -223,7 +223,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 | Milestone | Status | Owner | Evidence | Decision |
 |---|---|---|---|---|
-| M0 | IN PROGRESS | Operator | [M0 verification](evidence/m0/verification.md) | Review fixes passed hosted CI at `6010a75`. Python digest pin and schema v2 live capture verified locally. Operator acceptance pending. |
+| M0 | IN PROGRESS | Operator | [M0 verification](evidence/m0/verification.md) | [PR #2 checks](https://github.com/soryusherlockmaiden/verbose-couscous/pull/2/checks). Operator acceptance pending. |
 | M1 | NOT STARTED | TBD | — | Pending |
 | M2 | NOT STARTED | TBD | — | Pending |
 | M3 | NOT STARTED | TBD | — | Pending |

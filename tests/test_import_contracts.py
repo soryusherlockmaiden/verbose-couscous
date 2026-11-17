@@ -1,6 +1,7 @@
 """M0 capability boundaries (T-13, T-16), checked by pytest in both native CI jobs."""
 
 import ast
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -31,7 +32,14 @@ SAFE_IMPORTS = {
 }
 PUBLIC_HTTP_IMPORTS = {"http.client", "urllib.error", "urllib.request"}
 DECISION_LAYERS = {"strategy", "features", "universe", "research"}
-CAPABILITY_LAYERS = {"market_data", "capture", "execution", "transfers", "__main__"}
+CAPABILITY_MODULES = {
+    "acgs.market_data",
+    "acgs.capture",
+    "acgs.execution",
+    "acgs.transfers",
+    "acgs.wallclock",
+    "acgs.__main__",
+}
 # Decision code must be deterministic: no wall clock, process, system or I/O modules.
 DECISION_SAFE_IMPORTS = {
     "collections",
@@ -53,25 +61,31 @@ def source_files() -> list[Path]:
     return sorted(SOURCE.rglob("*.py"))
 
 
-def layer_of(relative_path: Path) -> str:
-    return relative_path.with_suffix("").parts[0]
+def module_name(relative_path: Path) -> str:
+    parts = relative_path.with_suffix("").parts
+    if parts[-1] == "__init__":
+        parts = parts[:-1]
+    return ".".join(("acgs", *parts))
 
 
-def imported_modules(source: str) -> set[str]:
-    names = set()
+def imported_modules(source: str, local_modules: set[str] | None = None) -> set[str]:
+    names: set[str] = set()
     for node in ast.walk(ast.parse(source)):
         if isinstance(node, ast.Import):
             names.update(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
-            if node.module == "acgs":
-                names.update(f"acgs.{alias.name}" for alias in node.names)
-            else:
-                names.add(node.module)
+            names.add(node.module)
+            if local_modules is not None and node.module.partition(".")[0] == "acgs":
+                # A from-import can load a submodule or read an attribute from the package.
+                for alias in node.names:
+                    child = f"{node.module}.{alias.name}"
+                    if child in local_modules or child in CAPABILITY_MODULES:
+                        names.add(child)
     return names
 
 
 def module_violations(source: str) -> list[str]:
-    """Rules for every module, so the layer graph below sees every acgs import."""
+    """Rules for every module, so the graph below sees every acgs import."""
     problems = []
     for node in ast.walk(ast.parse(source)):
         if isinstance(node, ast.ImportFrom) and node.level:
@@ -87,8 +101,8 @@ def module_violations(source: str) -> list[str]:
     return problems
 
 
-def decision_violations(source: str) -> list[str]:
-    """Extra rules for decision layers: no capabilities and no wall-clock reads."""
+def decision_violations(source: str, *, strict_imports: bool = True) -> list[str]:
+    """Check decision code and its helpers for wall-clock and dynamic access."""
     tree = ast.parse(source)
     problems = module_violations(source)
     clock_classes: set[str] = set()  # names bound to datetime.datetime or datetime.date
@@ -96,35 +110,35 @@ def decision_violations(source: str) -> list[str]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                if alias.name.split(".")[0] not in DECISION_SAFE_IMPORTS:
+                root = alias.name.split(".")[0]
+                if root in {"time", "sys"} or (
+                    strict_imports and root not in DECISION_SAFE_IMPORTS
+                ):
                     problems.append(f"import {alias.name}")
                 elif alias.name == "datetime":
                     clock_modules.add(alias.asname or alias.name)
         elif isinstance(node, ast.ImportFrom) and node.module:
             root = node.module.split(".")[0]
-            if root != "acgs" and root not in DECISION_SAFE_IMPORTS:
+            if root in {"time", "sys"} or (
+                strict_imports and root != "acgs" and root not in DECISION_SAFE_IMPORTS
+            ):
                 problems.append(f"from {node.module} import ...")
             for alias in node.names:
-                if alias.name == "SystemClock":
-                    problems.append("SystemClock")
                 if node.module == "datetime" and alias.name in {"datetime", "date"}:
                     clock_classes.add(alias.asname or alias.name)
     for node in ast.walk(tree):
-        if not isinstance(node, ast.Attribute):
+        if not isinstance(node, ast.Attribute) or node.attr not in WALL_CLOCK_CALLS:
             continue
-        if node.attr == "SystemClock":
-            problems.append("SystemClock")
-        elif node.attr in WALL_CLOCK_CALLS:
-            target = node.value
-            if isinstance(target, ast.Name) and target.id in clock_classes:
-                problems.append(f"{target.id}.{node.attr}")
-            elif (
-                isinstance(target, ast.Attribute)
-                and target.attr in {"datetime", "date"}
-                and isinstance(target.value, ast.Name)
-                and target.value.id in clock_modules
-            ):
-                problems.append(f"{target.value.id}.{target.attr}.{node.attr}")
+        target = node.value
+        if isinstance(target, ast.Name) and target.id in clock_classes:
+            problems.append(f"{target.id}.{node.attr}")
+        elif (
+            isinstance(target, ast.Attribute)
+            and target.attr in {"datetime", "date"}
+            and isinstance(target.value, ast.Name)
+            and target.value.id in clock_modules
+        ):
+            problems.append(f"{target.value.id}.{target.attr}.{node.attr}")
     return problems
 
 
@@ -141,43 +155,60 @@ def test_m0_has_only_public_http_and_no_order_or_transfer_adapter() -> None:
             assert common or public_http, (path.name, name)
 
 
-def reachable_layers(start: str, graph: dict[str, set[str]]) -> set[str]:
+def reachable_modules(roots: set[str], graph: dict[str, set[str]]) -> set[str]:
     reached: set[str] = set()
-    pending = [start]
+    pending = list(roots)
     while pending:
-        layer = pending.pop()
-        if layer not in reached:
-            reached.add(layer)
-            pending.extend(graph.get(layer, set()))
+        module = pending.pop()
+        if module not in reached:
+            reached.add(module)
+            pending.extend(graph.get(module, set()))
     return reached
 
 
-def decision_dependency_violations(sources: dict[Path, str]) -> list[str]:
-    graph: dict[str, set[str]] = {}
-    for path, source in sources.items():
-        imports = imported_modules(source)
-        graph.setdefault(layer_of(path), set()).update(
-            name.split(".")[1] for name in imports if name.startswith("acgs.")
-        )
+def module_and_packages(name: str) -> Iterator[str]:
+    while name:
+        yield name
+        name = name.rpartition(".")[0]
 
-    # Importing a decision module also runs the acgs package initializer.
-    roots = (DECISION_LAYERS & graph.keys()) | {"__init__"}
-    dependencies: set[str] = set()
-    for root in roots:
-        dependencies.update(reachable_layers(root, graph))
+
+def decision_dependency_violations(sources: dict[Path, str]) -> list[str]:
+    modules = {module_name(path): path for path in sources}
+    known_names = {name for module in modules for name in module_and_packages(module)}
+
+    graph: dict[str, set[str]] = {}
+    for module, path in modules.items():
+        dependencies: set[str] = set()
+        for name in imported_modules(sources[path], known_names):
+            if name.partition(".")[0] == "acgs":
+                # Python executes parent package initializers when importing a module.
+                dependencies.update(module_and_packages(name))
+        graph[module] = dependencies
+
+    decision_modules = {
+        module
+        for module in modules
+        if module != "acgs" and module.split(".", maxsplit=2)[1] in DECISION_LAYERS
+    }
+    reachable = reachable_modules(decision_modules | {"acgs"}, graph)
     problems = [
-        f"Forbidden dependency: {layer}" for layer in sorted(CAPABILITY_LAYERS & dependencies)
+        f"Forbidden dependency: {module}"
+        for module in sorted(CAPABILITY_MODULES & reachable)
     ]
-    for path, source in sources.items():
-        if layer_of(path) in dependencies:
-            problems.extend(
-                f"{path.as_posix()}: {problem}" for problem in decision_violations(source)
+    for module, path in modules.items():
+        if module in reachable:
+            violations = decision_violations(
+                sources[path], strict_imports=module in decision_modules
             )
+            problems.extend(f"{path.as_posix()}: {problem}" for problem in violations)
     return problems
 
 
 def test_decision_dependencies_are_deterministic_and_capability_free() -> None:
-    sources = {path.relative_to(SOURCE): path.read_text(encoding="utf-8") for path in source_files()}
+    sources = {
+        path.relative_to(SOURCE): path.read_text(encoding="utf-8")
+        for path in source_files()
+    }
     assert decision_dependency_violations(sources) == []
 
 
@@ -186,7 +217,9 @@ def test_import_contract_detects_indirect_capability_access() -> None:
         Path("strategy.py"): "from acgs.helper import fetch_public\n",
         Path("helper.py"): "from acgs.market_data import fetch_public\n",
     }
-    assert decision_dependency_violations(sources) == ["Forbidden dependency: market_data"]
+    assert decision_dependency_violations(sources) == [
+        "Forbidden dependency: acgs.market_data"
+    ]
 
 
 @pytest.mark.parametrize(
@@ -221,6 +254,48 @@ def test_transitive_helpers_can_use_an_injected_clock() -> None:
     assert decision_dependency_violations(sources) == []
 
 
+def test_decision_code_can_import_config_and_ledger_types() -> None:
+    sources = {
+        Path("strategy.py"): (
+            "from acgs.config import Config\nfrom acgs.ledger import LedgerStateError\n"
+        ),
+        **{
+            Path(name): (SOURCE / name).read_text(encoding="utf-8")
+            for name in ("clock.py", "config.py", "ledger.py")
+        },
+    }
+    assert decision_dependency_violations(sources) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    ["from acgs.support.symbols import symbol", "from acgs.support import symbols"],
+)
+def test_an_unimported_sibling_does_not_affect_the_imported_module(source: str) -> None:
+    sources = {
+        Path("strategy.py"): source,
+        Path("support/symbols.py"): "symbol = 'BTCUSDT'",
+        Path("support/fetch.py"): "from acgs.market_data import fetch_public",
+    }
+    assert decision_dependency_violations(sources) == []
+    sources[Path("support/__init__.py")] = "from acgs.support import fetch"
+    assert decision_dependency_violations(sources) == [
+        "Forbidden dependency: acgs.market_data"
+    ]
+
+
+def test_wall_clock_capability_is_detected_by_module_not_class_name() -> None:
+    sources = {
+        Path("strategy.py"): "from acgs.helper import SystemClock",
+        Path("helper.py"): "class SystemClock: pass",
+    }
+    assert decision_dependency_violations(sources) == []
+    sources[Path("helper.py")] = "from acgs import wallclock"
+    assert decision_dependency_violations(sources) == [
+        "Forbidden dependency: acgs.wallclock"
+    ]
+
+
 def test_wall_clock_is_rejected_through_the_package_initializer() -> None:
     sources = {
         Path("strategy.py"): "",
@@ -243,8 +318,6 @@ def test_wall_clock_is_rejected_through_the_package_initializer() -> None:
         "from datetime import UTC, datetime\ndatetime.now(UTC)\n",
         "from datetime import datetime as moment\nmoment.utcnow()\n",
         "import datetime\ndatetime.date.today()\n",
-        "from acgs.__main__ import SystemClock\n",
-        "from acgs import __main__\n__main__.SystemClock()\n",
     ],
 )
 def test_decision_rules_reject_capability_and_wall_clock_bypasses(source: str) -> None:

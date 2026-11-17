@@ -13,11 +13,7 @@ from acgs.config import ConfigError, load_config
 from acgs.ledger import LedgerStateError, open_ledger
 from acgs.market_data import fetch_public
 from acgs.smoke import run_smoke
-
-
-class SystemClock:
-    def now(self) -> datetime:
-        return datetime.now(UTC)
+from acgs.wallclock import SystemClock
 
 
 def main(argv: Sequence[str] | None = None) -> int:
