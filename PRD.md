@@ -92,7 +92,7 @@ The primary deliverable is reproducible research and safe operating infrastructu
   - explicit operator authorization;
   - a written post-mortem of the closed cycle covering cause, realized execution versus the cost/slippage model, and rule compliance;
   - confirmation that live approval remains valid. An execution-model deviation beyond the preregistered tolerance suspends live approval and returns the strategy to research;
-  - funding of exactly 50 USDT. The residual counts toward it; any top-up is recorded as newly committed capital, never as profit. Any excess above 50 USDT must first be moved out of the bot's Futures wallet.
+  - funding of exactly 50 USDT. The residual counts toward it; any top-up is recorded as newly committed capital, never as profit. Any excess above 50 USDT must first be moved out of the bot's Futures wallet. A residual excess of at most 0.50 USDT that cannot practically be removed is tolerated, but it is excluded from cycle equity and is never trading capital, never part of the risk budget and never counted toward the recovery trigger.
 - Top-ups are permitted **only between cycles**, never during an open cycle and never toward recovery eligibility.
 - **Lifetime limits:** at most **two** Ignition cycles in total, and at most **100 USDT** cumulative committed capital (the initial 50 USDT plus all top-ups). When either limit would be exceeded, no new cycle may start and the live experiment ends. Raising either limit requires a PRD revision, not a runtime or configuration override.
 - Rationale: repeated manual refunding after losses would otherwise act as a manual martingale, contrary to §3.3.
@@ -115,7 +115,7 @@ The primary deliverable is reproducible research and safe operating infrastructu
    - `transferable_funds >= 50 USDT`;
    - after transferring 50 USDT and accounting for remaining costs, **active Futures equity >= 50 USDT + additional_operational_reserve**;
    - no unresolved exposure, transfer attempt, or reconciliation mismatch.
-5. If any condition fails (for example, the initial 100 USDT observed equity becomes 98 USDT after settlement), **do not transfer, do not count recovery as completed, and do not return automatically to Ignition**. Remain `RECOVERY_PENDING`, block new entries, alert the operator, and require an explicit recovery/resume decision. The permitted decisions are: re-check without trading; explicitly resume Ignition in the same cycle with the unchanged 50 USDT reference and 30 USDT halt; or close the cycle (§5.2.1). External top-ups never count toward recovery eligibility.
+5. If any condition fails (for example, the initial 100 USDT observed equity becomes 98 USDT after settlement), **do not transfer, do not count recovery as completed, and do not return automatically to Ignition**. Remain `RECOVERY_PENDING`, block new entries, alert the operator, and require an explicit recovery/resume decision. The permitted decisions are: re-check without trading; explicitly resume Ignition in the same cycle with the unchanged 50 USDT reference and 30 USDT halt, subject to automated cost-model, risk-configuration and headroom checks and permitted for at most two shortfalls per cycle (SPEC §7.4.1); or close the cycle (§5.2.1). External top-ups never count toward recovery eligibility.
 6. If all conditions pass, transfer **exactly 50 USDT** Futures -> Spot using an explicitly authorized exchange capability. Verify via transfer history and both wallet balances; persist the exchange transfer identifier and update the protected-capital ledger exactly once.
 7. Enter `GROWTH` only after confirmed transfer, verified post-transfer reserve, and ledger reconciliation. No automatic re-entry into Ignition is permitted after successful recovery.
 
@@ -386,6 +386,7 @@ Do **not** create mandatory standalone CANON, ADR, Build Plan, audit packs or go
 - Added §5.2.1: capital-cycle closure (`CYCLE_CLOSED`), new-cycle conditions, between-cycle-only top-ups, and lifetime limits of two cycles / 100 USDT committed capital (OD-13).
 - §5.3: enumerated the permitted operator decisions after a recovery shortfall; ACGS never transfers Spot to Futures; protected funds should leave the bot account's reach.
 - §8: separate trading and transfer keys; transfer restricted in code to Futures-to-Spot.
+- Resume after a recovery shortfall requires automated checks and is limited to two shortfalls per cycle; an opening excess of at most 0.50 USDT is excluded from cycle equity.
 - §11: account eligibility pre-check and forward data capture in M0; no testnet. M4 is a mainnet shadow mode (read-only key, orders recorded, never sent); M5 starts with a live shadow stage via the exchange test-order endpoint and a minimal real-order smoke test.
 - §3.1 and §12.4: research and infrastructure are the primary deliverable; a single live cycle is not validation; stopping after M2 or M4 is a successful outcome.
 - Unchanged: 50 USDT start, 100 USDT trigger, 30 USDT fixed-loss halt, 50 USDT recovery with >= 50 USDT retained, no automatic re-Ignition.

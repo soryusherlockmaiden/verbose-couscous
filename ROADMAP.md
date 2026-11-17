@@ -123,7 +123,7 @@
 - 50→80→45 does not trigger the fixed 30 USDT halt; 30 or lower does.
 - Observed 100 but settled 98 remains `RECOVERY_PENDING` with no transfer.
 - Shortfall enters `SHORTFALL_HOLD` with only the SPEC §7.4.1 resolutions; external inflows never trigger recovery; entries beyond halt headroom are rejected (T-27–T-30).
-- Cycle closure and lifetime limits, and transfer-direction restriction pass T-31 and T-32.
+- Cycle closure and lifetime limits, and transfer-direction restriction pass T-31 and T-32; reconciliation covers both regular and conditional/algo order families against mocks (T-40).
 - Insufficient reserve or uncertain transfer status blocks transition.
 - Lost acknowledgment/restart never causes blind duplicate transfer.
 - No strategy can bypass risk engine or clear a latched halt.
@@ -160,7 +160,7 @@
 - Conservative approved sizing; staged enablement and immediate operator kill switch.
 - Small controlled launch with no assumption that 50 USDT can place a compliant order.
 
-**Acceptance:** `LIVE_SHADOW` window completed and protective-order smoke test passed (T-39); account-specific protective-order compatibility and emergency behavior explicitly signed off; no unapproved orders, protective exits confirmed, balances/positions/transfers reconciled, safety latches function, all live parameters explicitly approved. Any critical inconsistency => halt new entries and invoke emergency response.
+**Acceptance:** `LIVE_SHADOW` window completed and protective-order smoke test passed (T-39), with conditional/algo-order reconciliation verified (T-40) and no protective-order type used without its own current smoke-test sign-off (SPEC INV-12); account-specific protective-order compatibility and emergency behavior explicitly signed off; no unapproved orders, protective exits confirmed, balances/positions/transfers reconciled, safety latches function, all live parameters explicitly approved. Any critical inconsistency => halt new entries and invoke emergency response.
 
 **Go/no-go:** Operator may cancel M5 even after all technical gates. No automated deployment from research results.
 
@@ -228,6 +228,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 - M3 acceptance adds shortfall hold, external-inflow and halt-headroom tests (T-27–T-30).
 - Next actions: `README.md` before M0.
 - Aligned with PRD v1.4: M0 adds account eligibility pre-check, forward capture and import contracts; no testnet: M4 mainnet shadow mode, M5 staged `LIVE_SHADOW` → smoke test → `LIVE_ARMED`; M3 adds cycle closure/lifetime limits and Futures→Spot-only transfer; delivery rule 7 (stopping after M2/M4 is success).
+- M3 adds hardened `RESUME_IGNITION` preconditions and conditional/algo-order reconciliation (T-40); M5 acceptance requires per-order-type smoke-test sign-off (INV-12).
 - M1 adds instrument epochs, funding intervals, mark-kline coverage, Growth-level feasibility and T-33/T-35–T-38; M2 adds random-entry/ablation baselines and lifetime-limit success probability.
 
 ## Appendix — v0.3 targeted change notes

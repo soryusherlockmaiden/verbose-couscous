@@ -29,7 +29,8 @@
 | INV-08 | `OFFLINE` is the default mode; M0–M4 cannot instantiate an order-submitting or transfer adapter, including one that targets the exchange test-order endpoint. `PAPER` may hold only a read-only account key (§3.1). |
 | INV-09 | A filled live position requires exchange-accepted protective exit coverage; failure invokes an emergency protocol and blocks entries. |
 | INV-10 | A halt cannot be cleared by a strategy, restart, config reload, or reconnect. |
-| INV-11 | Capital-phase triggers, halt checks and high-water marks use `cycle_equity` (§7.3.1), which excludes unapproved external inflows (§7.6). |
+| INV-11 | Capital-phase triggers, halt checks and high-water marks use `cycle_equity` (§7.3.1), which excludes unapproved external inflows (§7.6) and any opening excess (§7.1.1). |
+| INV-12 | A protective-order type and configuration may be used in `LIVE_ARMED` only after passing the real protective-order smoke test on the production account under the current account mode, order parameters and endpoint version (§3.1, §9.2). Test-order acceptance is never evidence of protection. Any change to these invalidates the sign-off until the smoke test is repeated. |
 
 ## 2. Logical architecture
 
@@ -93,11 +94,11 @@ No exchange testnet is used in any milestone. Exchange-facing behavior is exerci
 - Fills are simulated from live mainnet prices/order book with the versioned cost model.
 
 **`LIVE` stages (M5):** each stage requires live approval, operator arming and a restart with explicit reauthorization, per §3.
-1. **`LIVE_SHADOW`:** live account and trading key. Every order is sent **only** to the exchange test-order endpoint (`POST /fapi/v1/order/test`), which validates parameters against the production account without reaching the matching engine. The exchange response is recorded with the shadow order, fills are simulated as in `PAPER`, and transfers are simulated only. Endpoint coverage for conditional/protective order types must be verified at M5 start. Any order type the endpoint cannot validate is recorded as `NOT_VALIDATED` and must be covered by step 2. Runs for a predeclared observation window.
+1. **`LIVE_SHADOW`:** live account and trading key. Every order is sent **only** to the exchange test-order endpoint (`POST /fapi/v1/order/test`), which validates parameters against the production account without reaching the matching engine. The exchange response is recorded with the shadow order, fills are simulated as in `PAPER`, and transfers are simulated only. Conditional/protective orders are assumed **not** covered by this endpoint (§9.2) and default to `NOT_VALIDATED`. Any order type the endpoint cannot validate is recorded as `NOT_VALIDATED` and must be covered by step 2. Runs for a predeclared observation window.
 2. **Protective-order smoke test:** a small number of real orders at minimum compliant size, under explicit operator approval for that test only. It validates the §9.2 behaviors no test endpoint can show: stop acceptance and visibility, `reduceOnly`/`closePosition`, cancel/replace without a coverage gap, partial-fill handling and emergency flatten.
 3. **`LIVE_ARMED`:** real orders under the approved live configuration.
 
-A test-order acceptance confirms request validity only; it never establishes protective-order behavior or execution quality.
+A test-order acceptance confirms request validity only; it never establishes protective-order behavior or execution quality. The smoke test is a **hard gate** for `LIVE_ARMED` (INV-12).
 
 ## 4. Canonical time, data and provenance
 
@@ -223,13 +224,13 @@ Before selector holdout, freeze features, selection cadence, costs, multiple-tes
 
 - `capital_cycles` stores cycle ID, start time, committed capital (initial or top-up), status `OPEN`/`CLOSED`, closure reason (`FIXED_LOSS_HALT` or `OPERATOR_CLOSE`), residual, and post-mortem reference/digest. Lifetime counters (`cycles_started`, `committed_capital_total`) are derived from the ledger, never stored as editable configuration.
 - `FIXED_LOSS_HALT` closes the cycle only after exposure is flat and reconciled. The operational `HALTED` latch remains until operator acknowledgment. Other halts do not close the cycle.
-- New-cycle authorization is rejected unless all hold:
+- Authorization of **any** cycle, including the first, is rejected unless all hold:
   - the previous cycle is `CLOSED` and its post-mortem is recorded;
   - live approval is not suspended;
   - there is no open exposure or order, and the USD-M wallet holds between 50.00 and 50.50 USDT;
   - `cycles_started < 2` and `committed_capital_total + top_up <= 100`.
 
-  The reference remains exactly 50 USDT.
+  The reference remains exactly 50 USDT. The tolerance exists only for amounts that are impractical to remove. `opening_excess = wallet_at_cycle_start − 50` is recorded at cycle start and subtracted from `cycle_equity` (§7.3.1), so cycle equity starts at exactly 50. The excess is not trading capital: it never increases the risk budget, never counts toward the 100 USDT trigger and never widens halt headroom.
 - Residual funds of a closed cycle are never traded. ACGS never deposits or tops up by itself. A top-up is an operator action, classified through §7.6 and recorded as committed capital.
 - Lifetime limits are code constants checked against the ledger. Configuration cannot raise them; a PRD revision is required.
 
@@ -247,7 +248,7 @@ Safety faults (stale data, unknown orders, unprotected position, reconciliation 
 **Agreed baselines:** observation threshold 100 USDT, transfer amount 50 USDT, minimum post-transfer active equity 50 USDT, additional operational reserve >=0 (to be specified). These are distinct from transfer execution eligibility.
 
 1. Persist unique `recovery_cycle_id` and `RECOVERY_PENDING` intent **before** any side effect; atomically block entries.
-2. Cancel/resolve open orders and flatten/settle exposure; reconcile no residual positions or contingent re-entry orders.
+2. Cancel/resolve open orders, including conditional/algo orders (§9.2), and flatten/settle exposure; reconcile no residual positions or contingent re-entry orders.
 3. Obtain fresh exchange evidence of realized wallet, available/transferable funds, fees, funding, pending costs and transfers.
 4. Require `transferable_funds >= 50` and **post-transfer active equity >= 50 + additional_operational_reserve**, net of remaining costs. The simple settled-equity threshold is `100 + additional_operational_reserve` only if no additional costs remain.
 5. If checks fail, stay `RECOVERY_PENDING`, block entries, alert operator; no automatic return to Ignition or trading to chase the shortfall.
@@ -262,7 +263,7 @@ Protected Spot funds are excluded from futures trading capital but remain subjec
 
 The agreed 100 USDT observation trigger and 30 USDT halt threshold are **unchanged**. This section defines the measure they are evaluated against.
 
-- **Cycle equity:** `cycle_equity = conservative_NLV − unapproved_external_inflows`, where `conservative_NLV = equity_mark − Σ est_close_fee(p) − Σ stressed_close_slippage(p) − known_accrued_costs` over open positions `p`. `est_close_fee` uses the taker rate for the full position; `stressed_close_slippage` uses the same versioned stress model as the simulator cost model (SC-02); `known_accrued_costs` covers costs already determined but not yet posted. When flat, `conservative_NLV = wallet`; costs already posted are never deducted again. External inflows are defined in §7.6.
+- **Cycle equity:** `cycle_equity = conservative_NLV − unapproved_external_inflows − opening_excess` (opening excess per §7.1.1), where `conservative_NLV = equity_mark − Σ est_close_fee(p) − Σ stressed_close_slippage(p) − known_accrued_costs` over open positions `p`. `est_close_fee` uses the taker rate for the full position; `stressed_close_slippage` uses the same versioned stress model as the simulator cost model (SC-02); `known_accrued_costs` covers costs already determined but not yet posted. When flat, `conservative_NLV = wallet`; costs already posted are never deducted again. External inflows are defined in §7.6.
 - **Rationale:** closing costs are strictly positive and the minimum settled execution threshold is `100 + additional_operational_reserve`. A trigger on gross mark equity would therefore settle below the threshold in most cases, increasingly so at high sampling frequency, while bar-close research would hide this through bar overshoot. Deducting estimated closing costs makes the observation an estimate of what flattening would realize. It reduces but does not eliminate shortfall; §7.4.1 handles the remainder.
 - **Non-double-counting:** because `conservative_NLV` already deducts stressed closing costs, those costs must not be counted again in `additional_operational_reserve` (PRD §5.3). Any positive reserve creates a structural gap between the 100 USDT trigger and the execution threshold; it must be justified by a cost not already captured, and the M2 shortfall metric must be reported for the chosen reserve value.
 - **Same measure for halt:** the 30 USDT Ignition halt is evaluated on `cycle_equity`. Because it is never above gross mark equity, this is a permitted more-conservative rule under PRD §5.2.
@@ -287,12 +288,18 @@ Only these explicit, audited operator resolutions are permitted, each preceded b
 | Resolution | Effect | Constraints |
 |---|---|---|
 | `RECHECK` | Re-run reconciliation and the eligibility check without trading (e.g., after a pending posting settles) | Remains `RECOVERY_PENDING`; proceeds to `TRANSFER_PENDING` only if eligibility now passes |
-| `RESUME_IGNITION` | Close the attempt as `CLOSED_UNRECOVERED`; capital phase returns to `IGNITION` in the **same** capital cycle | Fixed 50 USDT reference and 30 USDT halt unchanged; no counter or reference reset; recovery trigger re-arms under §7.3.1 |
+| `RESUME_IGNITION` | Close the attempt as `CLOSED_UNRECOVERED`; capital phase returns to `IGNITION` in the **same** capital cycle | Fixed 50 USDT reference and 30 USDT halt unchanged; no counter or reference reset; automated preconditions below must pass; recovery trigger re-arms under §7.3.1 |
 | `CLOSE_CYCLE` | Close the attempt and the capital cycle (`OPERATOR_CLOSE`, §7.1.1) | A new cycle only under PRD §5.2.1 lifetime limits |
 
 Never permitted: a transfer below 50 USDT counted as recovery; a transfer leaving less than `50 + additional_operational_reserve` active; entry into `GROWTH`; lowering the reserve to pass the check without a versioned approval made before the attempt; counting an external top-up toward eligibility (top-ups are permitted only between cycles, PRD §5.2.1).
 
-**Repeated shortfall:** two consecutive `CLOSED_UNRECOVERED` attempts in one capital cycle block further `RESUME_IGNITION` until the cost/slippage model used in `conservative_NLV` is reviewed and re-versioned, recorded as an audit event.
+**`RESUME_IGNITION` preconditions** (automated; the operator cannot waive them). The risk engine refuses the resolution unless all hold:
+- **Cost model not breached:** the recorded shortfall decomposition shows realized closing fees and slippage within the stressed costs assumed in `conservative_NLV`. If realized costs exceeded them, the cost model is breached on the first occurrence. Resume stays blocked until the model is re-versioned with stress assumptions raised, never lowered, and the re-trigger then uses the new model.
+- **No catch-up sizing:** the risk configuration digest equals the one in force at the trigger. `risk_pct`, the leverage ceiling and concurrency cannot be raised, and `halt_buffer` cannot be lowered, at resume.
+- **Headroom remains:** `cycle_equity − 30 − halt_buffer` still admits at least one exchange-compliant minimum order under §5.2/§8.1 at current filters. Otherwise resume is refused and `CLOSE_CYCLE` is the expected resolution.
+- Fresh reconciliation passes, account preconditions (§7.6) hold, and no external inflow is awaiting classification.
+
+**Repeated shortfall:** after **two** `CLOSED_UNRECOVERED` attempts in one capital cycle, `RESUME_IGNITION` is no longer permitted in that cycle; only `RECHECK` or `CLOSE_CYCLE` remain. This prevents a cycle from repeatedly chasing the 100 USDT trigger through settlement losses.
 
 ### 7.5 Vault profit locking (optional)
 
@@ -367,6 +374,11 @@ risk_budget_eff = min(phase_risk_budget, halt_headroom − open_risk)
 
 Maintain a versioned compatibility matrix for the **actual** Binance account and API configuration: one-way versus hedge position mode, supported conditional-order endpoints and trigger types, `reduceOnly`/`closePosition` applicability, quantity rules, margin/position-mode requirements, cancel/replace semantics (including place-new-then-cancel-old trailing updates without a coverage gap), supported stop `workingType` values and protective-order visibility after fills. Do not assume a specific `STOP_MARKET` parameter combination works universally. Exchange-native protective coverage must be independently confirmed from exchange state, not merely from an order-submission acknowledgment.
 
+**Conditional-order endpoint family:** public reports indicate that Binance moved USD-M conditional orders (e.g., `STOP_MARKET`) to a separate Algo Service in December 2025, placed via `POST /fapi/v1/algoOrder` and queried via separate algo-order endpoints and update events; the regular order endpoint may reject them. Until verified against the official change log at implementation:
+- Treat protective orders as a separate endpoint family in the compatibility matrix.
+- Reconciliation (§9.3), recovery flattening (§7.3) and protection confirmation must query and consume **both** regular and conditional/algo order state and update events. A stop's presence or absence in one family must never be inferred from the other (T-40).
+- Assume the regular test-order endpoint does not validate protective orders. They default to `NOT_VALIDATED` in `LIVE_SHADOW` (§3.1).
+
 On a fill with missing, rejected, expired, insufficient or uncertain stop coverage: immediately block new entries, latch the configured safety state, attempt the preapproved bounded emergency flattening procedure where safe, and reconcile residual positions and contingent orders. Repeated blind submissions are forbidden; unresolved exposure requires alerting and operator intervention. Partial fills, stop-size adjustments, rejected conditional orders, reconnects and crash-between-fill-and-stop are mandatory mock/fault scenarios by M3/M4. In M3/M4 the matrix is exercised only against mocks and shadow orders; exchange behavior is validated in M5 through `LIVE_SHADOW` and the protective-order smoke test (§3.1).
 
 **M5 hard gate:** Validate the compatibility matrix and emergency behavior on the production account through `LIVE_SHADOW` and the protective-order smoke test (§3.1), then explicitly sign off the account-specific live configuration before `LIVE_ARMED`. Test-order endpoint acceptance alone does not establish protective-order behavior; unresolved restrictions or unsupported protection => **NO-GO**. No real orders are authorized by this SPEC.
@@ -439,10 +451,10 @@ Research must use chronological development/validation windows, walk-forward tes
 | T-25 | Recovery crashes at each workflow boundary or transfer response is lost | Durable restart recovery, no blind duplicate transfer, no premature Growth | M3 |
 | T-26 | Unsupported Binance stop flags in account position mode | M5 compatibility NO-GO; no live arming | M5 |
 | T-27 | Gross mark equity >=100 but `cycle_equity` <100 after estimated close costs; later `cycle_equity` >=100 | No trigger, then trigger; the 30 USDT halt uses the same measure | M2/M3 |
-| T-28 | Settlement shortfall (e.g., settled 98) | `SHORTFALL_HOLD`; only `RECHECK`/`RESUME_IGNITION`/`CLOSE_CYCLE`; resume keeps 50 reference and 30 halt; no transfer or `GROWTH`; second consecutive shortfall blocks resume until cost-model review | M3 |
+| T-28 | Settlement shortfall (e.g., settled 98) | `SHORTFALL_HOLD`; only `RECHECK`/`RESUME_IGNITION`/`CLOSE_CYCLE`; resume keeps 50 reference and 30 halt and is refused on cost-model breach, changed risk digest or insufficient headroom; no transfer or `GROWTH`; after two shortfalls in a cycle only `RECHECK`/`CLOSE_CYCLE` | M3 |
 | T-29 | External deposit lifts mark equity >=100 in Ignition; Multi-Assets mode or BNB fee deduction found enabled | Inflow excluded, no trigger, `PAUSED` pending classification; precondition mismatch blocks entries | M3 (sim); M5 (account) |
 | T-30 | Cycle equity 34, halt 30, buffer 0.5, budget 5; second entry while a position is open | Effective budget 3.5 minus open risk; reject `HALT_HEADROOM` when no compliant quantity fits | M2/M3 |
-| T-31 | Fixed-loss halt; new cycle with residual 28 + top-up 22; then a third cycle; top-up during an open cycle | Cycle `CLOSED` only after flat; second cycle only with post-mortem and wallet 50.00–50.50; third cycle or committed capital >100 rejected; mid-cycle inflow unapproved and excluded | M3 |
+| T-31 | Fixed-loss halt; new cycle with residual 28 + top-up 22; then a third cycle; top-up during an open cycle | Cycle `CLOSED` only after flat; every cycle only with wallet 50.00–50.50 and the excess excluded from `cycle_equity`; second cycle only with post-mortem; third cycle or committed capital >100 rejected; mid-cycle inflow unapproved and excluded | M3 |
 | T-32 | Transfer adapter asked for Spot→Futures, another transfer type or an arbitrary amount; trading key used for a transfer | Rejected in code; no request sent | M3 (sim); M5 |
 | T-33 | Signal close 100, fill gaps to 101; stop price falls between ticks | Stop placed at fill − d, rounded toward entry; realized risk <= budget | M1 |
 | T-34 | PAPER started with a key that has trading/transfer/withdrawal permission; any PAPER code path reaching an order endpoint; `LIVE_SHADOW` order routed anywhere but the test-order endpoint | PAPER refuses the key; PAPER sends no order request of any kind; `LIVE_SHADOW` sends only to the test-order endpoint and performs no transfer | M4/M5 |
@@ -450,7 +462,8 @@ Research must use chronological development/validation windows, walk-forward tes
 | T-36 | Funding interval changes from 8h to 4h inside a research window | Funding applied at the point-in-time interval; no 8h assumption | M1 |
 | T-37 | ATR trailing update | Updates only at bar close and only in the favorable direction; live replacement places the new stop before cancelling the old | M1 (sim); M3 (mock); M5 (smoke test) |
 | T-38 | Mark-price path reaches liquidation before the stop triggers on its declared price type | Liquidation modeled and flagged; no optimistic stop fill | M1 |
-| T-39 | M5 protective-order smoke test at minimum size; order types marked `NOT_VALIDATED` in `LIVE_SHADOW` | Stop acceptance/visibility, `reduceOnly`/`closePosition`, gap-free replacement and emergency flatten confirmed and signed off, otherwise NO-GO for `LIVE_ARMED` | M5 |
+| T-39 | M5 protective-order smoke test at minimum size; order types marked `NOT_VALIDATED` in `LIVE_SHADOW` | Stop acceptance/visibility, `reduceOnly`/`closePosition`, gap-free replacement and emergency flatten confirmed and signed off, otherwise NO-GO for `LIVE_ARMED`; sign-off invalidated and repeated after any account-mode, order-parameter, endpoint or API change (INV-12) | M5 |
+| T-40 | Protective stop lives in the conditional/algo order family; reconciler or recovery flattening queries only regular orders | Both families and both update streams queried; stop unconfirmed if not found in its own family; contingent algo orders cancelled before transfer | M3 (mock); M5 |
 
 ## 13. Open contract register
 
@@ -468,7 +481,7 @@ Research must use chronological development/validation windows, walk-forward tes
 | SC-10 | M5 | Binance endpoint/permission/position-mode compatibility, account isolation and preconditions (§7.6), and live arming |
 | SC-11 | Optional P1/P2 | Vault locking, pyramiding and adaptive selector promotion |
 | SC-12 | M1 | Micro-capital eligibility reason codes, exchange-filter provenance, feasibility report and sensitivities across Ignition and Growth risk levels, risk base, stop placement/rounding and feasibility window (§5.2) (T-22/T-23/T-33) |
-| SC-13 | M3 mock; M4 shadow; M5 `LIVE_SHADOW` + smoke test | Protective-order compatibility matrix, emergency flatten safety contract, account-mode validation, trailing replacement without coverage gap, shadow-mode key and endpoint restrictions (T-24/T-26/T-34/T-37/T-39) |
+| SC-13 | M3 mock; M4 shadow; M5 `LIVE_SHADOW` + smoke test | Protective-order compatibility matrix, emergency flatten safety contract, account-mode validation, trailing replacement without coverage gap, shadow-mode key and endpoint restrictions, conditional/algo endpoint family and smoke-test validity (INV-12) (T-24/T-26/T-34/T-37/T-39/T-40) |
 | SC-14 | M3 | Recovery workflow substates including `SHORTFALL_HOLD` and operator resolutions (§7.4.1), durable intent, retry ambiguity and fault-injection suite (T-25, T-28) |
 | SC-15 | M3 | Capital-cycle closure, new-cycle authorization and lifetime limits: policy decided in PRD v1.4 §5.2.1, mechanics in §7.1.1; transfer key separation and direction restriction (§10) (T-31/T-32) |
 
@@ -493,6 +506,9 @@ A contract is not considered resolved merely by selecting a value: it requires r
 - Data: instrument epochs, point-in-time funding intervals, forward capture, mark-price kline coverage, liquidation versus stop price basis (§4.2/§4.3/§4.5).
 - Strategy: step-wise ATR trailing implementation decided; universe-exit handling added to the open list (§6). Research: random-entry and ablation baselines, calendar-block resampling, lifetime-limit success probability, post-mortem tolerance (§11).
 - Added T-31–T-38. PRD v1.4 baselines preserved.
+- Hardened `RESUME_IGNITION` with automated cost-model, risk-digest and headroom preconditions and a limit of two shortfalls per cycle (§7.4.1).
+- Added INV-12 (smoke test is the hard gate for protective orders; test-order acceptance is never evidence) and the conditional/algo endpoint family requirements (§9.2, T-40).
+- Opening excess of up to 0.50 USDT is excluded from `cycle_equity` and is never trading capital (§7.1.1).
 
 ## Appendix — v0.3 targeted change notes
 
