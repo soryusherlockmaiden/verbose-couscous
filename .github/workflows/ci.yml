@@ -1,0 +1,52 @@
+name: M0 checks
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: '0.13.7'
+      - run: uv python install
+      - run: uv sync --locked
+      - run: uv run --locked ruff check .
+      - run: uv run --locked mypy
+      - run: uv run --locked pytest
+      - run: uv run --locked python -m acgs smoke
+      - run: uv run --locked python -m acgs smoke
+
+  container:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: docker compose build acgs
+      - run: docker compose run --rm acgs smoke
+      - run: docker compose run --rm acgs smoke
+
+  secrets:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: >-
+          docker run --rm
+          --env GIT_CONFIG_COUNT=1
+          --env GIT_CONFIG_KEY_0=safe.directory
+          --env GIT_CONFIG_VALUE_0=/repo
+          --volume "${{ github.workspace }}:/repo:ro"
+          ghcr.io/gitleaks/gitleaks:v8.24.3 git --redact --log-opts=--all /repo

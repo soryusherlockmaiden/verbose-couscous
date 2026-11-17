@@ -1,0 +1,5 @@
+mode = "OFFLINE"
+
+[capture]
+symbols = ["BTCUSDT", "ETHUSDT"]
+interval_seconds = 300

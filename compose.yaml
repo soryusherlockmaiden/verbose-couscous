@@ -1,0 +1,15 @@
+services:
+  acgs:
+    build: .
+    image: acgs:m0
+    init: true
+    volumes:
+      - acgs-data:/data
+  capture:
+    extends:
+      service: acgs
+    profiles: ["capture"]
+    command: ["capture", "--watch"]
+
+volumes:
+  acgs-data:
