@@ -1,6 +1,12 @@
 # M0 verification
 
-Status: **PASS (technical verification)** at code commit `e16d08ff5ceeead9906db2d83cea3f797b8e7f28`, including live forward capture with the stricter record validation on the Windows workstation. Operator acceptance remains pending. The baseline is `main` at `53992e0`.
+Status: **PASS — accepted by the operator on 2026-11-17 (UTC)** at code commit `e16d08ff5ceeead9906db2d83cea3f797b8e7f28`, including live forward capture with the stricter record validation on the Windows workstation. Merged to `main` through PR #2. The baseline before merge was `main` at `53992e0`.
+
+## Operator acceptance
+
+- Decision: M0 Foundation **accepted** (`PASS`) by the operator on 2026-11-17 (UTC).
+- Accepted code: `e16d08f` (hosted CI [push 44191219078](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44191219078), [PR 44191231342](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44191231342)). Later commits on PR #2 change documentation only.
+- Accepted with these carried-forward items: all account eligibility items remain `UNVERIFIED` (jurisdiction must be verified before M3); continuous VPS forward capture starts after merge; M1 adds a runtime determinism test for decision code.
 
 ## M0 acceptance summary (code commit `e16d08f`)
 
