@@ -230,7 +230,7 @@ Before selector holdout, freeze features, selection cadence, costs, multiple-tes
   - there is no open exposure or order, and the USD-M wallet holds between 50.00 and 50.50 USDT;
   - `cycles_started < 2` and `committed_capital_total + top_up <= 100`.
 
-  The reference remains exactly 50 USDT. The tolerance exists only for amounts that are impractical to remove. `opening_excess = wallet_at_cycle_start − 50` is recorded at cycle start and subtracted from `cycle_equity` (§7.3.1), so cycle equity starts at exactly 50. The excess is not trading capital: it never increases the risk budget, never counts toward the 100 USDT trigger and never widens halt headroom.
+  The reference remains exactly 50 USDT. The tolerance exists only for amounts that are impractical to remove. `opening_excess = wallet_at_cycle_start − 50` is recorded at cycle start and subtracted from `cycle_equity` (§7.3.1), so cycle equity starts at exactly 50. The excess is not trading capital: it never increases the risk budget, never counts toward the 100 USDT trigger, never widens halt headroom, and is excluded from the available collateral used in margin, sizing and feasibility checks (§5.2, §8). Implementation must test this against the exchange's available-margin figure, which will include the excess (SC-06).
 - Residual funds of a closed cycle are never traded. ACGS never deposits or tops up by itself. A top-up is an operator action, classified through §7.6 and recorded as committed capital.
 - Lifetime limits are code constants checked against the ledger. Configuration cannot raise them; a PRD revision is required.
 
@@ -508,7 +508,7 @@ A contract is not considered resolved merely by selecting a value: it requires r
 - Added T-31–T-38. PRD v1.4 baselines preserved.
 - Hardened `RESUME_IGNITION` with automated cost-model, risk-digest and headroom preconditions and a limit of two shortfalls per cycle (§7.4.1).
 - Added INV-12 (smoke test is the hard gate for protective orders; test-order acceptance is never evidence) and the conditional/algo endpoint family requirements (§9.2, T-40).
-- Opening excess of up to 0.50 USDT is excluded from `cycle_equity` and is never trading capital (§7.1.1).
+- Opening excess of up to 0.50 USDT is excluded from `cycle_equity` and from available collateral for sizing/margin, and is never trading capital (§7.1.1).
 
 ## Appendix — v0.3 targeted change notes
 

@@ -215,7 +215,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 1. **PRD v1.4 is Approved & Locked** as the product baseline; no further PRD approval task remains.
 2. Review SPEC open contracts **SC-01/SC-02** and M0 scope; ensure M1 simulator accounting/event priority is resolved before M1 exit; do not pre-approve research-only risk settings.
-3. Create `README.md` (next step), then implement M0 with OFFLINE-only safety tests, CI, the account eligibility pre-check and forward capture.
+3. `README.md` created (pre-M0 version). Implement M0 with OFFLINE-only safety tests, CI, the account eligibility pre-check and forward capture, and add the README quickstart.
 4. Begin M1 data provenance and exchange-feasibility research before investing in live execution.
 5. Pre-register M2 numeric promotion criteria **before** holdout evaluation.
 
@@ -226,7 +226,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 - Basis updated to `SPEC.md` v0.4.
 - M2 evaluates trigger/halt on `cycle_equity` with the halt-headroom cap and reports the recovery shortfall rate.
 - M3 acceptance adds shortfall hold, external-inflow and halt-headroom tests (T-27–T-30).
-- Next actions: `README.md` before M0.
+- Next actions: pre-M0 `README.md` created; quickstart added in M0.
 - Aligned with PRD v1.4: M0 adds account eligibility pre-check, forward capture and import contracts; no testnet: M4 mainnet shadow mode, M5 staged `LIVE_SHADOW` → smoke test → `LIVE_ARMED`; M3 adds cycle closure/lifetime limits and Futures→Spot-only transfer; delivery rule 7 (stopping after M2/M4 is success).
 - M3 adds hardened `RESUME_IGNITION` preconditions and conditional/algo-order reconciliation (T-40); M5 acceptance requires per-order-type smoke-test sign-off (INV-12).
 - M1 adds instrument epochs, funding intervals, mark-kline coverage, Growth-level feasibility and T-33/T-35–T-38; M2 adds random-entry/ablation baselines and lifetime-limit success probability.
