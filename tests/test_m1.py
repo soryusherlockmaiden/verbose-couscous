@@ -262,6 +262,40 @@ def test_t38_mark_price_can_liquidate_before_stop(dataset: Dataset, policy: Poli
     assert any(e.detail == "LIQUIDATION_LATCH" for e in run.events)
 
 
+def test_t38_isolated_liquidation_forfeits_remaining_margin_and_funding_credit(
+    dataset: Dataset, policy: Policy,
+) -> None:
+    # The mark crosses maintenance just past the boundary. The modeled fill alone
+    # would hand back part of the isolated margin, which Binance never does.
+    credit = funding(T + HOUR, "-0.001", hours=1)
+    path = prices("100", "101", "91.4", "99")
+    data = change_bar(change_bar(dataset, 1, path, mark=True), 1, path)
+    data = replace(data, settlements=(*data.settlements, credit))
+    run = replay(Market(data), "fixture", policy, clock(T + 2 * HOUR),
+                 plan(enter(distance="4"), leverage=10))
+    entry = next(e for e in run.events if e.kind == "ENTRY_FILL")
+    liquidation, = (e for e in run.events if e.kind == "LIQUIDATION")
+    before = next(s for s in run.snapshots if s.sequence == entry.sequence)
+    after = next(s for s in run.snapshots if s.sequence == liquidation.sequence)
+    received = next(e for e in run.events if e.kind == "FUNDING").postings[0].cash
+    assert received == D("0.1")
+    margin = before.position.margin
+    clearance, = (p.cash for p in liquidation.postings if p.kind == "LIQUIDATION_CLEARANCE")
+    assert clearance < ZERO
+    assert before.wallet + received - after.wallet == margin + received
+    assert after.fees - before.fees == -sum(
+        p.cash for p in liquidation.postings if p.kind != "REALIZED_PNL"
+    )
+    assert after.equity == after.wallet == D(50) + after.realized + after.funding - after.fees
+    deeper = prices("100", "101", "80", "99")
+    gapped = replace(change_bar(change_bar(dataset, 1, deeper, mark=True), 1, deeper),
+                     settlements=data.settlements)
+    severe = replay(Market(gapped), "fixture", policy, clock(T + 2 * HOUR),
+                    plan(enter(distance="4"), leverage=10))
+    assert not any(p.kind == "LIQUIDATION_CLEARANCE" for e in severe.events for p in e.postings)
+    assert severe.snapshots[-1].wallet < after.wallet
+
+
 def test_t19_delisting_boundary_refuses_open_position(dataset: Dataset, policy: Policy) -> None:
     delisted = Listing(INST, T + 30 * 60_000, evidence(T - HOUR), "DELISTED")
     market = Market(replace(dataset, listings=(*dataset.listings, delisted)))

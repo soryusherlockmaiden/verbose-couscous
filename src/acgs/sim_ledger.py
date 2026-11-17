@@ -6,6 +6,9 @@ from enum import StrEnum
 
 from acgs.pit import ZERO
 
+# Liquidation clearance is a fee: the exchange keeps the remaining isolated margin.
+FEE_KINDS = frozenset({"FEE", "LIQUIDATION_CLEARANCE"})
+
 
 class MarkSource(StrEnum):
     FLAT = "FLAT"
@@ -72,6 +75,8 @@ class Journal:
         self.realized = ZERO
         self.funding = ZERO
         self.fees = ZERO
+        # Funding credited while exposed belongs to the isolated margin it would forfeit.
+        self.credits = ZERO
 
     def record(
         self, time: int, kind: str, qty: Decimal = ZERO, price: Decimal | None = None,
@@ -83,7 +88,7 @@ class Journal:
         self.events.append(Event(seq, time, kind, qty, price, postings, detail))
         for posting in postings:
             self.wallet += posting.cash
-            if posting.kind == "FEE":
+            if posting.kind in FEE_KINDS:
                 self.fees -= posting.cash
             elif posting.kind == "FUNDING":
                 self.funding += posting.cash
@@ -94,28 +99,37 @@ class Journal:
     def fill(
         self, time: int, kind: str, delta: Decimal, price: Decimal,
         fee_rate: Decimal, *, margin: Decimal = ZERO, reserve: Decimal = ZERO,
-        stop: Decimal = ZERO, detail: str = "",
+        stop: Decimal = ZERO, detail: str = "", forfeit: Decimal | None = None,
     ) -> int:
+        """Post one fill. `forfeit` is the minimum cash loss of a liquidation."""
         pos = self.position
         new_qty = pos.quantity + delta
         fee = abs(delta) * price * fee_rate
-        pnl: tuple[Posting, ...] = ()
+        postings: tuple[Posting, ...] = (Posting("FEE", -fee),)
         if not delta or price <= ZERO:
             raise ValueError("Fill requires nonzero quantity and a positive price")
         if pos.quantity * delta >= ZERO:
+            if forfeit is not None:
+                raise ValueError("Only a closing fill can forfeit isolated margin")
+            if not pos.quantity:
+                self.credits = ZERO
             basis = (pos.quantity * pos.basis + delta * price) / new_qty
             self.position = Position(new_qty, basis, pos.margin + margin, pos.reserve + reserve, stop)
         else:
-            if abs(delta) > abs(pos.quantity):
-                raise ValueError("Exit cannot reverse a position")
+            if abs(delta) > abs(pos.quantity) or (forfeit is not None and new_qty):
+                raise ValueError("Exit cannot reverse a position; liquidation closes it fully")
             realized = -delta * (price - pos.basis)
             fraction = new_qty / pos.quantity
             self.position = (
                 Position(new_qty, pos.basis, pos.margin * fraction, pos.reserve * fraction, pos.stop)
                 if new_qty else Position()
             )
-            pnl = (Posting("REALIZED_PNL", realized),)
-        return self.record(time, kind, delta, price, (*pnl, Posting("FEE", -fee)), detail)
+            self.credits *= fraction
+            postings = (Posting("REALIZED_PNL", realized), *postings)
+            # Isolated liquidation never returns margin: the residual is a clearance fee.
+            if forfeit is not None and realized - fee + forfeit > ZERO:
+                postings = (*postings, Posting("LIQUIDATION_CLEARANCE", -(realized - fee + forfeit)))
+        return self.record(time, kind, delta, price, postings, detail)
 
     def settle(self, time: int, price: Decimal, rate: Decimal) -> int:
         cash = -self.position.quantity * price * rate
@@ -123,6 +137,8 @@ class Journal:
         # The smaller margin is a protection-model input and is never a second debit.
         if cash < ZERO:
             self.position = replace(self.position, margin=max(ZERO, self.position.margin + cash))
+        elif self.position.quantity:
+            self.credits += cash
         return self.record(time, "FUNDING", self.position.quantity, price, (Posting("FUNDING", cash),))
 
     @property

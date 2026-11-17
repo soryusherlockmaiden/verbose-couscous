@@ -390,6 +390,7 @@ class _Replay:
             self.p.taker_fee + (self.p.liquidation_fee if liquidate else ZERO),
             detail="LIQUIDATION_CANNOT_BE_RULED_OUT_BEFORE_STOP" if liquidate and stop else
                    "INTRABAR_OHLC_BOUND" if intrabar else "OPEN_GAP",
+            forfeit=pos.margin + self.journal.credits if liquidate else None,
         )
         self.liquidated |= liquidate
         self.snapshot(seq, time, snapshot_mark, source, not intrabar)
