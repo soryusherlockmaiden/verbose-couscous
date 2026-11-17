@@ -309,7 +309,8 @@ The agreed 100 USDT observation trigger and 30 USDT halt threshold are **unchang
 - **Required M2 metric:** recovery shortfall rate `P(settled_equity < 100 + additional_operational_reserve | trigger)` under the declared cost stress grid, reported with uncertainty alongside the target-before-halt probability, and the **dead-zone rate** `P(100 <= settled_equity < 100 + additional_operational_reserve | trigger)` (§7.4.1).
 - **Reserve scenarios (preregistered before the M2 holdout, SC-03):**
   - (a) `additional_operational_reserve = 0` as the research baseline;
-  - (b) at least one positive scenario justified by **cost-model error**, i.e., the distribution of realized minus modeled closing cost on development data (e.g., an upper percentile). It is never justified by costs already deducted in `conservative_NLV`.
+  - (b) at least one positive scenario justified by **cost-model error**, i.e., the distribution of realized minus modeled closing cost on development data (e.g., an upper percentile). It is never justified by costs already deducted in `conservative_NLV`;
+  - (c) every **exact** reserve value intended for operation, registered as a promotion candidate under the declared multiple-comparison rules, so M3 can use it without a fresh holdout.
 
   Designate one **primary** scenario before the holdout for the M2 pass/fail decision. Report shortfall and dead-zone rates for each scenario. In M3 (SC-06), the exact operational reserve must meet the preregistered M2 criteria. If the value differs from the primary scenario, evidence from the original M2 holdout qualifies only if the exact value was preregistered for promotion evaluation under the declared multiple-comparison rules and passed those criteria. Otherwise, preregister a separate evaluation on a fresh holdout using the same M2 criteria. An evaluated range or a sensitivity result alone is insufficient.
 - Reserve value, exchange field mapping and snapshot freshness remain under OD-02/OD-03 and SC-06.
@@ -518,7 +519,7 @@ Research must use chronological development/validation windows, walk-forward tes
 |---|---|---|
 | SC-01 | M1 | Candle availability, PIT filters, provenance and gap handling, instrument epochs, funding evidence and interval-inference rules (§4.3.1, T-42), mark-price kline coverage, liquidation/stop price basis, forward capture (§4.2/§4.3/§4.5; T-35/T-36/T-38) |
 | SC-02 | **M1, before M1 acceptance** | Owner of all simulator event processing (§4.5.1). Simulated equity accounting (`sim_wallet`, realized/unrealized PnL, fee/funding ledger, mark source/proxies, snapshot cadence), deterministic fill/stop/funding priority, slippage, order filters and liquidation assumptions; verify with T-17–T-19/T-21 |
-| SC-03 | Before M2 holdout | Pre-registered numeric gates, sample size, confidence and multiplicity; recovery reserve scenarios and the primary scenario (§7.3.1) |
+| SC-03 | Before M2 holdout | Pre-registered numeric gates, sample size, confidence and multiplicity; recovery reserve scenarios, the primary scenario and exact operational reserve candidates (§7.3.1) |
 | SC-04 | **M2, frozen before holdout** (with SC-03) | Strategy signal semantics, indexing, warm-up, stop-level computation, universe ranking cadence and trigger/halt evaluation cadence; **not** simulator event processing (§4.5.1) |
 | SC-05 | **M2, frozen before holdout** (with SC-03); M3 production engine | M2 minimal Ignition sizing and target/halt simulation; `cycle_equity` measure and cadence (§7.3.1); halt-headroom cap (§8.1) |
 | SC-06 | M3 | Exchange-specific account-equity/mark-price field mapping, snapshot freshness, realized/transferable balance reconciliation, costs and post-transfer reserve (the exact operational value must pass the M2 criteria, §7.3.1), external cash-flow detection fields (§7.6); **not** simulator PnL/event accounting |
@@ -546,7 +547,7 @@ A contract is not considered resolved merely by selecting a value: it requires r
 - Clarified that PAPER can start on public data alone (T-34), funding estimates use decision-time evidence and explicit default scenarios (T-42), and the exact operational reserve requires promotion evidence under the M2 criteria (§7.3.1).
 - Funding evidence (§4.3.1): settlement events `VERIFIED`; derived intervals `RECONSTRUCTED`; gaps `UNAVAILABLE`; no 8h default; `premiumIndex` added to forward capture; T-42.
 - M1/M2 boundary (§4.5.1): M1 owns simulator event processing; M2 owns strategy semantics and trigger cadence; M1 rules are not tuned on M2 results.
-- Recovery reserve scenarios preregistered before the M2 holdout (0 USDT baseline plus a cost-model-error scenario, one primary); dead-zone rate reported; M3 chooses only an evaluated value (§7.3.1).
+- Recovery reserve scenarios preregistered before the M2 holdout (0 USDT baseline plus a cost-model-error scenario, one primary); dead-zone rate reported; the exact operational reserve must pass the preregistered M2 criteria, so exact candidates are preregistered (§7.3.1).
 - `RESUME_IGNITION` requires `cycle_equity < 100`; the dead zone stays in `SHORTFALL_HOLD`; T-43.
 - Editorial: product renamed from "ACGS V2" to **ACGS** (PRD v1.4). No behavior changed.
 - Defined `cycle_equity` (conservative net liquidation value excluding external inflows) as the measure for the 100 USDT trigger and 30 USDT halt, with cadence parity and a required M2 recovery shortfall-rate metric (§7.3.1). Thresholds unchanged.

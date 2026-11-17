@@ -90,6 +90,8 @@ M0–M4 never place real orders or real transfers.
 
 There is no code yet, so there are no setup steps or commands. M0 will add the quickstart here: install, configuration, test, lint and offline replay commands.
 
+Supported development environments: Ubuntu 24.04, and Windows via WSL2 + Docker Desktop (keep the repository inside the WSL filesystem). Docker is the canonical way to run checks, and CI runs lint, type checks and tests on both Ubuntu and Windows, so results do not differ between machines.
+
 Planned technology baseline (PRD §10): Python 3.12+, CCXT with the native Binance API where required, NumPy/Pandas, SQLite (single writer), pytest, Docker Compose on a single VPS, and GitHub Actions.
 
 ## Repository layout

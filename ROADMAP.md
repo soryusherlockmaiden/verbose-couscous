@@ -32,7 +32,7 @@
 ## 3. M0 — Foundation
 
 **Scope**
-- Python 3.12+ project, typed modules, dependency lock, lint/type/test commands.
+- Python 3.12+ project, typed modules, cross-platform dependency lock, lint/type/test commands. Identical results on Ubuntu 24.04, Windows (WSL2 or native) and CI, with Docker as the canonical execution path; CI runs lint/type/tests on Ubuntu and Windows.
 - Docker Compose for local/VPS deployment; configuration schema and `OFFLINE` default.
 - SQLite single-writer storage skeleton, deterministic clock and test fixtures.
 - GitHub Actions: unit tests, lint, secret scanning; no production credentials in CI.
@@ -59,7 +59,7 @@ Verify all applicable items at the start of M5, including re-verification of ite
 
 **Acceptance:** clean install/replay smoke test; CI green; secret scan clean; invalid config fails safely; no real exchange order/transfer path exists; restart preserves state fixture; import contracts enforced in CI (T-13); eligibility recorded (each applicable item has a status; `UNVERIFIED` allowed and listed as open); forward capture stores provenance-tagged snapshots.
 
-**Exit decision:** accept M0 only when all checks are reproducible on a clean environment.
+**Exit decision:** accept M0 only when all checks are reproducible on a clean environment, and lint/type/tests pass on both Ubuntu and Windows CI runners.
 
 ## 4. M1 — Market & Offline Execution
 
@@ -104,7 +104,7 @@ Verify all applicable items at the start of M5, including re-verification of ite
 - **Minimal simulated Ignition:** 50 USDT start, 100 USDT observation target, fixed 30 USDT halt, research-only sizing/exposure, costs; compute using the **M1 accepted equity ledger and snapshot-trigger rules**. Estimate target-before-halt and conditional recovery feasibility; no real/simulated wallet transfer workflow is required here. Evaluate trigger/halt on `cycle_equity` with the halt-headroom cap (SPEC §7.3.1/§8.1) and report the recovery shortfall rate.
 
 **Required sequence**
-1. Publish versioned research protocol and numeric acceptance thresholds **before opening holdout**, including recovery reserve scenarios (0 USDT baseline plus at least one cost-model-error scenario) and the primary scenario (SPEC §7.3.1).
+1. Publish versioned research protocol and numeric acceptance thresholds **before opening holdout**, including recovery reserve scenarios (0 USDT baseline plus at least one cost-model-error scenario) and the primary scenario. Also preregister every **exact** reserve value intended for operation as a promotion candidate under the multiple-comparison rules; otherwise a different M3 value needs a fresh holdout (SPEC §7.3.1).
 2. Develop and test only on designated development/validation periods.
 3. Freeze code, parameters, universe rules, cost scenarios and comparator definitions.
 4. Run holdout once under preregistered rules; retain results even if unfavorable.
@@ -242,6 +242,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 ## 13. v0.4 targeted change notes
 
+- M0 requires identical lint/type/test results on Ubuntu 24.04 and Windows, with Docker canonical and a two-OS CI matrix. M2 preregisters exact operational reserve candidates.
 - Clarified the optional read-only key in M4, decision-time funding evidence in M1, and validation of the exact operational reserve against the M2 criteria.
 - Account eligibility: `UNVERIFIED` does not block M0 or OFFLINE M1/M2; `NOT_ELIGIBLE` blocks M1. Staged deadlines are in §3. HTTP 451/403 triggers operator review.
 - Funding evidence and `premiumIndex` forward capture (M0/M1, T-42); M1/M2 simulation-semantics boundary; reserve scenarios preregistered before the M2 holdout; resume refused at or above the trigger (T-43).

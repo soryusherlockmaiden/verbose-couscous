@@ -50,6 +50,14 @@ Read this file completely at the start of every session. Do not rely on memory o
 - **No premature live trading.** No production order, test-order or transfer adapter exists before M5 (SPEC INV-08).
 - **Typed and tested.** Type hints on public interfaces. Add unit, integration, property or replay tests as appropriate (PRD §9).
 - **Never log or commit secrets.** Offline replay and research never need credentials.
+- **Cross-platform, no drift.** The same commit must produce the same lint, type-check and test results in the cloud agent container (Ubuntu 24.04, x86_64), on Ubuntu 24.04 and on Windows. Docker is the canonical execution path; native runs are a convenience. Rules:
+  - Pin the Python version (e.g., `.python-version`) and every dev tool through the cross-platform lockfile, so all environments use identical versions.
+  - Commit a `.gitattributes` forcing LF (`* text=auto eol=lf`) and a minimal `.editorconfig` (UTF-8, LF, final newline).
+  - Use `pathlib` for paths. Open every text file with an explicit `encoding="utf-8"` (the Windows default encoding differs). Keep timestamps explicitly UTC, never local time zone.
+  - No bash-only or Makefile-only workflows. Commands are `docker compose run …` or Python module entry points (`python -m …`) that run unchanged on Linux and Windows.
+  - Keep SQLite databases on a Docker named volume or a Linux filesystem path, never on a Windows bind mount (file locking is unreliable there).
+  - Treat file names as case-sensitive, avoid symlinks, and avoid `fork`-dependent multiprocessing.
+  - Windows developers use WSL2 + Docker Desktop with the repository inside the WSL filesystem. Native Windows Python must still pass CI (see §E).
 
 ## D. Agent working protocol
 
@@ -76,13 +84,14 @@ Sources: ROADMAP §3, PRD §10–§11, SPEC §1.1 (INV-01, INV-08, INV-10), §2�
 **In scope:**
 
 - [ ] **Project skeleton:** Python ≥ 3.12 package under `src/`, typed, with module boundaries following SPEC §2 (`config`, `clock`, `market_data`, `provenance`, `strategy`, `research`, `broker_sim`, `capital`, `risk`, `execution`, `ledger`, `ops`, …). Create only the modules M0 needs. Leave the others as empty packages, or out entirely.
-- [ ] **Dependencies:** one mainstream tool with a committed **lockfile**, a minimal runtime dependency set, and dev tools pinned. Document the install command.
+- [ ] **Dependencies:** one mainstream tool with a committed, **cross-platform lockfile** (resolves for Linux and Windows), a minimal runtime dependency set, the Python version pinned and dev tools pinned. Document the install command.
 - [ ] **Docker Compose:** an image that installs from the lockfile and runs the offline smoke test and the forward-capture job. No secrets in the image or compose file.
 - [ ] **Configuration:** a typed, validated schema. `mode` defaults to `OFFLINE`, and unknown or invalid values fail with a clear error. `PAPER` and `LIVE*` values exist in the schema but are **refused at startup in M0** (no adapters exist). The mode is fixed at startup.
 - [ ] **SQLite storage skeleton:** single writer, transactional, with a schema migration mechanism. Include minimal tables needed for M0 (e.g., `config_versions`, `state_events` and the forward-capture records). A restart preserves a state fixture.
 - [ ] **Deterministic clock:** an injected clock interface with a fixed/simulated implementation for tests. A test proves decision code does not read wall time.
 - [ ] **Fixtures:** recorded, credential-free fixtures for exchange metadata responses, so tests never need the network.
-- [ ] **CI (GitHub Actions):** lint, type check, unit tests, import contracts, secret scan and Docker build on every push/PR. No credentials in CI.
+- [ ] **CI (GitHub Actions):** lint, type check, unit tests, import contracts, secret scan and Docker build on every push/PR. Lint, type check and tests run on an `ubuntu-latest` + `windows-latest` matrix; Docker build and secret scan run on Ubuntu. No credentials in CI.
+- [ ] **Cross-platform hygiene (§C):** `.gitattributes` (LF), `.editorconfig`, pinned Python version, UTF-8 file I/O, and no bash-only or Makefile-only commands.
 - [ ] **Lint / types / tests:** e.g., `ruff`, `mypy` (strict on new code), `pytest`. Any equivalent mainstream tool is fine; document the commands.
 - [ ] **Secret scanning:** e.g., `gitleaks` in CI over the full history, plus a test that config/log output never contains key-like values.
 - [ ] **Capability boundaries (SPEC §2.1, T-13, T-16):**
