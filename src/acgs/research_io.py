@@ -14,7 +14,7 @@ from acgs.broker_sim import Action, Intent, ReplayPlan, replay
 from acgs.clock import FixedClock
 from acgs.eligibility import Side
 from acgs.feasibility import feasibility
-from acgs.history_io import load_history, read_json
+from acgs.history_io import integer, load_history, number, read_json
 from acgs.pit import Instrument
 from acgs.sim_config import EPOCH, Policy, StopBasis, canonical, digest, instant_ms
 
@@ -27,9 +27,11 @@ def _policy(path: Path) -> Policy:
     for field in fields(Policy):
         value = raw[field.name]
         if field.type is Decimal:
-            value = Decimal(value)
+            value = number(value)
         elif get_args(field.type) == (Decimal, Ellipsis):
-            value = tuple(Decimal(x) for x in value)
+            if not isinstance(value, list):
+                raise ValueError(f"Expected a list of decimal strings for {field.name}")
+            value = tuple(number(x) for x in value)
         elif get_args(field.type) == (int, Ellipsis):
             if not isinstance(value, list) or any(type(x) is not int for x in value):
                 raise ValueError(f"Expected integral list for {field.name}")
@@ -66,18 +68,20 @@ def _parse_time(value: str) -> int:
 
 
 def _plan(raw: dict[str, Any], inst: Instrument, start: int) -> ReplayPlan:
+    if not isinstance(raw["candidate_version"], str) or not isinstance(raw["intents"], list):
+        raise ValueError("Replay plan requires a version string and an intent list")
     intents = tuple(
         Intent(
             _parse_time(row["time"]), _parse_time(row["available"]),
             Action(row["action"]), Side[row["side"]],
-            Decimal(row.get("distance", "0")), Decimal(row["quantity"]) if "quantity" in row else None,
+            number(row.get("distance", "0")), number(row["quantity"]) if "quantity" in row else None,
         )
         for row in raw["intents"]
     )
     return ReplayPlan(
-        raw["candidate_version"], inst, start, raw["interval_ms"], Decimal(raw["equity"]),
-        Decimal(raw["risk_pct"]), raw["leverage"], intents,
-        Decimal(raw["halt_level"]) if "halt_level" in raw else None,
+        raw["candidate_version"], inst, start, integer(raw["interval_ms"]), number(raw["equity"]),
+        number(raw["risk_pct"]), integer(raw["leverage"]), intents,
+        number(raw["halt_level"]) if "halt_level" in raw else None,
     )
 
 

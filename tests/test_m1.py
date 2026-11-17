@@ -18,7 +18,7 @@ from acgs.clock import FixedClock
 from acgs.eligibility import Candidate, Side, evaluate, order_step
 from acgs.feasibility import feasibility
 from acgs.funding import funding_complete, funding_view
-from acgs.history_io import _capture_observations, load_history
+from acgs.history_io import _capture_observations, load_history, number
 from acgs.ledger import open_ledger
 from acgs.pit import (
     DAY,
@@ -41,7 +41,7 @@ from acgs.pit import (
     Spread,
     Tier,
 )
-from acgs.research_io import _policy
+from acgs.research_io import _plan, _policy
 from acgs.sim_config import EPOCH, Policy, StopBasis, canonical, digest
 from acgs.sim_ledger import Journal, MarkSource, Posting
 from acgs.universe import snapshot
@@ -559,3 +559,26 @@ def test_t02_t42_m0_capture_read_only_and_funding_absence_withdraws_adjustment(t
     config = _policy(SETTINGS)
     assert funding_view(market, inst, first.effective, config).interval_ms == 4 * HOUR
     assert funding_view(market, inst, second.effective, config).interval_ms is None
+
+
+def test_t01_offline_inputs_require_exact_decimal_text(tmp_path: Path) -> None:
+    # A JSON float imports its binary expansion: 0.1 would authorize slightly more than 10%.
+    assert number("0.10") == D("0.10") and number(5) == D(5)
+    for value in (0.1, True, None, "NaN", "Infinity"):
+        with pytest.raises(ValueError):
+            number(value)
+    raw = json.loads(SETTINGS.read_text(encoding="utf-8"))
+    path = tmp_path / "policy.json"
+    for key, value in (("taker_fee", 0.0005), ("ign_risks", [0.08, "0.10"]), ("ign_risks", "0.10")):
+        path.write_text(json.dumps({**raw, key: value}), encoding="utf-8")
+        with pytest.raises(ValueError):
+            _policy(path)
+    sample = json.loads((SETTINGS.parents[1] / "evidence" / "m1" / "replay-plan.json")
+                        .read_text(encoding="utf-8"))
+    assert _plan(sample, INST, T).risk_pct == D("0.10")
+    intent = sample["intents"][0]
+    for change in ({"risk_pct": 0.1}, {"equity": 50.0}, {"leverage": True},
+                   {"interval_ms": 86_400_000.0}, {"candidate_version": 1},
+                   {"intents": [{**intent, "distance": 2000.5}]}):
+        with pytest.raises(ValueError):
+            _plan({**sample, **change}, INST, T)

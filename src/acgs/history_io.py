@@ -62,6 +62,24 @@ def read_json(path: Path) -> dict[str, Any]:
     return result
 
 
+def number(value: Any) -> Decimal:
+    """An exact decimal from JSON text. A JSON float would import its binary expansion."""
+    if type(value) is int:
+        return Decimal(value)
+    if not isinstance(value, str):
+        raise ValueError("Expected a decimal string")
+    result = Decimal(value)
+    if not result.is_finite():
+        raise ValueError("Expected a finite decimal")
+    return result
+
+
+def integer(value: Any) -> int:
+    if type(value) is not int:
+        raise ValueError("Expected an integer")
+    return value
+
+
 def _time(value: str | int) -> int:
     if type(value) is int:
         return value
@@ -137,7 +155,7 @@ def _archive_rows(payload: bytes, kind: str, limit: int = 48_000_000) -> list[li
 
 
 def _lot(raw: dict[str, Any]) -> Lot:
-    return Lot(Decimal(raw["minQty"]), Decimal(raw["maxQty"]), Decimal(raw["stepSize"]))
+    return Lot(number(raw["minQty"]), number(raw["maxQty"]), number(raw["stepSize"]))
 
 
 def _filters(
@@ -152,9 +170,9 @@ def _filters(
     price, band = read["PRICE_FILTER"], read["PERCENT_PRICE"]
     return Filters(
         inst, effective, ev, _lot(read["LOT_SIZE"]), _lot(read["MARKET_LOT_SIZE"]),
-        Decimal(price["tickSize"]), Decimal(read["MIN_NOTIONAL"]["notional"]),
-        Decimal(price["minPrice"]), Decimal(price["maxPrice"]),
-        Decimal(band["multiplierDown"]), Decimal(band["multiplierUp"]),
+        number(price["tickSize"]), number(read["MIN_NOTIONAL"]["notional"]),
+        number(price["minPrice"]), number(price["maxPrice"]),
+        number(band["multiplierDown"]), number(band["multiplierUp"]),
     )
 
 
@@ -223,8 +241,8 @@ def _capture_observations(
                         present.add(observed_inst.symbol)
                         schedules.append(Schedule(
                             observed_inst, time, ev, int(item["fundingIntervalHours"]) * HOUR,
-                            cap=Decimal(item["adjustedFundingRateCap"]),
-                            floor=Decimal(item["adjustedFundingRateFloor"]),
+                            cap=number(item["adjustedFundingRateCap"]),
+                            floor=number(item["adjustedFundingRateFloor"]),
                         ))
                     elif int(item["nextFundingTime"]) > time:
                         schedules.append(Schedule(observed_inst, time, ev, next_time=int(item["nextFundingTime"])))
@@ -238,7 +256,7 @@ def _capture_observations(
                 symbol = parse_qs(urlsplit(url).query).get("symbol", [""])[0]
                 instrument = current.get(symbol)
                 if instrument is not None and body["bids"] and body["asks"]:
-                    bid, ask = Decimal(body["bids"][0][0]), Decimal(body["asks"][0][0])
+                    bid, ask = number(body["bids"][0][0]), number(body["asks"][0][0])
                     if ZERO < bid <= ask:
                         spreads.append(Spread(instrument, ev, 20_000 * (ask - bid) / (ask + bid)))
     finally:
@@ -268,7 +286,7 @@ def load_history(path: Path, root: Path, capture_db: Path | None = None) -> Load
         raise ValueError("Expected nonnegative integral arrival delays")
     candle_delay, funding_delay = delays
     instrument_rows = [
-        Instrument(row["symbol"], _time(row["onboard"]), row.get("multiplier", 1))
+        Instrument(row["symbol"], _time(row["onboard"]), integer(row.get("multiplier", 1)))
         for row in manifest["instruments"]
     ]
     instruments = {inst.id: inst for inst in instrument_rows}
@@ -290,21 +308,22 @@ def load_history(path: Path, root: Path, capture_db: Path | None = None) -> Load
     maintenance = [
         Maintenance(
             instruments[x["id"]], _time(x["effective"]), _evidence(x["evidence"]),
-            tuple(Tier(Decimal(t["ceiling"]), Decimal(t["rate"]), Decimal(t["deduction"]),
-                       t["max_leverage"]) for t in x["tiers"]),
+            tuple(Tier(number(t["ceiling"]), number(t["rate"]), number(t["deduction"]),
+                       integer(t["max_leverage"])) for t in x["tiers"]),
         )
         for x in manifest.get("maintenance", [])
     ]
     spreads = [
-        Spread(instruments[x["id"]], _evidence(x["evidence"]), Decimal(x["bps"]))
+        Spread(instruments[x["id"]], _evidence(x["evidence"]), number(x["bps"]))
         for x in manifest.get("spreads", [])
     ]
     schedules = [
         Schedule(
             instruments[x["id"]], _time(x["effective"]), _evidence(x["evidence"]),
-            x.get("interval_ms"), _time(x["next_time"]) if "next_time" in x else None,
-            Decimal(x["cap"]) if "cap" in x else None,
-            Decimal(x["floor"]) if "floor" in x else None,
+            integer(x["interval_ms"]) if "interval_ms" in x else None,
+            _time(x["next_time"]) if "next_time" in x else None,
+            number(x["cap"]) if "cap" in x else None,
+            number(x["floor"]) if "floor" in x else None,
             _time(x["until"]) if "until" in x else None,
         )
         for x in manifest.get("schedules", [])
@@ -341,9 +360,9 @@ def load_history(path: Path, root: Path, capture_db: Path | None = None) -> Load
                 if settlement["symbol"] != inst.symbol or not start <= time < end:
                     raise ValueError("Unexpected instrument/time in funding response")
                 funding.append(Funding(
-                    inst, time, Decimal(settlement["fundingRate"]),
+                    inst, time, number(settlement["fundingRate"]),
                     Evidence(source, "usd_m_funding_rate_rest", Provenance.VERIFIED, time + funding_delay),
-                    Decimal(settlement["markPrice"]) if settlement.get("markPrice") else None,
+                    number(settlement["markPrice"]) if settlement.get("markPrice") else None,
                 ))
         else:
             raise ValueError(f"Unknown historical asset type: {kind}")
