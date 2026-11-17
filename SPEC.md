@@ -1,6 +1,7 @@
 # ACGS — System Specification (SPEC)
 
-**Version:** 0.4 — Pre-M0 Corrections  
+**Version:** 0.5 — M1 simulation contracts
+
 **Date:** 2026-11-17  
 **Status:** Engineering baseline candidate; offline design and research only  
 **Source of truth for product intent:** `PRD.md` v1.4 (**Approved & Locked**)  
@@ -169,7 +170,7 @@ M1 must implement and test the **simulation accounting contract** before M1 is a
 - **Stop trigger and liquidation price basis:** liquidation is evaluated on the mark-price path using point-in-time, provenance-tagged maintenance-margin tiers. Protective stops trigger on the price type declared by the versioned `stop_working_type` (`MARK_PRICE` or `CONTRACT_PRICE`), which must equal the planned live setting. The simulator evaluates each on its own price path and flags bars where liquidation could precede the stop.
 - **Event ordering:** resolve an explicit, deterministic timestamp/priority ordering for exchange settlement, pending order fills, protective stops, funding postings and snapshots. Apply each event once to the position held at the actual modeled settlement time. When intrabar order/funding/stop chronology cannot be reconstructed from OHLC, enforce a documented conservative rule and flag the ambiguity; never imply that OHLC provides unseen tick ordering. The chosen rule and tied-timestamp behavior must be frozen and regression-tested before M1 exit; ownership is defined in §4.5.1.
 - **Snapshot cadence and trigger semantics:** emit reconciled simulated snapshots after each modeled fill/funding/stop event and at each completed bar close, with timestamp, mark source, position state and wallet/equity breakdown; record which snapshots are eligible for M2's 100 USDT observation and 30 USDT halt checks, evaluated on `cycle_equity` (§7.3.1). Do **not** infer a trigger merely from a candle's favorable high/low when no eligible event-time equity is observable. If the model restricts trigger evaluation cadence, declare it before M2 research and measure sensitivity; do not retroactively change it after observing outcomes.
-- **Accounting acceptance:** for each event/snapshot, cash ledger totals reconcile to `sim_wallet`, and `sim_equity − sim_wallet == unrealized_PnL` within a predeclared numerical tolerance. Verify flat-position equity equals wallet, realized/unrealized transition on partial and complete closes, funding charged to the correct holder, fee/slippage accounting, and deterministic replay with adverse gaps. **OPEN before M1 acceptance:** exact event priority at ties, source/proxy policy, rounding/tolerances and valuation timestamp rules (SC-02).
+- **Accounting acceptance:** for each event/snapshot, cash ledger totals reconcile to `sim_wallet`, and `sim_equity − sim_wallet == unrealized_PnL` within a predeclared numerical tolerance. Verify flat-position equity equals wallet, realized/unrealized transition on partial and complete closes, funding charged to the correct holder, fee/slippage accounting, and deterministic replay with adverse gaps. Exact priorities, price bases, numeric precision and valuation timing are specified under SC-02 in §13.1.
 
 
 ### 4.5.1 M1/M2 boundary for simulation semantics
@@ -517,8 +518,8 @@ Research must use chronological development/validation windows, walk-forward tes
 
 | ID | Must be resolved by | Decision |
 |---|---|---|
-| SC-01 | M1 | Candle availability, PIT filters, provenance and gap handling, instrument epochs, funding evidence and interval-inference rules (§4.3.1, T-42), mark-price kline coverage, liquidation/stop price basis, forward capture (§4.2/§4.3/§4.5; T-35/T-36/T-38) |
-| SC-02 | **M1, before M1 acceptance** | Owner of all simulator event processing (§4.5.1). Simulated equity accounting (`sim_wallet`, realized/unrealized PnL, fee/funding ledger, mark source/proxies, snapshot cadence), deterministic fill/stop/funding priority, slippage, order filters and liquidation assumptions; verify with T-17–T-19/T-21 |
+| SC-01 | M1 | Resolved for OFFLINE in §13.1. Historical coverage is recorded per dataset. |
+| SC-02 | **M1, before M1 acceptance** | Resolved for OFFLINE in §13.1. Event and accounting semantics apply to M2 data and replay. |
 | SC-03 | Before M2 holdout | Pre-registered numeric gates, sample size, confidence and multiplicity; recovery reserve scenarios, the primary scenario and exact operational reserve candidates (§7.3.1) |
 | SC-04 | **M2, frozen before holdout** (with SC-03) | Strategy signal semantics, indexing, warm-up, stop-level computation, universe ranking cadence and trigger/halt evaluation cadence; **not** simulator event processing (§4.5.1) |
 | SC-05 | **M2, frozen before holdout** (with SC-03); M3 production engine | M2 minimal Ignition sizing and target/halt simulation; `cycle_equity` measure and cadence (§7.3.1); halt-headroom cap (§8.1) |
@@ -528,12 +529,30 @@ Research must use chronological development/validation windows, walk-forward tes
 | SC-09 | M4 | Paper pilot duration, alerts, fault-response and operational acceptance |
 | SC-10 | M5 | Binance endpoint/permission/position-mode compatibility, account isolation and preconditions (§7.6), and live arming |
 | SC-11 | Optional P1/P2 | Vault locking, pyramiding and adaptive selector promotion |
-| SC-12 | M1 | Micro-capital eligibility reason codes, exchange-filter provenance, feasibility report and sensitivities across Ignition and Growth risk levels, risk base, stop placement/rounding, most-restrictive-cap sizing and binding-constraint reporting (§5.2) (T-22/T-23/T-33/T-41) |
+| SC-12 | M1 | Resolved for OFFLINE in §13.1 with the versioned feasibility report. |
 | SC-13 | M3 mock; M4 shadow; M5 `LIVE_SHADOW` + smoke test | Protective-order compatibility matrix, emergency flatten safety contract, account-mode validation, trailing replacement without coverage gap, shadow-mode key and endpoint restrictions, conditional/algo endpoint family and smoke-test validity (INV-12) (T-24/T-26/T-34/T-37/T-39/T-40) |
 | SC-14 | M3 | Recovery workflow substates including `SHORTFALL_HOLD` and operator resolutions (§7.4.1), durable intent, retry ambiguity and fault-injection suite (T-25, T-28) |
 | SC-15 | M3 | Capital-cycle closure, new-cycle authorization and lifetime limits: policy decided in PRD v1.4 §5.2.1, mechanics in §7.1.1; transfer key separation and direction restriction (§10) (T-31/T-32) |
 
 A contract is not considered resolved merely by selecting a value: it requires rationale, versioned configuration, and tests/evidence appropriate to its gate.
+
+### 13.1 M1 OFFLINE resolutions
+
+**SC-01.** The manifest pins source assets by SHA-256 and encodes UTC millisecond coverage, ingest time, and modeled publication lags. A bar is half-open and its completed contents enter a decision after its close and declared lag. A replay may use the opening print at its modeled boundary. Metadata requires both effective time and observation time at or before the decision. Captured filters apply from receipt and expire at the policy freshness bound. Symbol plus onboard instant identifies an epoch. A historical sample can use a disclosed first-observed anchor when onboard evidence is unavailable. An observed relisting requires a distinct prior epoch boundary. Contract size encoded in a symbol is preserved for identity and reporting. USD-M candle/fill prices and quantities are already in the exchange's quoted unit.
+
+Funding accounting uses the recorded timestamp and rate. Decision-time forecasts use `premiumIndex` for a verified next settlement and `fundingInfo` for published adjustments. Absence withdraws the adjusted observation. Use the latest two available events to infer spacing within the versioned 5 s jitter bound. The recognized inference candidates are 1h, 2h, 4h and 8h. A supporting archive interval field can corroborate a change. A longer spacing without corroboration after a shorter known one is treated as a possible gap. A documented scenario interval must have explicit source and applicability. The baseline has no default interval. A missing expected record or insufficient first-interval evidence fails continuity without interpolation. Mark klines are preferred. A proxy requires a time-bounded gap record known by the observation boundary and explicit opt-in. The sample used no proxies. [Coverage and provenance](evidence/m1/feasibility.md).
+
+**SC-02.** The single-epoch broker consumes versioned simulated intents and an injected horizon. For equal timestamps, finish the previous bar's bounded intrabar exit, close snapshot and available-close trailing ratchet, then process the next bar's open. At the open, process exact-time funding for the prior holder, then liquidation/stop gaps, reduce-only exits and authorized entries. An intrabar funding event on a surviving position uses the recorded settlement mark. Any possible protective exit in the same intrabar window with uncertain chronology fails that replay. Stop/liquidation combinations give liquidation priority. Missing candle, unresolved listing boundary, missing due funding, or missing applicable mark or tier while exposed fails the replay.
+
+The entry/exit fill models use an adverse tick and configurable taker fee and slippage. Immediate partial fill is a deterministic order fraction with revalidated quantity and a canceled remainder. Gap exits use stressed slippage from the opening print. Intrabar contract-triggered stops use the stop level with stressed slippage. Mark-triggered stops and liquidation use the adverse contract bound and stressed slippage. Liquidation additionally charges the modeled liquidation fee and blocks further entries. Maintenance survival is evaluated on the mark path using isolated allocated margin, the applicable notional bracket, deduction and liquidation-cost allowance. Adverse funding reduces isolated protection margin while posting the cash debit once. Reduction realizes PnL against weighted fill basis and releases proportional collateral. The model does not assume insurance payouts. The stop price basis is explicit in `config/m1.json`. The M1 scenario uses `CONTRACT_PRICE` and tests also cover `MARK_PRICE`. Any planned live setting must match the researched basis and pass SC-13.
+
+Emit an event-numbered wallet/equity snapshot after each fill, funding posting or protective exit and at each completed bar close. Use the mark opening print at open, settlement mark at intrabar funding, and mark close at close. When enabled, contract proxies carry explicit open/close source labels. Use 40-digit Decimal arithmetic with half-even rounding for accounting and a 0.00000001 USDT reconciliation tolerance. Available collateral reserves margin and costs without deducting them from mark equity. Cycle equity deducts modeled closing costs. OHLC bounds and closes unavailable at their event timestamp are ineligible for trigger evaluation. M2 still owns the cadence and capital rules under SC-04/SC-05. [Checks and evidence](evidence/m1/verification.md).
+
+**SC-12.** Apply §5.2 with a common step for both lot filters and validate minimum notional against the conservative entry/mark basis. Compute the margin cap using collateral net of opening excess and a fixed plus per-unit reserve, solved algebraically to account for quantity-dependent fees and funding. Bound quantity across the supplied maintenance tiers using isolated solvency at the stressed stop plus buffer and at the current mark. Round stop prices toward the actual fill and sizes down, then revalidate. Store the four cap values, binding cap, usage, evidence and all applicable reasons. The 50 USDT report samples the PRD risk ranges using endpoints and midpoint, the published candidate leverage ceilings and representative Growth stakes of 100 and 250 USDT. Cost and stop factors are reproducible scenarios. They set no research promotion threshold. [M1 policy](config/m1.json) · [50 USDT report](evidence/m1/feasibility.md).
+
+### v0.5 targeted change notes
+
+- Recorded M1 technical resolutions for SC-01, SC-02 and SC-12 with versioned OFFLINE assumptions and regression evidence.
 
 ## 14. Change control and release policy
 

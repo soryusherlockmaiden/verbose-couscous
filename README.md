@@ -8,9 +8,9 @@ ACGS is a research-first, safety-first experiment with automated trading on **Bi
 
 | Item | State |
 |---|---|
-| Phase | **M0 Foundation accepted** (2026-11-17 UTC); M1 not started |
+| Phase | **M1 Market & Offline Execution in review** |
 | `PRD.md` | v1.4, Approved & Locked |
-| `SPEC.md` | v0.4, engineering baseline candidate |
+| `SPEC.md` | v0.5, engineering baseline candidate |
 | `ROADMAP.md` | v0.4, progress and evidence in §12 |
 | Live orders / real transfers | **Not authorized** |
 
@@ -78,7 +78,7 @@ Test-order acceptance proves only that a request is valid. A protective-order ty
 | Milestone | Goal | Status |
 |---|---|---|
 | M0 Foundation | Offline skeleton, CI, config, account eligibility pre-check, forward data capture | PASS (accepted) |
-| M1 Market & Offline Execution | PIT data, deterministic simulator and equity ledger, 50 USDT feasibility report | Not started |
+| M1 Market & Offline Execution | PIT data, deterministic simulator and equity ledger, 50 USDT feasibility report | In review |
 | M2 Strategy Research | Preregistered research decision: `PASS` / `FAIL` / `INCONCLUSIVE` | Not started |
 | M3 Capital & Risk Engine | State machine, risk engine, recovery simulation, fault injection | Not started |
 | M4 Paper Pilot | Mainnet shadow operation with no real orders | Not started |
@@ -120,7 +120,19 @@ docker compose --profile check build check
 docker compose --profile check run --rm check
 ```
 
-Compose stores SQLite in the `acgs-data` named volume. The smoke job records a deterministic state fixture, and on replay it verifies that the stored record still matches; a changed record exits with an error. Historical market replay arrives in M1. The `check` service runs the same ruff, mypy and pytest checks as the native workflow inside the container.
+Compose stores SQLite in the `acgs-data` named volume. The smoke job records a deterministic state fixture and verifies the stored record on replay. The `check` service runs the same ruff, mypy and pytest checks as the native workflow inside the container.
+
+### Historical market data and OFFLINE replay
+
+The [50 USDT report](evidence/m1/feasibility.md) has the pinned sample download and exact feasibility commands. `historical` validates archive checksums and reports coverage. An optional `--capture-db` imports M0 observations from a read-only SQLite database using a pinned cutoff and capture digest in the manifest. Keep archives and generated evidence under ignored `data/` or another external directory.
+
+```text
+uv run --locked python -m acgs historical --manifest evidence/m1/binance-2024.json --assets data/m1/archive
+uv run --locked python -m acgs replay --manifest PATH --assets DIRECTORY --policy config/m1.json --start UTC_START --end UTC_END --plan PLAN_JSON --out data/replay.json
+docker compose run --rm -v "${PWD}:/sample:ro" acgs historical --manifest /sample/evidence/m1/binance-2024.json --assets /sample/data/m1/archive
+```
+
+A replay plan contains `candidate_version`, `instrument_id` (e.g. `BTCUSDT@1704067200000`), `interval_ms`, starting `equity` and `risk_pct` as decimal strings, integer `leverage`, and `intents`. Intents have UTC `time` and `available`, `action` (`ENTER`, `EXIT` or `TRAIL`), and `side` (`LONG` or `SHORT`). An entry or trailing intent requires a decimal-string `distance`. Optional `quantity` caps the entry or reduction and exit side is the closing order direction. An empty list yields a flat replay. The plan provides candidate inputs for simulation and its version participates in the run digest. The broker rejects or aborts on missing critical inputs under [SPEC §13.1](SPEC.md#131-m1-offline-resolutions). Files written with `--out` are immutable and the same bytes can be verified by rerunning the command.
 
 ### Public forward capture
 
@@ -160,10 +172,11 @@ README.md     Overview, operating modes, setup (this file)
 PRD.md        Product requirements (Approved & Locked)
 SPEC.md       System specification
 ROADMAP.md    Milestones and acceptance
-src/acgs/     Offline configuration, SQLite ledger, and public capture
-config/       M0 configuration
+src/acgs/     Public capture, PIT history and OFFLINE simulation
+config/       M0 capture and M1 simulation assumptions
 tests/        Offline safety checks and public data fixtures
 evidence/m0/  Verification and manual eligibility record
+evidence/m1/  Historical manifests, feasibility report and verification
 AGENTS.md     Instructions for AI coding agents (not a product document)
 CLAUDE.md     Claude Code pointer to AGENTS.md
 ```

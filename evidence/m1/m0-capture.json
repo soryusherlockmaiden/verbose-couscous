@@ -1,0 +1,17 @@
+{
+  "version": "m1-history-v1",
+  "ingested_at": "2026-11-17T23:20:00Z",
+  "candle_delay_ms": 1000,
+  "funding_delay_ms": 5000,
+  "instruments": [],
+  "listings": [],
+  "assets": [],
+  "capture": {
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "cutoff": 1794928380000,
+    "digest": "e4c8988083821d2dc592e03c41dcf371c2606c7394bf8bd445d6a92a60703b24"
+  }
+}
