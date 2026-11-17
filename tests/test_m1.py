@@ -43,7 +43,7 @@ from acgs.pit import (
 )
 from acgs.research_io import _policy
 from acgs.sim_config import EPOCH, Policy, StopBasis, canonical, digest
-from acgs.sim_ledger import MarkSource
+from acgs.sim_ledger import Journal, MarkSource, Posting
 from acgs.universe import snapshot
 
 D = Decimal
@@ -189,6 +189,28 @@ def test_t05_t17_t18_deterministic_cash_funding_and_partial_close(
     assert [(e.time, e.sequence) for e in result.events] == sorted(
         (e.time, e.sequence) for e in result.events
     )
+
+
+def test_t17_reconciliation_rederives_snapshots_from_immutable_postings() -> None:
+    tolerance = D("0.00000001")
+    journal = Journal(D(50))
+    fill = journal.fill(T, "ENTRY_FILL", D(1), D(100), D("0.0005"), margin=D(10))
+    journal.snapshot(fill, T, D(101), MarkSource.MARK_KLINE_OPEN, D("0.0035"), True, "run", tolerance)
+    journal.verify(tolerance)
+    # Cash moved outside the event log keeps the running totals self-consistent ...
+    journal.wallet += 1
+    journal.realized += 1
+    close = journal.record(T + HOUR, "BAR_CLOSE")
+    journal.snapshot(close, T + HOUR, D(101), MarkSource.MARK_KLINE_CLOSE, D("0.0035"), True, "run",
+                     tolerance)
+    # ... but cannot be re-derived from the immutable postings.
+    with pytest.raises(ValueError, match="reconcile with event postings"):
+        journal.verify(tolerance)
+    unrecorded = Journal(D(50))
+    unrecorded.record(T, "ADJUSTMENT", postings=(Posting("TEST_ADJUSTMENT", D(1)),))
+    unrecorded.events.pop()
+    with pytest.raises(ValueError, match="reconcile with event postings"):
+        unrecorded.verify(tolerance)
 
 
 def test_t18_near_open_holder_and_t19_unresolved_intrabar_funding_stop(

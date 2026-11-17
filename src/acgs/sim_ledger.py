@@ -166,3 +166,41 @@ class Journal:
         )
         self.snapshots.append(snapshot)
         return snapshot
+
+    def verify(self, tolerance: Decimal) -> None:
+        """Re-derive every snapshot from the immutable event postings alone.
+
+        The running totals above are maintained by the same code that posts cash,
+        so this pass is the independent check that nothing bypassed the event log.
+        """
+        wallet, realized, funding, fees = self.initial, ZERO, ZERO, ZERO
+        totals = {0: (wallet, realized, funding, fees)}
+        for index, event in enumerate(self.events, 1):
+            if event.sequence != index:
+                raise ValueError("Replay event sequence is not contiguous")
+            for posting in event.postings:
+                wallet += posting.cash
+                if posting.kind in FEE_KINDS:
+                    fees -= posting.cash
+                elif posting.kind == "FUNDING":
+                    funding += posting.cash
+                else:
+                    realized += posting.cash
+            totals[index] = (wallet, realized, funding, fees)
+        for snap in self.snapshots:
+            expected = totals.get(snap.sequence)
+            pos = snap.position
+            if expected is None or (snap.mark is None and pos.quantity):
+                raise ValueError("Snapshot does not follow a recorded event")
+            unrealized = pos.quantity * (snap.mark - pos.basis) if snap.mark is not None else ZERO
+            stated = (snap.wallet, snap.realized, snap.funding, snap.fees)
+            if (
+                any(abs(a - b) > tolerance for a, b in zip(stated, expected, strict=True))
+                or abs(snap.unrealized - unrealized) > tolerance
+                or abs(snap.equity - snap.wallet - unrealized) > tolerance
+                or snap.cycle_equity > snap.equity + tolerance
+                or (not pos.quantity and snap.equity != snap.wallet)
+            ):
+                raise ValueError(f"Snapshot {snap.sequence} does not reconcile with event postings")
+        if abs(self.wallet - wallet) > tolerance:
+            raise ValueError("Final wallet does not reconcile with event postings")

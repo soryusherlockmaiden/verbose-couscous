@@ -129,6 +129,10 @@ class _Replay:
     def run(self) -> Replay:
         for start in range(self.plan.start, self.end, self.plan.interval):
             self.bar(start)
+        try:
+            self.journal.verify(self.p.accounting_tolerance)
+        except ValueError as error:
+            raise ReplayError(str(error)) from error
         return Replay(
             self.run_id, self.dataset_digest, self.p.digest, tuple(self.decisions),
             tuple(self.journal.events), tuple(self.journal.snapshots),
