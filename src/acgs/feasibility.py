@@ -79,6 +79,19 @@ def _summary(
     }
 
 
+def _status(rows: list[tuple[EligibilityDecision, Provenance]]) -> str:
+    """No executable order is a no-trade finding only if some attempt was assessable.
+
+    When every attempt lacks a critical input, the window cannot show infeasibility
+    (PRD §6.1, SPEC §4.3): the result is inconclusive, not a no-trade conclusion.
+    """
+    if any(decision.executable for decision, _ in rows):
+        return "ASSESSABLE"
+    if rows and all(provenance == Provenance.UNAVAILABLE for _, provenance in rows):
+        return "INCONCLUSIVE_CRITICAL_INPUT_UNAVAILABLE"
+    return "NO_TRADE_IN_DECLARED_WINDOW"
+
+
 def feasibility(
     market: Market, dataset_digest: str, policy: Policy, start: int, clock: Clock,
 ) -> dict[str, Any]:
@@ -168,10 +181,9 @@ def _feasibility(
                     "atr": atr, "executable": decision.executable, **asdict(decision),
                 })
     return {
-        "version": "m1-feasibility-v1", "dataset_digest": dataset_digest,
+        "version": "m1-feasibility-v2", "dataset_digest": dataset_digest,
         "policy_digest": policy.digest, "start": start, "end_exclusive": end,
-        "status": "ASSESSABLE" if any(d.executable for items in results.values() for d, _ in items)
-        else "NO_TRADE_IN_DECLARED_WINDOW",
+        "status": _status([row for items in results.values() for row in items]),
         "universe_exclusions": dict(exclusions), "universe_snapshots": snapshots,
         "scenarios": {case.id: {**asdict(case), **_summary(results[case.id])} for case in cases},
         "symbol_regime": {"/".join(key): _summary(rows) for key, rows in sorted(slices.items())},

@@ -437,11 +437,12 @@ def test_t01_t20_t23_runtime_clock_report_and_config_identity(
 ) -> None:
     sim_market = Market(dataset)
     daily_data = daily(dataset)
-    market = Market(replace(
+    market_data = replace(
         daily_data, filters=(*daily_data.filters,
                              replace(filters(), effective=T, evidence=evidence(T), min_notional=D(50))),
         spreads=(),
-    ))
+    )
+    market = Market(market_data)
     run_plan = plan(enter(), exit_(T + HOUR))
 
     def run_decisions() -> tuple[object, object]:
@@ -478,6 +479,16 @@ def test_t01_t20_t23_runtime_clock_report_and_config_identity(
     assert any(not d["executable"] for d in decisions)
     assert {d["provenance"] for d in decisions} == {Provenance.RECONSTRUCTED}
     assert {d["candidate"]["side"] for d in decisions} == {Side.SHORT}
+    assert summary["status"] == "ASSESSABLE" and summary["version"] == "m1-feasibility-v2"
+    # Every attempt missing a PIT filter is inconclusive; assessable rejections are no-trade.
+    blind = feasibility(Market(replace(daily_data, filters=())), "fixture", policy, T, clock(T + DAY))
+    assert {d["provenance"] for d in blind["decisions"]} == {Provenance.UNAVAILABLE}
+    assert blind["status"] == "INCONCLUSIVE_CRITICAL_INPUT_UNAVAILABLE"
+    strict = Market(replace(market_data, filters=(replace(filters(), effective=T, evidence=evidence(T),
+                                                          min_notional=D(100_000)),)))
+    rejected = feasibility(strict, "fixture", policy, T, clock(T + DAY))
+    assert not any(d["executable"] for d in rejected["decisions"])
+    assert rejected["status"] == "NO_TRADE_IN_DECLARED_WINDOW"
 
     config = tmp_path / "paper.toml"
     config.write_text('mode = "PAPER"\n', encoding="utf-8")
