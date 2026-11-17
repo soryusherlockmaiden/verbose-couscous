@@ -9,7 +9,7 @@
 ## 1. Delivery rules
 
 1. The goal is **not** to ship a trading bot at any cost; the goal is to determine whether a 50 USDT Binance USD-M strategy is executable and has credible net-of-cost edge, then build safe operation only if justified.
-2. `OFFLINE` by default. M0–M4 must never place real orders or real transfers. Testnet orders (no real funds, no transfers) are permitted from M3 per SPEC §3.1. M5 is optional and requires separate approval.
+2. `OFFLINE` by default. M0–M4 must never place real orders or real transfers. No testnet is used: M4 runs as mainnet shadow mode and M5 starts with `LIVE_SHADOW` (SPEC §3.1). M5 is optional and requires separate approval.
 3. Milestones require **working code, reproducible tests, and concise evidence**; no governance-only milestone or mandatory standalone CANON/ADR/audit packs.
 4. A milestone may report `PASS`, `FAIL`, `INCONCLUSIVE`, or `BLOCKED`. `FAIL`/`INCONCLUSIVE` do not permit live promotion. `BLOCKED` requires resolving dependencies before proceeding.
 5. The untouched holdout is opened only after research protocol and numeric promotion thresholds are frozen.
@@ -38,7 +38,7 @@
 - GitHub Actions: unit tests, lint, secret scanning; no production credentials in CI.
 - Clear separation of offline, paper, and future live adapters; no live adapter implementation required.
 - Import contracts enforcing the capability boundary (SPEC §2.1).
-- **Account eligibility pre-check** (manual, no trading credentials): confirm the operator's account and jurisdiction permit Binance USD-M Futures, isolated margin, a dedicated account or sub-account, the needed API permissions (trading, universal transfer, IP restriction) and testnet access. Ineligible ⇒ project `BLOCKED` before M1.
+- **Account eligibility pre-check** (manual, no trading credentials): confirm the operator's account and jurisdiction permit Binance USD-M Futures, isolated margin, a dedicated account or sub-account, the needed API permissions (read-only, trading, universal transfer, IP restriction) and availability of the futures test-order endpoint. Ineligible ⇒ project `BLOCKED` before M1.
 - **Forward capture** (credential-free): scheduled job recording daily `exchangeInfo`/`fundingInfo` snapshots and periodic order-book/spread samples with provenance (SPEC §4.3).
 
 **Deliverables:** runnable offline skeleton, CI workflow, README quickstart, config validation, first invariant tests, account eligibility record, running forward-capture job.
@@ -115,7 +115,7 @@
 - **Exchange-account reconciliation contract (SPEC SC-06):** map exchange mark-based unrealized PnL, wallet/realized balances, available/transferable funds, snapshot freshness, remaining costs and recovery reserve. Simulate/mock these exchange responses and failure modes in M3; actual exchange adapter stays gated to M5. Do not reopen M1's simulated accounting rules.
 - Restart-safe order/position/stop reconciliation and fault injection.
 - Recovery workflow substates with atomic entry freeze, durable intent/attempt records, authoritative restart reconciliation and explicit ambiguous-result handling (SPEC §7.4 / SC-14).
-- Mock protective-order compatibility matrix and emergency flatten contract for position modes, partial fills, rejected/unknown stops and crash-between-fill-and-protection (SPEC §9.2 / SC-13). May additionally be exercised on Binance Futures testnet (SPEC §3.1).
+- Mock protective-order compatibility matrix and emergency flatten contract for position modes, partial fills, rejected/unknown stops and crash-between-fill-and-protection (SPEC §9.2 / SC-13). Exchange behavior is validated later, in M5 (SPEC §3.1).
 
 **Deliverables:** tested capital state machine, risk engine, recovery simulator, transfer ledger, operator halt/resume controls, recovery fault-injection suite and mock protective-order compatibility evidence.
 
@@ -123,7 +123,7 @@
 - 50→80→45 does not trigger the fixed 30 USDT halt; 30 or lower does.
 - Observed 100 but settled 98 remains `RECOVERY_PENDING` with no transfer.
 - Shortfall enters `SHORTFALL_HOLD` with only the SPEC §7.4.1 resolutions; external inflows never trigger recovery; entries beyond halt headroom are rejected (T-27–T-30).
-- Cycle closure and lifetime limits, transfer-direction restriction and the testnet host allowlist pass T-31, T-32 and T-34.
+- Cycle closure and lifetime limits, and transfer-direction restriction pass T-31 and T-32.
 - Insufficient reserve or uncertain transfer status blocks transition.
 - Lost acknowledgment/restart never causes blind duplicate transfer.
 - No strategy can bypass risk engine or clear a latched halt.
@@ -136,7 +136,7 @@
 ## 7. M4 — Paper Pilot
 
 **Scope**
-- Public live market data, simulated exchange fills and costs, persistent position/order/stop lifecycle. Testnet may serve as an alternative fill backend (SPEC §3.1).
+- Public live market data, simulated exchange fills and costs, persistent position/order/stop lifecycle. Runs as **mainnet shadow mode**: live mainnet data, optional read-only account key, orders built exactly as live and recorded but never sent (SPEC §3.1).
 - Shared strategy/risk logic with offline mode; paper adapter with zero real-money permissions. A **paper-pilot-approved strategy/config digest** is required even if an unapproved candidate was allowed in OFFLINE research.
 - Monitoring, stale-feed detection, restart recovery, alerts and emergency handling.
 - Full simulated Capital Recovery rehearsal and operator procedures.
@@ -144,7 +144,7 @@
 
 **Deliverables:** paper runbook, incident logs, reconciliation dashboard/CLI summaries, paper evidence report.
 
-**Acceptance:** observation window completed; no unapproved exposure; restart/partial-fill/stop-rejection/disconnect/transfer-timeout scenarios pass; paper/live logic divergence risks documented; no real orders or transfers.
+**Acceptance:** observation window completed; no unapproved exposure; restart/partial-fill/stop-rejection/disconnect/transfer-timeout scenarios pass; paper/live logic divergence risks documented; no real orders or transfers; no order request of any kind sent and trading-capable keys refused (T-34); account preconditions verified with the read-only key where configured.
 
 **Exit decision:** `PASS` only establishes operational readiness for **considering** M5, not profitability or live approval.
 
@@ -154,12 +154,13 @@
 
 **Scope**
 - Separate live adapter, minimal API permissions, exchange-hosted protective orders, isolated margin verification, live reconciliation.
+- **Staged enablement** (SPEC §3.1), each stage with restart and explicit reauthorization: (1) `LIVE_SHADOW`: live account and trading key, orders sent only to the exchange test-order endpoint, simulated fills, predeclared observation window; (2) protective-order smoke test with minimal real orders under explicit approval; (3) `LIVE_ARMED`.
 - Confirm transfer endpoint/permissions, exact available/transferable balance fields and post-transfer reserve.
 - Validate and sign off the **current account-specific Binance conditional-order compatibility matrix** (one-way/hedge mode, supported stop endpoints/flags, protection confirmation, partial fills and emergency flatten) before live arming; unsupported protection is a hard NO-GO.
 - Conservative approved sizing; staged enablement and immediate operator kill switch.
 - Small controlled launch with no assumption that 50 USDT can place a compliant order.
 
-**Acceptance:** account-specific protective-order compatibility and emergency behavior explicitly signed off; no unapproved orders, protective exits confirmed, balances/positions/transfers reconciled, safety latches function, all live parameters explicitly approved. Any critical inconsistency => halt new entries and invoke emergency response.
+**Acceptance:** `LIVE_SHADOW` window completed and protective-order smoke test passed (T-39); account-specific protective-order compatibility and emergency behavior explicitly signed off; no unapproved orders, protective exits confirmed, balances/positions/transfers reconciled, safety latches function, all live parameters explicitly approved. Any critical inconsistency => halt new entries and invoke emergency response.
 
 **Go/no-go:** Operator may cancel M5 even after all technical gates. No automated deployment from research results.
 
@@ -186,7 +187,7 @@
 | Strategy net expectancy not positive after costs | M2 | No-trade / stop research cycle; no forced promotion |
 | Ignition ruin probability too high | M2 | Predeclared rejection criterion, stress scenarios |
 | Recovery 100 observation settles below eligibility | M3 | Pending + freeze; no transfer or automatic retrading |
-| API/stop behavior incompatible with design | M3/M5 | Mock emergency behavior in M3/M4; validate account-specific current endpoints in M5; no-go if unsafe |
+| API/stop behavior incompatible with design | M3/M5 | Mock emergency behavior in M3/M4; validate in M5 via `LIVE_SHADOW` and the protective-order smoke test; no-go if unsafe |
 | VPS/restart/network failures | M3/M4 | Durable intents, reconciliation, fail-closed, alerts |
 | Scope creep into multiple strategies/governance | All | Baseline first; P1/P2 features only after evidence |
 
@@ -226,7 +227,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 - M2 evaluates trigger/halt on `cycle_equity` with the halt-headroom cap and reports the recovery shortfall rate.
 - M3 acceptance adds shortfall hold, external-inflow and halt-headroom tests (T-27–T-30).
 - Next actions: `README.md` before M0.
-- Aligned with PRD v1.4: M0 adds account eligibility pre-check, forward capture and import contracts; testnet permitted from M3/M4; M3 adds cycle closure/lifetime limits and Futures→Spot-only transfer; delivery rule 7 (stopping after M2/M4 is success).
+- Aligned with PRD v1.4: M0 adds account eligibility pre-check, forward capture and import contracts; no testnet: M4 mainnet shadow mode, M5 staged `LIVE_SHADOW` → smoke test → `LIVE_ARMED`; M3 adds cycle closure/lifetime limits and Futures→Spot-only transfer; delivery rule 7 (stopping after M2/M4 is success).
 - M1 adds instrument epochs, funding intervals, mark-kline coverage, Growth-level feasibility and T-33/T-35–T-38; M2 adds random-entry/ablation baselines and lifetime-limit success probability.
 
 ## Appendix — v0.3 targeted change notes

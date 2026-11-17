@@ -26,7 +26,7 @@
 | INV-05 | No transfer is marked complete without independently reconciled exchange evidence and durable ledger state. |
 | INV-06 | Historical decision at time *t* uses only observations available by *t*. |
 | INV-07 | Neither quantity nor price/tick rounding may increase modeled risk above the authorized budget (§5.2). |
-| INV-08 | `OFFLINE` is the default mode; M0–M4 cannot instantiate a production order or transfer adapter. A testnet-only execution adapter (§3.1) is permitted from M3; it has no transfer capability and cannot reach production endpoints. |
+| INV-08 | `OFFLINE` is the default mode; M0–M4 cannot instantiate an order-submitting or transfer adapter, including one that targets the exchange test-order endpoint. `PAPER` may hold only a read-only account key (§3.1). |
 | INV-09 | A filled live position requires exchange-accepted protective exit coverage; failure invokes an emergency protocol and blocks entries. |
 | INV-10 | A halt cannot be cleared by a strategy, restart, config reload, or reconnect. |
 | INV-11 | Capital-phase triggers, halt checks and high-water marks use `cycle_equity` (§7.3.1), which excludes unapproved external inflows (§7.6). |
@@ -73,8 +73,8 @@ Cross-cutting: durable state, audit events, metrics, alerts, kill switch.
 | Mode | Data | Fills | Strategy authorization | Orders/transfers | Gate |
 |---|---|---|---|---|---|
 | `OFFLINE` | Historical immutable snapshots | Deterministic simulated | Versioned research candidate **permitted without promotion approval** | No real side effects | Default; M1/M2 |
-| `PAPER` | Public live feeds | Simulated, cost-aware | Explicit approval for **paper pilot** tied to strategy/config digest | No real side effects | M4 |
-| `LIVE` | Exchange feeds/account | Exchange-confirmed | **Separate** explicit live approval and operator arming; paper approval is insufficient | Explicitly authorized only | M5 |
+| `PAPER` | Mainnet public feeds; optional read-only account data (§3.1) | Simulated, cost-aware; orders recorded, never sent | Explicit approval for **paper pilot** tied to strategy/config digest | No real side effects | M4 |
+| `LIVE` | Exchange feeds/account | `LIVE_SHADOW`: test-order endpoint + simulated fills; `LIVE_ARMED`: exchange-confirmed (§3.1) | **Separate** explicit live approval and operator arming; paper approval is insufficient | Explicitly authorized only | M5 |
 
 - All modes retain appropriate risk checks. `OFFLINE` experimentation may simulate rejected or extreme risk hypotheses under labeled test configurations; it does **not** grant live-risk authorization. Research candidates must have versioned configuration, inputs and results.
 - Approval scope is tied to **mode + strategy/config digest**. Promotion between `OFFLINE`, `PAPER` and `LIVE` is never automatic and may be withdrawn. A candidate that fails research gates cannot gain paper/live approval merely by changing execution mode.
@@ -82,11 +82,22 @@ Cross-cutting: durable state, audit events, metrics, alerts, kill switch.
 - Live requires separately provisioned credentials, approved live strategy/config digest, environment/account checks, and a manual arming procedure. **OPEN:** precise authorization mechanism, expiry, and dual confirmation.
 - An operator may pause/stop entries at any time. Recovery from `HALTED` requires reconciliation, an audit event, and explicit operator approval; approval does not imply automatic phase reset.
 
-### 3.1 Testnet execution backend
+### 3.1 Shadow execution and staged LIVE (no testnet)
 
-- From M3, a `TESTNET` execution adapter may submit orders to the official Binance USD-M Futures testnet for the protective-order compatibility harness (§9.2). In M4 it may serve as an alternative `PAPER` fill backend.
-- It uses separate testnet credentials and an allowlist containing only testnet hosts; production hosts are rejected in code and tests (T-34). It has no transfer capability.
-- Testnet orders involve no real funds and are not real exchange orders under PRD §11. Testnet liquidity, fills and features may differ from production, so testnet results never establish production compatibility (§9.2 M5 gate).
+No exchange testnet is used in any milestone. Exchange-facing behavior is exercised against **mainnet** in shadow form before any real order.
+
+**`PAPER` = mainnet shadow mode (M4):**
+- Market data, instrument filters, funding and order book come from Binance mainnet public endpoints.
+- An optional **read-only** API key (no trading, transfer or withdrawal permission) may read the real account: balances, margin mode, position mode, leverage and fee settings. It is used for account snapshots and the §7.6 precondition checks. At startup, PAPER verifies the key's permissions via the exchange API-restriction query and refuses any key with trading, transfer or withdrawal permission (T-34).
+- Every order is built exactly as `LIVE` would build it: quantized quantity and prices, flags, client order ID. It is validated locally against the live filters and recorded as a `SHADOW_ORDER` with its full payload. It is **never transmitted**. The paper adapter has no code path to any order endpoint, including the test-order endpoint.
+- Fills are simulated from live mainnet prices/order book with the versioned cost model.
+
+**`LIVE` stages (M5):** each stage requires live approval, operator arming and a restart with explicit reauthorization, per §3.
+1. **`LIVE_SHADOW`:** live account and trading key. Every order is sent **only** to the exchange test-order endpoint (`POST /fapi/v1/order/test`), which validates parameters against the production account without reaching the matching engine. The exchange response is recorded with the shadow order, fills are simulated as in `PAPER`, and transfers are simulated only. Endpoint coverage for conditional/protective order types must be verified at M5 start. Any order type the endpoint cannot validate is recorded as `NOT_VALIDATED` and must be covered by step 2. Runs for a predeclared observation window.
+2. **Protective-order smoke test:** a small number of real orders at minimum compliant size, under explicit operator approval for that test only. It validates the §9.2 behaviors no test endpoint can show: stop acceptance and visibility, `reduceOnly`/`closePosition`, cancel/replace without a coverage gap, partial-fill handling and emergency flatten.
+3. **`LIVE_ARMED`:** real orders under the approved live configuration.
+
+A test-order acceptance confirms request validity only; it never establishes protective-order behavior or execution quality.
 
 ## 4. Canonical time, data and provenance
 
@@ -296,7 +307,7 @@ Candidate: lock 40% of eligible realized profit on a defined doubling of post-va
 - BNB fee deduction disabled, so fees post in USDT; enabling it requires a versioned accounting change first.
 - Isolated margin and the declared position mode per §8 and §9.2.
 
-In `OFFLINE` and `PAPER` these are declared configuration assumptions exercised by tests; they are not verified against an exchange before M5.
+In `OFFLINE` these are declared configuration assumptions exercised by tests. In `PAPER` with a read-only key they are verified against the real account; without one they remain declared assumptions until M5.
 
 **External cash flows:** any USD-M wallet balance change not explained by ledger events (realized PnL, fees, funding, ACGS-initiated transfers) is an `EXTERNAL_CASH_FLOW`, identified from exchange income/transfer history (exact fields under SC-06).
 - On detection: latch `PAUSED`, block entries, alert, and record the flow in the ledger as an explicit external adjustment.
@@ -356,9 +367,9 @@ risk_budget_eff = min(phase_risk_budget, halt_headroom − open_risk)
 
 Maintain a versioned compatibility matrix for the **actual** Binance account and API configuration: one-way versus hedge position mode, supported conditional-order endpoints and trigger types, `reduceOnly`/`closePosition` applicability, quantity rules, margin/position-mode requirements, cancel/replace semantics (including place-new-then-cancel-old trailing updates without a coverage gap), supported stop `workingType` values and protective-order visibility after fills. Do not assume a specific `STOP_MARKET` parameter combination works universally. Exchange-native protective coverage must be independently confirmed from exchange state, not merely from an order-submission acknowledgment.
 
-On a fill with missing, rejected, expired, insufficient or uncertain stop coverage: immediately block new entries, latch the configured safety state, attempt the preapproved bounded emergency flattening procedure where safe, and reconcile residual positions and contingent orders. Repeated blind submissions are forbidden; unresolved exposure requires alerting and operator intervention. Partial fills, stop-size adjustments, rejected conditional orders, reconnects and crash-between-fill-and-stop are mandatory mock/fault scenarios by M3/M4. From M3, the matrix may additionally be exercised on testnet (§3.1).
+On a fill with missing, rejected, expired, insufficient or uncertain stop coverage: immediately block new entries, latch the configured safety state, attempt the preapproved bounded emergency flattening procedure where safe, and reconcile residual positions and contingent orders. Repeated blind submissions are forbidden; unresolved exposure requires alerting and operator intervention. Partial fills, stop-size adjustments, rejected conditional orders, reconnects and crash-between-fill-and-stop are mandatory mock/fault scenarios by M3/M4. In M3/M4 the matrix is exercised only against mocks and shadow orders; exchange behavior is validated in M5 through `LIVE_SHADOW` and the protective-order smoke test (§3.1).
 
-**M5 hard gate:** Validate the compatibility matrix and emergency behavior against current Binance endpoints in an appropriate supported test environment/account mode, then explicitly sign off the account-specific live configuration before arming. Test-environment success alone does not establish production account compatibility; unresolved restrictions or unsupported protection => **NO-GO**. No real orders are authorized by this SPEC.
+**M5 hard gate:** Validate the compatibility matrix and emergency behavior on the production account through `LIVE_SHADOW` and the protective-order smoke test (§3.1), then explicitly sign off the account-specific live configuration before `LIVE_ARMED`. Test-order endpoint acceptance alone does not establish protective-order behavior; unresolved restrictions or unsupported protection => **NO-GO**. No real orders are authorized by this SPEC.
 
 ### 9.3 Reconciliation
 
@@ -374,6 +385,7 @@ Disabled in Ignition. Growth/Vault candidate: add after favorable 1.5 ATR moveme
 - Minimal logical records: `config_versions`, `dataset_versions`, `universe_snapshots`, `research_evidence`, `capital_cycles`, `state_events`, `order_intents`, `fills`, `position_snapshots`, `risk_decisions`, `transfer_intents`, `transfer_attempts`, `capital_ledger`, `reconciliation_events`.
 - Every risk decision and live order links to strategy version, data/config digest, phase, account snapshot and reason codes.
 - Secrets injected at runtime; never in repo, logs, datasets or test fixtures. Restrict API permissions; no withdrawal permission; separate paper/live identity and credentials.
+- **Key tiers:** `PAPER` holds at most a read-only key. `LIVE_SHADOW` and `LIVE_ARMED` use the trading key. Only the transfer adapter in `LIVE_ARMED` uses the transfer key; in `LIVE_SHADOW` transfers are simulated.
 - **Transfer capability:** in `LIVE`, trading and transfer use separate API keys where the exchange supports separate permissions. The trading key has no transfer or withdrawal permission; the transfer key is used only by the transfer adapter; both are IP-restricted. The transfer adapter accepts only USD-M Futures → Spot transfers with amounts produced by the recovery/Vault workflows; any other direction or type is rejected in code and tested (T-32). ACGS never initiates Spot → Futures. After a confirmed recovery, the operator moves protected funds out of the bot account's reach per runbook. If separate permissions are unsupported, SC-10 must document the residual risk before arming.
 - Backup and restore tests must preserve safety latches and transfer-intent history. **OPEN:** retention, backup cadence, recovery point and alert delivery SLAs.
 
@@ -433,11 +445,12 @@ Research must use chronological development/validation windows, walk-forward tes
 | T-31 | Fixed-loss halt; new cycle with residual 28 + top-up 22; then a third cycle; top-up during an open cycle | Cycle `CLOSED` only after flat; second cycle only with post-mortem and wallet 50.00–50.50; third cycle or committed capital >100 rejected; mid-cycle inflow unapproved and excluded | M3 |
 | T-32 | Transfer adapter asked for Spot→Futures, another transfer type or an arbitrary amount; trading key used for a transfer | Rejected in code; no request sent | M3 (sim); M5 |
 | T-33 | Signal close 100, fill gaps to 101; stop price falls between ticks | Stop placed at fill − d, rounded toward entry; realized risk <= budget | M1 |
-| T-34 | Testnet adapter configured with a production host | Startup refuses; no request sent | M3 |
+| T-34 | PAPER started with a key that has trading/transfer/withdrawal permission; any PAPER code path reaching an order endpoint; `LIVE_SHADOW` order routed anywhere but the test-order endpoint | PAPER refuses the key; PAPER sends no order request of any kind; `LIVE_SHADOW` sends only to the test-order endpoint and performs no transfer | M4/M5 |
 | T-35 | Ticker delisted and later relisted; multiplier contract symbol | Distinct instrument IDs; no stitched history or indicators across epochs | M1 |
 | T-36 | Funding interval changes from 8h to 4h inside a research window | Funding applied at the point-in-time interval; no 8h assumption | M1 |
-| T-37 | ATR trailing update | Updates only at bar close and only in the favorable direction; live replacement places the new stop before cancelling the old | M1 (sim); M3 (mock/testnet) |
+| T-37 | ATR trailing update | Updates only at bar close and only in the favorable direction; live replacement places the new stop before cancelling the old | M1 (sim); M3 (mock); M5 (smoke test) |
 | T-38 | Mark-price path reaches liquidation before the stop triggers on its declared price type | Liquidation modeled and flagged; no optimistic stop fill | M1 |
+| T-39 | M5 protective-order smoke test at minimum size; order types marked `NOT_VALIDATED` in `LIVE_SHADOW` | Stop acceptance/visibility, `reduceOnly`/`closePosition`, gap-free replacement and emergency flatten confirmed and signed off, otherwise NO-GO for `LIVE_ARMED` | M5 |
 
 ## 13. Open contract register
 
@@ -455,7 +468,7 @@ Research must use chronological development/validation windows, walk-forward tes
 | SC-10 | M5 | Binance endpoint/permission/position-mode compatibility, account isolation and preconditions (§7.6), and live arming |
 | SC-11 | Optional P1/P2 | Vault locking, pyramiding and adaptive selector promotion |
 | SC-12 | M1 | Micro-capital eligibility reason codes, exchange-filter provenance, feasibility report and sensitivities across Ignition and Growth risk levels, risk base, stop placement/rounding and feasibility window (§5.2) (T-22/T-23/T-33) |
-| SC-13 | M3 mock/testnet; M5 live | Protective-order compatibility matrix, emergency flatten safety contract, account-mode validation, trailing replacement without coverage gap, testnet host allowlist (T-24/T-26/T-34/T-37) |
+| SC-13 | M3 mock; M4 shadow; M5 `LIVE_SHADOW` + smoke test | Protective-order compatibility matrix, emergency flatten safety contract, account-mode validation, trailing replacement without coverage gap, shadow-mode key and endpoint restrictions (T-24/T-26/T-34/T-37/T-39) |
 | SC-14 | M3 | Recovery workflow substates including `SHORTFALL_HOLD` and operator resolutions (§7.4.1), durable intent, retry ambiguity and fault-injection suite (T-25, T-28) |
 | SC-15 | M3 | Capital-cycle closure, new-cycle authorization and lifetime limits: policy decided in PRD v1.4 §5.2.1, mechanics in §7.1.1; transfer key separation and direction restriction (§10) (T-31/T-32) |
 
@@ -475,7 +488,7 @@ A contract is not considered resolved merely by selecting a value: it requires r
 - Added account isolation, account preconditions and external cash-flow handling (§7.6, INV-11).
 - Added the halt-headroom risk cap and `HALT_HEADROOM` reason code (§8.1).
 - Added T-27–T-30 and SC-15.
-- Aligned with PRD v1.4: capital-cycle records and lifetime limits (§7.1.1), transfer key separation and Futures→Spot-only adapter (§10), testnet execution backend (§3.1, INV-08).
+- Aligned with PRD v1.4: capital-cycle records and lifetime limits (§7.1.1), transfer key separation and Futures→Spot-only adapter (§10), mainnet shadow `PAPER` and staged `LIVE` (`LIVE_SHADOW` via test-order endpoint → smoke test → `LIVE_ARMED`), no testnet (§3.1, INV-08, T-34, T-39).
 - Added capability-boundary enforcement (§2.1) and risk base, distance-preserving initial stop, tick rounding toward entry and feasibility window (§5.2, INV-07); SC-12 report now covers Growth risk levels.
 - Data: instrument epochs, point-in-time funding intervals, forward capture, mark-price kline coverage, liquidation versus stop price basis (§4.2/§4.3/§4.5).
 - Strategy: step-wise ATR trailing implementation decided; universe-exit handling added to the open list (§6). Research: random-entry and ablation baselines, calendar-block resampling, lifetime-limit success probability, post-mortem tolerance (§11).
