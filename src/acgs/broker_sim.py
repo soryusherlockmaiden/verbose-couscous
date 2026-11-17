@@ -1,0 +1,407 @@
+"""Deterministic, isolated single-instrument replay; no exchange capability."""
+
+from dataclasses import asdict, dataclass, replace
+from decimal import Decimal, localcontext
+from enum import StrEnum
+
+from acgs.clock import Clock
+from acgs.eligibility import (
+    Candidate,
+    EligibilityDecision,
+    Side,
+    evaluate,
+    order_step,
+    quantize_down,
+    slipped,
+    stop_price,
+    survives,
+)
+from acgs.funding import funding_complete
+from acgs.pit import (
+    ZERO,
+    Candle,
+    Filters,
+    Funding,
+    Instrument,
+    Maintenance,
+    Market,
+    Prices,
+    Provenance,
+    as_of,
+)
+from acgs.sim_config import Policy, StopBasis, digest, instant_ms
+from acgs.sim_ledger import AccountSnapshot, Event, Journal, MarkSource
+
+
+class ReplayError(ValueError):
+    """Replay stopped without producing a successful result."""
+
+
+class Action(StrEnum):
+    ENTER = "ENTER"
+    EXIT = "EXIT"
+    TRAIL = "TRAIL"
+
+
+@dataclass(frozen=True)
+class Intent:
+    time: int
+    available: int
+    action: Action
+    side: Side
+    distance: Decimal
+    quantity: Decimal | None = None
+
+
+@dataclass(frozen=True)
+class ReplayPlan:
+    candidate_version: str
+    instrument: Instrument
+    start: int
+    interval: int
+    equity: Decimal
+    risk_pct: Decimal
+    leverage: int
+    intents: tuple[Intent, ...]
+    halt_level: Decimal | None = None
+
+
+@dataclass(frozen=True)
+class Replay:
+    run_digest: str
+    dataset_digest: str
+    policy_digest: str
+    decisions: tuple[EligibilityDecision, ...]
+    events: tuple[Event, ...]
+    snapshots: tuple[AccountSnapshot, ...]
+
+
+def replay(
+    market: Market, dataset_digest: str, policy: Policy, clock: Clock, plan: ReplayPlan
+) -> Replay:
+    end = instant_ms(clock.now())
+    with localcontext(policy.context()):
+        return _Replay(market, dataset_digest, policy, plan, end).run()
+
+
+class _Replay:
+    def __init__(
+        self, market: Market, dataset_digest: str, policy: Policy, plan: ReplayPlan, end: int,
+    ) -> None:
+        if (
+            not plan.candidate_version or plan.interval <= 0 or end <= plan.start
+            or plan.start % plan.interval or end % plan.interval
+            or not plan.equity.is_finite() or plan.equity <= ZERO
+        ):
+            raise ReplayError("Invalid replay version, grid or starting equity")
+        self.market = market
+        self.dataset_digest = dataset_digest
+        self.p = policy
+        self.plan = plan
+        self.end = end
+        self.inst = plan.instrument
+        if self.inst not in market.listings:
+            raise ReplayError("Unknown listing epoch")
+        self.run_id = digest((dataset_digest, policy.digest, asdict(plan), end))
+        self.journal = Journal(plan.equity)
+        self.liquidated = False
+        self.decisions: list[EligibilityDecision] = []
+        self.funding = market.settlements.get(self.inst, ())
+        self.funding_keys = {funding.time: funding for funding in self.funding}
+        self.intents: dict[tuple[int, Action], Intent] = {}
+        for intent in plan.intents:
+            key = intent.time, intent.action
+            if (
+                intent.time % plan.interval or intent.available > intent.time
+                or not plan.start <= intent.time <= end or key in self.intents
+                or (intent.action != Action.TRAIL and intent.time == end)
+                or (intent.action == Action.TRAIL and intent.time == plan.start)
+                or not intent.distance.is_finite() or intent.distance < ZERO
+                or (intent.action != Action.EXIT and intent.distance == ZERO)
+                or (intent.quantity is not None
+                    and (not intent.quantity.is_finite() or intent.quantity <= ZERO))
+            ):
+                raise ReplayError("Invalid, late or duplicate replay intent")
+            self.intents[key] = intent
+
+    def run(self) -> Replay:
+        for start in range(self.plan.start, self.end, self.plan.interval):
+            self.bar(start)
+        return Replay(
+            self.run_id, self.dataset_digest, self.p.digest, tuple(self.decisions),
+            tuple(self.journal.events), tuple(self.journal.snapshots),
+        )
+
+    def snapshot(
+        self, seq: int, time: int, mark: Decimal | None, source: MarkSource, observable: bool = True,
+    ) -> AccountSnapshot:
+        return self.journal.snapshot(
+            seq, time, mark, source, self.p.taker_fee + self.slippage(time, stress=True),
+            observable, self.run_id, self.p.accounting_tolerance,
+        )
+
+    def inputs(self, time: int) -> tuple[Filters, Maintenance] | None:
+        listing = as_of(self.market.listings[self.inst], time)
+        filters = as_of(self.market.filters.get(self.inst, ()), time)
+        tiers = as_of(self.market.maintenance.get(self.inst, ()), time)
+        if listing is None or not listing.tradable or filters is None or tiers is None:
+            return None
+        for row in (filters, tiers):
+            ev = row.evidence
+            if (
+                time - ev.as_of >= self.p.metadata_age_ms or ev.provenance == Provenance.UNAVAILABLE
+                or (not self.p.allow_reconstructed and ev.provenance != Provenance.VERIFIED)
+            ):
+                return None
+        return filters, tiers
+
+    def marks(self, bar: Candle) -> tuple[Prices, MarkSource, MarkSource] | None:
+        mark = self.market.bar(self.inst, bar.start, self.plan.interval, mark=True)
+        if mark is not None and mark.evidence.provenance == Provenance.VERIFIED:
+            return mark.prices, MarkSource.MARK_KLINE_OPEN, MarkSource.MARK_KLINE_CLOSE
+        if self.p.allow_documented_mark_proxy and any(
+            gap.start <= bar.start and bar.end <= gap.end and gap.evidence.as_of <= bar.start
+            for gap in self.market.mark_gaps.get(self.inst, ())
+        ):
+            return bar.prices, MarkSource.CANDLE_OPEN_PROXY, MarkSource.CANDLE_CLOSE_PROXY
+        return None
+
+    def bar(self, start: int) -> None:
+        end = start + self.plan.interval
+        j = self.journal
+        trade = self.market.bar(self.inst, start, self.plan.interval)
+        due = tuple(f for f in self.funding if start <= f.time < end)
+        entry = self.intents.get((start, Action.ENTER))
+        exit_ = self.intents.get((start, Action.EXIT))
+        if trade is None or trade.evidence.provenance == Provenance.UNAVAILABLE:
+            if j.position.quantity or entry is not None or exit_ is not None:
+                raise ReplayError(f"Contract candle unavailable at {start}")
+            self.snapshot(j.record(end, "NO_DATA"), end, None, MarkSource.MARK_UNAVAILABLE, False)
+            return
+        marks = self.marks(trade)
+        inputs = self.inputs(start)
+        if marks is None or inputs is None:
+            if j.position.quantity:
+                raise ReplayError(f"Mark, listing or maintenance data unavailable for open position at {start}")
+            if entry is not None:
+                j.record(start, "REJECTED", detail="MARK_UNAVAILABLE" if marks is None else "PIT_INPUTS")
+            self.snapshot(j.record(end, "BAR_CLOSE"), end, None, MarkSource.MARK_UNAVAILABLE, False)
+            return
+        mark, source_open, source_close = marks
+        filters, tiers = inputs
+        pos = j.position
+        if pos.quantity and not funding_complete(self.funding, start, start + 1, self.p):
+            raise ReplayError(f"Funding settlement continuity unavailable at {start}")
+        at_open = self.funding_keys.get(start)
+        if at_open is not None:
+            self.post_funding(at_open, mark.opening, source_open)
+
+        stop_path = mark if self.p.stop_basis == StopBasis.MARK_PRICE else trade.prices
+        open_protection = self.protect(
+            start, trade.prices.opening, mark.opening, stop_path.opening, mark.opening, source_open,
+            filters, tiers, intrabar=False,
+        )
+        if exit_ is not None and not open_protection:
+            self.exit_intent(exit_, trade.prices.opening, mark.opening, source_open, filters)
+        if entry is not None:
+            if self.liquidated:
+                j.record(start, "REJECTED", detail="LIQUIDATION_LATCH")
+            elif open_protection:
+                j.record(start, "REJECTED", detail="PROTECTIVE_EXIT_AT_OPEN")
+            else:
+                self.enter(entry, trade.prices.opening, mark.opening, source_open, filters)
+
+        if j.position.quantity:
+            closing_listing = as_of(self.market.listings[self.inst], end)
+            if closing_listing is None or not closing_listing.tradable:
+                raise ReplayError(f"Position crosses an unresolved listing boundary at {end}")
+            if not funding_complete(self.funding, start, end, self.p):
+                raise ReplayError(f"Funding coverage unavailable during exposure at {start}")
+            long = j.position.quantity > ZERO
+            worst_mark = mark.low if long else mark.high
+            worst_stop = stop_path.low if long else stop_path.high
+            adverse_trade = trade.prices.low if long else trade.prices.high
+            may_liquidate, may_stop = self.protection(worst_mark, worst_stop, tiers)
+            inside = tuple(f for f in due if f.time > start)
+            if inside and (may_liquidate or may_stop):
+                raise ReplayError(f"Ambiguous intrabar protection/funding chronology at {start}")
+            for f in inside:
+                if f.mark is None:
+                    raise ReplayError(f"Intrabar funding has no settlement mark at {f.time}")
+                self.post_funding(f, f.mark, MarkSource.FUNDING_RECORD)
+                if any(self.protection(worst_mark, worst_stop, tiers)):
+                    raise ReplayError(f"Ambiguous intrabar funding-assisted protection at {f.time}")
+            # OHLC supplies a bound, not an intrabar timestamp. Record the outcome
+            # at interval end, before close/trailing and the next bar's open.
+            self.protect(
+                end, adverse_trade, worst_mark, worst_stop, mark.close, source_close,
+                filters, tiers, intrabar=True, contract_stop=self.p.stop_basis == StopBasis.CONTRACT_PRICE,
+                cost_time=start,
+            )
+        seq = j.record(end, "BAR_CLOSE")
+        mark_bar = self.market.bar(self.inst, start, self.plan.interval, mark=True)
+        close_available = trade.available <= end and (
+            source_close == MarkSource.CANDLE_CLOSE_PROXY
+            or (mark_bar is not None and mark_bar.available <= end)
+        )
+        self.snapshot(seq, end, mark.close, source_close, close_available)
+        trail = self.intents.get((end, Action.TRAIL))
+        if trail is not None and j.position.quantity:
+            if close_available:
+                self.trail(trail, stop_path.close, mark.close, filters)
+            else:
+                j.record(end, "REJECTED", detail="TRAIL_CLOSE_UNAVAILABLE")
+
+    def post_funding(self, event: Funding, mark: Decimal, source: MarkSource) -> None:
+        if self.journal.position.quantity:
+            price = event.mark if event.mark is not None else mark
+            seq = self.journal.settle(event.time, price, event.rate)
+            self.snapshot(
+                seq, event.time, price, MarkSource.FUNDING_RECORD if event.mark else source,
+                event.evidence.as_of <= event.time,
+            )
+        else:
+            self.journal.record(event.time, "FUNDING_FLAT")
+
+    def enter(
+        self, intent: Intent, price: Decimal, mark: Decimal, source: MarkSource, filters: Filters,
+    ) -> None:
+        j = self.journal
+        pos = j.position
+        if pos.quantity * intent.side < ZERO:
+            j.record(intent.time, "REJECTED", detail="POSITION_SIDE")
+            return
+        rate = self.slippage(intent.time, stress=False)
+        execution = slipped(price, intent.side, rate, filters.tick)
+        closing_rate = self.p.taker_fee + self.slippage(intent.time, stress=True)
+        cycle_equity = j.wallet + pos.quantity * (mark - pos.basis) - abs(pos.quantity) * mark * closing_rate
+        open_risk = max(ZERO, pos.quantity * (mark - pos.stop))
+        position_cap = min(self.p.exposure_cap / execution, filters.market_lot.maximum, filters.lot.maximum)
+        remaining_exposure = max(ZERO, position_cap - abs(pos.quantity))
+        max_qty = min(intent.quantity, remaining_exposure) if intent.quantity else remaining_exposure
+        candidate = Candidate(
+            self.inst, intent.time, intent.side, execution, mark, intent.distance, cycle_equity,
+            j.collateral, self.plan.risk_pct, self.plan.leverage, self.plan.halt_level,
+            open_risk, max_qty,
+        )
+        decision = evaluate(self.market, candidate, self.p)
+        self.decisions.append(decision)
+        j.record(intent.time, "SUBMITTED")
+        if not decision.executable:
+            j.record(intent.time, "REJECTED", detail=",".join(decision.reasons))
+            return
+        qty = quantize_down(decision.quantity * self.p.fill_fraction, order_step(filters))
+        if qty < decision.quantity:
+            partial = evaluate(self.market, replace(candidate, max_quantity=qty), self.p)
+            if not partial.executable:
+                j.record(intent.time, "CANCELED", detail="PARTIAL_FILL_NOT_EXECUTABLE")
+                return
+            decision = partial
+        stop = decision.stop
+        if pos.quantity:
+            stop = max(stop, pos.stop) if intent.side == Side.LONG else min(stop, pos.stop)
+        trigger_open = mark if self.p.stop_basis == StopBasis.MARK_PRICE else price
+        if intent.side * (trigger_open - stop) <= ZERO:
+            j.record(intent.time, "REJECTED", detail="STOP_IMMEDIATELY_TRIGGERABLE")
+            return
+        if pos.quantity:
+            total = abs(pos.quantity) + qty
+            basis = (abs(pos.quantity) * pos.basis + qty * execution) / total
+            boundary = slipped(stop, Side(-intent.side), self.slippage(intent.time, stress=True),
+                               filters.tick) - intent.side * decision.liquidation_buffer
+            inputs = self.inputs(intent.time)
+            if inputs is None:
+                raise ReplayError("Risk metadata changed during modeled fill")
+            tiers = inputs[1]
+            tier = tiers.tier(total * max(mark, execution))
+            if tier is None or self.plan.leverage > tier.max_leverage or any(
+                not survives(tiers, total * intent.side, basis, pos.margin + decision.margin,
+                             checked, self.p.liquidation_fee)
+                for checked in (mark, boundary)
+            ):
+                j.record(intent.time, "REJECTED", detail="COMBINED_LIQUIDATION_BUFFER")
+                return
+        kind = "PARTIAL_FILL" if qty < self.decisions[-1].quantity else "ENTRY_FILL"
+        seq = j.fill(
+            intent.time, kind, qty * intent.side, execution, self.p.taker_fee,
+            margin=decision.margin, reserve=decision.reserve, stop=stop,
+        )
+        self.snapshot(seq, intent.time, mark, source)
+        if kind == "PARTIAL_FILL":
+            j.record(intent.time, "CANCELED", detail="UNFILLED_REMAINDER")
+
+    def exit_intent(
+        self, intent: Intent, price: Decimal, mark: Decimal, source: MarkSource, filters: Filters,
+    ) -> None:
+        j = self.journal
+        pos = j.position
+        if not pos.quantity:
+            j.record(intent.time, "REJECTED", detail="NO_POSITION")
+            return
+        side = Side.SHORT if pos.quantity > ZERO else Side.LONG
+        if intent.side != side:
+            j.record(intent.time, "REJECTED", detail="EXIT_DIRECTION")
+            return
+        qty = abs(pos.quantity)
+        if intent.quantity is not None:
+            qty = min(qty, quantize_down(intent.quantity, order_step(filters)))
+        if not qty or (qty < abs(pos.quantity) and qty < filters.market_lot.minimum):
+            j.record(intent.time, "REJECTED", detail="MIN_QTY")
+            return
+        fill = slipped(price, side, self.slippage(intent.time, stress=False), filters.tick)
+        seq = j.fill(intent.time, "EXIT_FILL", qty * side, fill, self.p.taker_fee)
+        self.snapshot(seq, intent.time, mark, source)
+
+    def protection(self, mark: Decimal, trigger: Decimal, tiers: Maintenance) -> tuple[bool, bool]:
+        pos = self.journal.position
+        if not pos.quantity:
+            return False, False
+        stop = trigger <= pos.stop if pos.quantity > ZERO else trigger >= pos.stop
+        liquidate = not survives(tiers, pos.quantity, pos.basis, pos.margin, mark, self.p.liquidation_fee)
+        return liquidate, stop
+
+    def protect(
+        self, time: int, trade: Decimal, mark: Decimal, trigger: Decimal, snapshot_mark: Decimal,
+        source: MarkSource, filters: Filters, tiers: Maintenance, *, intrabar: bool,
+        contract_stop: bool = False, cost_time: int | None = None,
+    ) -> bool:
+        liquidate, stop = self.protection(mark, trigger, tiers)
+        if not liquidate and not stop:
+            return False
+        pos = self.journal.position
+        exit_side = Side.SHORT if pos.quantity > ZERO else Side.LONG
+        basis = pos.stop if intrabar and contract_stop and not liquidate else trade
+        rate = self.slippage(cost_time if cost_time is not None else time, stress=True)
+        price = max(filters.tick, slipped(basis, exit_side, rate, filters.tick))
+        seq = self.journal.fill(
+            time, "LIQUIDATION" if liquidate else "STOP", -pos.quantity, price,
+            self.p.taker_fee + (self.p.liquidation_fee if liquidate else ZERO),
+            detail="LIQUIDATION_CANNOT_BE_RULED_OUT_BEFORE_STOP" if liquidate and stop else
+                   "INTRABAR_OHLC_BOUND" if intrabar else "OPEN_GAP",
+        )
+        self.liquidated |= liquidate
+        self.snapshot(seq, time, snapshot_mark, source, not intrabar)
+        return True
+
+    def trail(self, intent: Intent, closing_price: Decimal, mark: Decimal, filters: Filters) -> None:
+        pos = self.journal.position
+        side = Side.LONG if pos.quantity > ZERO else Side.SHORT
+        if intent.side != side:
+            return
+        candidate = stop_price(closing_price, intent.distance, side, filters.tick)
+        if (
+            filters.min_price <= candidate <= filters.max_price and candidate > ZERO
+            and mark * filters.percent_down <= candidate <= mark * filters.percent_up
+            and side * (closing_price - candidate) > ZERO and side * (candidate - pos.stop) > ZERO
+        ):
+            self.journal.position = replace(pos, stop=candidate)
+            self.journal.record(intent.time, "TRAIL_RATCHET", price=candidate)
+
+    def slippage(self, time: int, *, stress: bool) -> Decimal:
+        rate = self.p.stressed_slippage if stress else self.p.slippage
+        spread = next(
+            (x for x in reversed(self.market.spreads.get(self.inst, ()))
+             if 0 <= time - x.evidence.as_of < self.p.metadata_age_ms
+             and x.evidence.provenance != Provenance.UNAVAILABLE), None,
+        )
+        return max(rate, spread.bps / 20_000) if spread is not None else rate

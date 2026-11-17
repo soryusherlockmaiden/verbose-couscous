@@ -18,6 +18,7 @@ SAFE_IMPORTS = {
     "argparse",
     "collections",
     "contextlib",
+    "csv",
     "dataclasses",
     "datetime",
     "decimal",
@@ -26,25 +27,34 @@ SAFE_IMPORTS = {
     "functools",
     "hashlib",
     "itertools",
+    "io",
     "json",
     "math",
+    "os",
     "pathlib",
     "re",
     "sqlite3",
     "sys",
+    "tempfile",
     "time",
     "tomllib",
+    "types",
     "typing",
     "zlib",
+    "zipfile",
 }
 PUBLIC_HTTP_IMPORTS = {"http.client", "urllib.error", "urllib.request"}
-DECISION_LAYERS = {"strategy", "features", "universe", "research"}
+DECISION_LAYERS = {
+    "strategy", "features", "universe", "research", "feasibility", "eligibility", "broker_sim",
+}
 CAPABILITY_MODULES = {
     "acgs.market_data",
     "acgs.capture",
     "acgs.config_io",
     "acgs.execution",
     "acgs.ledger",
+    "acgs.history_io",
+    "acgs.research_io",
     "acgs.transfers",
     "acgs.wallclock",
     "acgs.__main__",
@@ -62,6 +72,7 @@ DECISION_SAFE_IMPORTS = {
     "json",
     "math",
     "re",
+    "types",
     "typing",
 }
 DYNAMIC_CODE = {"__import__", "eval", "exec"}

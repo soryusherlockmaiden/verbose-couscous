@@ -1,4 +1,4 @@
-name: M0 checks
+name: ACGS checks
 on: [push, pull_request]
 
 permissions:

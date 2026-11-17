@@ -7,7 +7,7 @@ ENV UV_PYTHON_DOWNLOADS=never \
 WORKDIR /app
 COPY .python-version pyproject.toml uv.lock ./
 COPY src/ ./src/
-COPY config/m0.toml ./config/m0.toml
+COPY config/ ./config/
 
 # Lint, type check and tests in a container: `docker compose run --rm check`.
 FROM base AS check
