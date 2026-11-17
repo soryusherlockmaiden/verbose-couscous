@@ -58,7 +58,7 @@
 - **M1 simulated equity accounting (SPEC §4.5 / SC-02):** wallet balance, realized/unrealized PnL, fee/funding postings, mark/source proxies, margin reservation, snapshot timestamps and exact equity reconciliation. Freeze event priority and mark/snapshot sampling rules **before M1 acceptance**; exchange account reconciliation remains M3.
 - Allow **versioned unapproved research candidates in OFFLINE simulation** with simulated risk checks and no real side effects; paper/live approval is separate.
 - Immutable dataset/config hashes and replay outputs.
-- Explicit `EligibilityDecision` with deterministic rejection reasons and a **50 USDT Execution Feasibility Report** (SPEC §5.1 / SC-12); distinguish verified from reconstruction-dependent feasibility. Cover Ignition and Growth risk levels and report the binding side of the feasibility window (SPEC §5.2).
+- Explicit `EligibilityDecision` with deterministic rejection reasons and a **50 USDT Execution Feasibility Report** (SPEC §5.1 / SC-12); distinguish verified from reconstruction-dependent feasibility. Cover Ignition and Growth risk levels and report the binding constraint and risk-utilization distribution (SPEC §5.2); margin-bound orders below 100% risk budget count as executable.
 
 **Deliverables:** PIT datasets, provenance report, universe snapshots, deterministic broker/backtester, simulated wallet/equity ledger and event snapshots, exclusion reason report, **50 USDT Execution Feasibility Report**.
 
@@ -74,7 +74,7 @@
 - Unapproved versioned research strategy can execute **only in OFFLINE simulation**; no implicit PAPER/LIVE approval.
 - No exchange credentials or live orders required.
 - Candidate order rejected when satisfying minimum notional would breach risk after quantity rounding; margin/leverage does not waive stop-risk or reserve checks.
-- Stop distance preserved from the actual fill and tick rounding never widens the stop; relisted tickers, funding-interval changes, step-wise trailing and liquidation-before-stop handled per T-33 and T-35–T-38.
+- Stop distance preserved from the actual fill and tick rounding never widens the stop; relisted tickers, funding-interval changes, step-wise trailing and liquidation-before-stop handled per T-33 and T-35–T-38; margin-bound sizing produces no false rejection (T-41).
 - Feasibility report reproducibly enumerates executable candidates, rejection reasons, cost/stop-distance sensitivities and provenance limitations; no unsupported claim that 50 USDT is sufficient.
 
 **Exit decision:** M1 can pass without profitable strategy or a minimum executable-order rate, but **not** without the feasibility report (SC-12) or with unresolved simulated equity/event-order accounting (SPEC SC-02). Data-quality and mark-price-proxy limitations are recorded and promotion constraints identified.

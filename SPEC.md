@@ -169,17 +169,26 @@ For every candidate entry, compute and persist a deterministic `EligibilityDecis
 
 **Deterministic rejection taxonomy:** `MISSING_PIT_FILTER`, `UNVERIFIED_CRITICAL_FILTER`, `STALE_METADATA`, `INSUFFICIENT_HISTORY`, `MIN_NOTIONAL`, `MIN_QTY`, `STEP_SIZE`, `PRICE_TICK`, `RISK_BUDGET`, `INSUFFICIENT_COLLATERAL`, `FEE_FUNDING_RESERVE`, `LIQUIDATION_BUFFER`, `HALT_HEADROOM`, `SPREAD_COST_UNCERTAIN`, `UNKNOWN_CONSTRAINT`. Multiple reasons may be reported; critical unknowns fail closed. Filter uncertainty and reconstruction-dependent eligibility must be explicitly separated from verified cases.
 
-**M1 mandatory evidence:** Produce a versioned **50 USDT Execution Feasibility Report** covering the candidate point-in-time universe and research windows. Compute it for every Ignition **and Growth** risk candidate at 50 USDT (Growth also starts at 50 USDT) and at representative Growth equity levels (e.g., 100 and 250 USDT). Include: attempted candidates, executable count and rate, rejection counts by reason/symbol/regime, size/notional/margin distributions, cost/stop-distance sensitivities, and the binding side of the feasibility window (§5.2: leverage cap versus minimum order) per symbol. Distinguish *technical eligibility* from *strategy profitability*; report coverage and uncertainty rather than treating reconstructed filters as verified. M1 acceptance requires the report and correct rejection behavior, **not a preselected minimum pass rate**. A numeric promotion-grade feasibility threshold is preregistered before the M2 holdout (SC-03). If no feasible orders exist under defensible assumptions, record a no-trade/feasibility blocker rather than weakening risk controls.
+**M1 mandatory evidence:** Produce a versioned **50 USDT Execution Feasibility Report** covering the candidate point-in-time universe and research windows. Compute it for every Ignition **and Growth** risk candidate at 50 USDT (Growth also starts at 50 USDT) and at representative Growth equity levels (e.g., 100 and 250 USDT). Include: attempted candidates, executable count and rate, rejection counts by reason/symbol/regime, size/notional/margin distributions, cost/stop-distance sensitivities, and the binding constraint (`RISK`/`MARGIN`/`LIQUIDATION`/`LIMIT`, §5.2) and the `risk_utilization` distribution per symbol. A margin-bound order below 100% risk utilization counts as executable, not rejected. Distinguish *technical eligibility* from *strategy profitability*; report coverage and uncertainty rather than treating reconstructed filters as verified. M1 acceptance requires the report and correct rejection behavior, **not a preselected minimum pass rate**. A numeric promotion-grade feasibility threshold is preregistered before the M2 holdout (SC-03). If no feasible orders exist under defensible assumptions, record a no-trade/feasibility blocker rather than weakening risk controls.
 
 
 ### 5.2 Risk base, initial stop and rounding
 
 - **Risk base:** `phase_risk_budget = risk_pct × cycle_equity` (§7.3.1) at decision time, in every phase, then capped by the halt-headroom rule (§8.1). A fixed-reference variant (`risk_pct × 50 USDT`) may be studied only as a preregistered research variant.
 - **Initial stop distance:** `d = k × ATR(14)` from the completed signal bar (candidate `k = 2.5`, the same multiplier as the trailing exit).
-- **Quantity:** `q = floor_to_step(risk_budget / (d + c))`, where `c` is the conservative per-unit cost (entry and exit fees at taker rate plus stressed slippage on both sides).
+- **Quantity (most restrictive cap, then quantize, then validate):**
+  1. Compute every upper bound on quantity:
+     - `q_risk = risk_budget / (d + c)`, where `c` is the conservative per-unit cost (entry and exit fees at taker rate plus stressed slippage on both sides);
+     - `q_margin = (available_collateral × u × L_max) / entry_price`, where `available_collateral` excludes opening excess and the fee/funding reserve (§7.1.1) and `u` is the permitted margin utilization;
+     - `q_liq`, the largest quantity whose liquidation price, under the declared point-in-time maintenance-margin tier and the allocated isolated margin, stays beyond the stop by the liquidation buffer;
+     - `q_limit`, the exchange maximum quantity (`LOT_SIZE`/`MARKET_LOT_SIZE` max) and any configured exposure cap.
+  2. `q_max = min(q_risk, q_margin, q_liq, q_limit)`. Record which bound binds (`RISK`, `MARGIN`, `LIQUIDATION`, `LIMIT`).
+  3. `q = floor_to_step(q_max)`. Never round up.
+  4. Validate `q` against **all** exchange filters (`minQty`, step size, `minNotional`, maximum quantity, price tick and any price-band filter) and re-check risk, margin and liquidation buffer at the rounded values. Reject only if a filter or check fails, with the matching reason code.
+  - An order that uses **less than 100% of the risk budget** because margin, liquidation or a limit binds is **valid**, not rejected. Record `risk_utilization = modeled_risk(q) / risk_budget` with the decision, and report its distribution in SC-12.
 - **Stop placement preserves distance:** the initial stop is placed at `actual_fill_price − d` for longs and `+ d` for shorts, not at a level fixed from the signal close, so a gap between signal and fill does not change per-unit risk.
 - **Price rounding:** stop prices are rounded to the tick **toward** the entry (tighter, never wider), so the realized distance is `<= d`. Quantity is rounded down to the step. If either rounding makes the order non-compliant, reject.
-- **Feasibility window (diagnostic):** ignoring costs, an entry is feasible only if `risk_budget / (E × L_max × u) <= d / price <= risk_budget / N_min`, with `E` = cycle equity, `L_max` = leverage ceiling, `u` = permitted margin utilization and `N_min = max(minNotional, minQty × price)`. SC-12 reports which side binds.
+- **Binding-constraint diagnostic:** ignoring costs, if `d / price < risk_budget / (E × L_max × u)` the margin/leverage cap binds and the order is sized below the risk budget; this is still valid. Only if the minimum compliant order `N_min = max(minNotional, minQty × price)` would exceed the risk budget (`d / price > risk_budget / N_min`) or the margin/liquidation caps does the entry become infeasible (`MIN_NOTIONAL`/`MIN_QTY` with `RISK_BUDGET`, `INSUFFICIENT_COLLATERAL` or `LIQUIDATION_BUFFER`). SC-12 reports the binding constraint and the infeasibility reasons separately.
 
 ## 6. Strategy contract — MVP candidate only
 
@@ -224,11 +233,12 @@ Before selector holdout, freeze features, selection cadence, costs, multiple-tes
 
 - `capital_cycles` stores cycle ID, start time, committed capital (initial or top-up), status `OPEN`/`CLOSED`, closure reason (`FIXED_LOSS_HALT` or `OPERATOR_CLOSE`), residual, and post-mortem reference/digest. Lifetime counters (`cycles_started`, `committed_capital_total`) are derived from the ledger, never stored as editable configuration.
 - `FIXED_LOSS_HALT` closes the cycle only after exposure is flat and reconciled. The operational `HALTED` latch remains until operator acknowledgment. Other halts do not close the cycle.
-- Authorization of **any** cycle, including the first, is rejected unless all hold:
-  - the previous cycle is `CLOSED` and its post-mortem is recorded;
+- Authorization of **every** cycle, including the first, is rejected unless all hold:
   - live approval is not suspended;
   - there is no open exposure or order, and the USD-M wallet holds between 50.00 and 50.50 USDT;
   - `cycles_started < 2` and `committed_capital_total + top_up <= 100`.
+
+  The **first** cycle needs no previous-cycle closure or post-mortem; its committed capital is the initial 50 USDT. The **second** cycle additionally requires the first cycle to be `CLOSED` with its post-mortem recorded. The two-cycle and 100 USDT lifetime limits are unchanged.
 
   The reference remains exactly 50 USDT. The tolerance exists only for amounts that are impractical to remove. `opening_excess = wallet_at_cycle_start − 50` is recorded at cycle start and subtracted from `cycle_equity` (§7.3.1), so cycle equity starts at exactly 50. The excess is not trading capital: it never increases the risk budget, never counts toward the 100 USDT trigger, never widens halt headroom, and is excluded from the available collateral used in margin, sizing and feasibility checks (§5.2, §8). Implementation must test this against the exchange's available-margin figure, which will include the excess (SC-06).
 - Residual funds of a closed cycle are never traded. ACGS never deposits or tops up by itself. A top-up is an operator action, classified through §7.6 and recorded as committed capital.
@@ -464,6 +474,7 @@ Research must use chronological development/validation windows, walk-forward tes
 | T-38 | Mark-price path reaches liquidation before the stop triggers on its declared price type | Liquidation modeled and flagged; no optimistic stop fill | M1 |
 | T-39 | M5 protective-order smoke test at minimum size; order types marked `NOT_VALIDATED` in `LIVE_SHADOW` | Stop acceptance/visibility, `reduceOnly`/`closePosition`, gap-free replacement and emergency flatten confirmed and signed off, otherwise NO-GO for `LIVE_ARMED`; sign-off invalidated and repeated after any account-mode, order-parameter, endpoint or API change (INV-12) | M5 |
 | T-40 | Protective stop lives in the conditional/algo order family; reconciler or recovery flattening queries only regular orders | Both families and both update streams queried; stop unconfirmed if not found in its own family; contingent algo orders cancelled before transfer | M3 (mock); M5 |
+| T-41 | Tight stop where the margin/leverage cap binds before the risk budget; quantized quantity passes all filters | Order accepted below 100% risk utilization with binding constraint `MARGIN` recorded; no false rejection. A case where only rounding *up* would meet `minNotional` is still rejected (T-22) | M1 |
 
 ## 13. Open contract register
 
@@ -480,7 +491,7 @@ Research must use chronological development/validation windows, walk-forward tes
 | SC-09 | M4 | Paper pilot duration, alerts, fault-response and operational acceptance |
 | SC-10 | M5 | Binance endpoint/permission/position-mode compatibility, account isolation and preconditions (§7.6), and live arming |
 | SC-11 | Optional P1/P2 | Vault locking, pyramiding and adaptive selector promotion |
-| SC-12 | M1 | Micro-capital eligibility reason codes, exchange-filter provenance, feasibility report and sensitivities across Ignition and Growth risk levels, risk base, stop placement/rounding and feasibility window (§5.2) (T-22/T-23/T-33) |
+| SC-12 | M1 | Micro-capital eligibility reason codes, exchange-filter provenance, feasibility report and sensitivities across Ignition and Growth risk levels, risk base, stop placement/rounding, most-restrictive-cap sizing and binding-constraint reporting (§5.2) (T-22/T-23/T-33/T-41) |
 | SC-13 | M3 mock; M4 shadow; M5 `LIVE_SHADOW` + smoke test | Protective-order compatibility matrix, emergency flatten safety contract, account-mode validation, trailing replacement without coverage gap, shadow-mode key and endpoint restrictions, conditional/algo endpoint family and smoke-test validity (INV-12) (T-24/T-26/T-34/T-37/T-39/T-40) |
 | SC-14 | M3 | Recovery workflow substates including `SHORTFALL_HOLD` and operator resolutions (§7.4.1), durable intent, retry ambiguity and fault-injection suite (T-25, T-28) |
 | SC-15 | M3 | Capital-cycle closure, new-cycle authorization and lifetime limits: policy decided in PRD v1.4 §5.2.1, mechanics in §7.1.1; transfer key separation and direction restriction (§10) (T-31/T-32) |
@@ -502,12 +513,13 @@ A contract is not considered resolved merely by selecting a value: it requires r
 - Added the halt-headroom risk cap and `HALT_HEADROOM` reason code (§8.1).
 - Added T-27–T-30 and SC-15.
 - Aligned with PRD v1.4: capital-cycle records and lifetime limits (§7.1.1), transfer key separation and Futures→Spot-only adapter (§10), mainnet shadow `PAPER` and staged `LIVE` (`LIVE_SHADOW` via test-order endpoint → smoke test → `LIVE_ARMED`), no testnet (§3.1, INV-08, T-34, T-39).
-- Added capability-boundary enforcement (§2.1) and risk base, distance-preserving initial stop, tick rounding toward entry and feasibility window (§5.2, INV-07); SC-12 report now covers Growth risk levels.
+- Added capability-boundary enforcement (§2.1) and risk base, distance-preserving initial stop, tick rounding toward entry and binding-constraint diagnostic (§5.2, INV-07); SC-12 report now covers Growth risk levels.
 - Data: instrument epochs, point-in-time funding intervals, forward capture, mark-price kline coverage, liquidation versus stop price basis (§4.2/§4.3/§4.5).
 - Strategy: step-wise ATR trailing implementation decided; universe-exit handling added to the open list (§6). Research: random-entry and ablation baselines, calendar-block resampling, lifetime-limit success probability, post-mortem tolerance (§11).
 - Added T-31–T-38. PRD v1.4 baselines preserved.
 - Hardened `RESUME_IGNITION` with automated cost-model, risk-digest and headroom preconditions and a limit of two shortfalls per cycle (§7.4.1).
 - Added INV-12 (smoke test is the hard gate for protective orders; test-order acceptance is never evidence) and the conditional/algo endpoint family requirements (§9.2, T-40).
+- Sizing takes the most restrictive of risk, margin, liquidation and limit caps, quantizes down, then validates all filters; orders below 100% risk utilization are valid (§5.2, T-41). First-cycle authorization needs no previous-cycle closure or post-mortem (§7.1.1).
 - Opening excess of up to 0.50 USDT is excluded from `cycle_equity` and from available collateral for sizing/margin, and is never trading capital (§7.1.1).
 
 ## Appendix — v0.3 targeted change notes
