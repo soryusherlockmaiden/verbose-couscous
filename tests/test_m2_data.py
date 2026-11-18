@@ -1,4 +1,5 @@
 import hashlib
+import io
 import json
 import os
 import runpy
@@ -866,3 +867,65 @@ def test_t15_pre_seal_forecast_is_admissible_on_both_input_paths(tmp_path, path)
         write_json(manifest_path, manifest)
         with pytest.raises(AccessRefused, match="describes a registered sealed range"):
             load_history(manifest_path, tmp_path)
+
+
+@pytest.mark.parametrize("kind", ["fundingRest", "fundingMarks"])
+def test_hardening_t15_wrong_range_sidecar_refused_before_open(paths, kind):
+    _, _, root = paths
+    symbol = "FIXTUREUSDT"
+    entry = {"kind": kind, "id": f"{symbol}@0", "start": START, "end": END,
+             "source": (f"https://fapi.binance.com/fapi/v1/fundingRate?symbol={symbol}"
+                        f"&startTime={START}&endTime={END - 1}&limit=1000"),
+             "path": f"local/{kind}/{symbol}-{START}-{END + 1}.json", "sha256": "0" * 64}
+    target = root / entry["path"]
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(b"[]")
+    with forbid_io(root), pytest.raises(AccessRefused, match="Asset filename"):
+        read_history_asset(root, entry)
+
+
+def test_hardening_legacy_sidecar_requires_exact_pin_and_query_before_open(tmp_path):
+    from acgs.history_seal import resolve_asset_path
+
+    start, end = 1704067200000, 1714521600000
+    source = (f"https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT"
+              f"&startTime={start}&endTime={end - 1}&limit=1000")
+    entry = {"kind": "fundingMarks", "path": "fundingRest/BTCUSDT-2024-fundingRate.json",
+             "id": f"BTCUSDT@{start}", "start": start, "end": end, "source": source,
+             "sha256": "591ac3dfed08baca5bea2d5ab3db8dd8de5dcad777b12c871bc8e04a13e69e37"}
+    with forbid_io(tmp_path):
+        assert resolve_asset_path(tmp_path, entry) == tmp_path / entry["path"]
+        for change in ({"sha256": "0" * 64}, {"kind": "fundingRest"},
+                       {"source": source.replace(str(end - 1), str(end))},
+                       {"path": entry["path"].replace("BTC", "ETH")}):
+            with pytest.raises(AccessRefused, match="Asset filename"):
+                resolve_asset_path(tmp_path, entry | change)
+
+
+@pytest.mark.parametrize(("contents", "field"), [
+    ("{", "JSON"), ("null", "registry"), ('{"ranges":[]}', "version"),
+    ('{"version":"history-seal-v1","ranges":"bad"}', "ranges"),
+    ('{"version":"history-seal-v1","ranges":[null]}', "ranges"),
+    ('{"version":"history-seal-v1","ranges":[{}]}', "purpose"),
+    ('{"version":"history-seal-v1","ranges":[{"purpose":"m2-prospective-holdout"}]}', "start"),
+    ('{"version":"history-seal-v1","ranges":[{"purpose":"m2-prospective-holdout","start":0,"end":false}]}', "end"),
+])
+def test_hardening_registry_diagnostics_at_capture_entry(tmp_path, monkeypatch, capsys, contents, field):
+    record = tmp_path / "registry.json"
+    record.write_text(contents, encoding="utf-8")
+    monkeypatch.setattr("acgs.history_seal.RECORD_PATH", record)
+    monkeypatch.setattr("acgs.__main__.fetch_public", lambda _: pytest.fail("Unexpected capture GET"))
+    assert m1_main(["--db", str(tmp_path / "test.db"), "capture"]) == 1
+    message = capsys.readouterr().err
+    assert "Capture refused" in message and field in message
+
+
+def test_hardening_coverage_stdout_is_identical_under_windows_translation(paths, monkeypatch):
+    buffer = io.BytesIO()
+    console = io.TextIOWrapper(buffer, encoding="utf-16", newline="\r\n")
+    with monkeypatch.context() as patch:
+        patch.setattr(sys, "stdout", console)
+        assert cli(paths, "development", "coverage") == 0
+        console.flush()
+    payload = buffer.getvalue()
+    assert payload == (json.dumps(json.loads(payload), sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")

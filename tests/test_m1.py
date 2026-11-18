@@ -788,7 +788,9 @@ def test_t18_archive_mark_enrichment_requires_exact_settlement_match(tmp_path: P
         zipped.writestr("funding.csv", f"calc_time,funding_interval_hours,last_funding_rate\n"
                         f"{time},8,0.001\n")
     row = {"symbol": INST.symbol, "fundingTime": time, "fundingRate": "0.001", "markPrice": "105"}
-    mark = tmp_path / "funding.json"
+    relative = f"local/fundingMarks/{INST.symbol}-{T}-{T + HOUR}.json"
+    mark = tmp_path / relative
+    mark.parent.mkdir(parents=True)
     mark.write_text(json.dumps([row]), encoding="utf-8")
     funding_source = ("https://data.binance.vision/data/futures/um/daily/"
                       f"fundingRate/{INST.symbol}/{archive.name}")
@@ -802,7 +804,7 @@ def test_t18_archive_mark_enrichment_requires_exact_settlement_match(tmp_path: P
                       "evidence": dict(source="fixture", method="test", as_of=INST.onboard,
                                        provenance="VERIFIED")}],
         "assets": [
-            {"id": INST.id, "source": source, "path": file.name, "start": T, "end": T + HOUR,
+            {"id": INST.id, "source": source, "path": file.relative_to(tmp_path).as_posix(), "start": T, "end": T + HOUR,
              "kind": kind, "sha256": hashlib.sha256(file.read_bytes()).hexdigest()}
             for file, kind, source in (
                 (archive, "fundingRate", funding_source),

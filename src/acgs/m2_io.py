@@ -35,7 +35,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 Window(utc_ms(args.start), utc_ms(args.end)),
                 _policy(args.policy) if args.policy is not None else None,
             )
-        print(canonical(report))
+        sys.stdout.buffer.write((canonical(report) + "\n").encode("utf-8"))
     except (ValueError, KeyError, TypeError, DecimalException, BadZipFile, OSError) as error:
         print(f"M2 OFFLINE data operation refused: {error}", file=sys.stderr)
         return 1

@@ -17,6 +17,15 @@ VERSION = "history-seal-v1"
 ARCHIVE_HOST = "https://data.binance.vision"
 CANDLES = ("klines", "markPriceKlines")
 SETTLEMENT_REST = ("fundingMarks", "fundingRest")
+# The accepted M1 manifest predates range-bearing settlement filenames.
+LEGACY_MARKS = {
+    "fundingRest/BTCUSDT-2024-fundingRate.json": (
+        "BTCUSDT", 1704067200000, 1714521600000, "591ac3dfed08baca5bea2d5ab3db8dd8de5dcad777b12c871bc8e04a13e69e37"),
+    "fundingRest/ETHUSDT-2024-fundingRate.json": (
+        "ETHUSDT", 1704067200000, 1714521600000, "b8a4936b0ac6d72cd304cd0ac87dc6089a3ddd7652ccd6624f181eba6b621a68"),
+    "fundingRest/DGBUSDT-2024-fundingRate.json": (
+        "DGBUSDT", 1704067200000, 1711929600000, "e57d6442506b3b5e6c7685205985c18cb7fd493e4b20f8317a5056f056a8c34f"),
+}
 METADATA = ("listings", "filters", "maintenance", "spreads", "schedules", "mark_gaps")
 # Instrument onboard instants are identity anchors and stay admissible. Event
 # times and spans in inline metadata are sealed when observed at or after the
@@ -108,8 +117,15 @@ def resolve_asset_path(root: Path, entry: Mapping[str, Any]) -> Path:
     if not target.is_relative_to(root.resolve()):
         raise AccessRefused("Dataset asset path outside allowed root")
     if entry["kind"] in SETTLEMENT_REST:
-        if target.suffix != ".json":
-            raise AccessRefused("Asset filename for a settlement response must end in .json")
+        window, _ = _source_bundle(entry)
+        symbol = entry["id"].split("@", 1)[0]
+        relative = target.relative_to(root.resolve()).as_posix()
+        canonical = f"local/{entry['kind']}/{symbol}-{window.start}-{window.end}.json"
+        legacy = entry["kind"] == "fundingMarks" and LEGACY_MARKS.get(relative) == (
+            symbol, window.start, window.end, entry.get("sha256"),
+        )
+        if relative != entry["path"] or (relative != canonical and not legacy):
+            raise AccessRefused("Asset filename must match the settlement symbol and query range")
     elif target.name != entry["source"].rsplit("/", 1)[-1]:
         raise AccessRefused("Asset filename must match the source archive")
     return target
@@ -171,7 +187,7 @@ class HistorySeal:
 
 def _registered_boundary(row: Mapping[str, Any], field: str) -> int:
     message = f"Registered {row['purpose']} {field} must be exactly 00:00:00.000 UTC"
-    value = row[field]
+    value = row.get(field)
     try:
         time = utc_ms(value)
     except ValueError as error:
@@ -183,17 +199,42 @@ def _registered_boundary(row: Mapping[str, Any], field: str) -> int:
 
 
 def registered_seal() -> HistorySeal:
-    raw = json.loads(RECORD_PATH.read_text(encoding="utf-8"))
-    if raw.get("version") != VERSION or not raw.get("ranges"):
-        raise AccessRefused("Expected a versioned history seal with registered ranges")
-    if any(row.get("purpose") not in PURPOSES for row in raw["ranges"]):
-        raise AccessRefused("Each registered sealed range needs a known purpose")
-    ranges = tuple(
-        Window(_registered_boundary(row, "start"), _registered_boundary(row, "end"))
-        for row in raw["ranges"]
-    )
+    try:
+        raw = json.loads(RECORD_PATH.read_text(encoding="utf-8"), object_pairs_hook=_registry_fields)
+    except AccessRefused:
+        raise
+    except (ValueError, RecursionError) as error:
+        raise AccessRefused("Invalid history seal registry JSON") from error
+    except OSError as error:
+        raise AccessRefused("Cannot read history seal registry") from error
+    if not isinstance(raw, dict) or raw.keys() - {"version", "ranges"}:
+        raise AccessRefused("Expected a registry object with fields version and ranges")
+    if raw.get("version") != VERSION:
+        raise AccessRefused("Invalid history seal registry version")
+    if not isinstance(raw.get("ranges"), list) or not raw["ranges"]:
+        raise AccessRefused("Expected a nonempty registry ranges array")
+    windows = []
+    for index, row in enumerate(raw["ranges"]):
+        if not isinstance(row, dict) or row.keys() - {"purpose", "start", "end"}:
+            raise AccessRefused(f"Invalid registry ranges[{index}]: expected purpose, start and end fields")
+        if row.get("purpose") not in PURPOSES:
+            raise AccessRefused(f"Registry ranges[{index}] requires a known purpose")
+        start, end = _registered_boundary(row, "start"), _registered_boundary(row, "end")
+        if end <= start:
+            raise AccessRefused(f"Registry ranges[{index}].end must follow start")
+        windows.append(Window(start, end))
+    ranges = tuple(windows)
     by_purpose = {
         purpose: tuple(window for window, row in zip(ranges, raw["ranges"], strict=True) if row["purpose"] == purpose)
         for purpose in PURPOSES
     }
     return HistorySeal(ranges, by_purpose[HOLDOUT], by_purpose[RESERVE])
+
+
+def _registry_fields(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    fields = {}
+    for key, value in pairs:
+        if key in fields:
+            raise AccessRefused(f"Duplicate registry field {key!r}")
+        fields[key] = value
+    return fields
