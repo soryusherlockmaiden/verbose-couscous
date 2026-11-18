@@ -1,6 +1,6 @@
 # 50 USDT Execution Feasibility Report
 
-Report schema `m1-feasibility-v5`. This is a development sample for M1. It predates the M2 holdout.
+Report schema `m1-feasibility-v6`. This is a development sample for M1. It predates the M2 holdout.
 
 ## Reproduce
 
@@ -8,16 +8,16 @@ Report schema `m1-feasibility-v5`. This is a development sample for M1. It preda
 uv sync --locked
 uv run --locked python evidence/m1/fetch.py evidence/m1/binance-2024.json data/m1/archive
 uv run --locked python -m acgs historical --manifest evidence/m1/binance-2024.json --assets data/m1/archive
-uv run --locked python -m acgs feasibility --manifest evidence/m1/binance-2024.json --assets data/m1/archive --policy config/m1.json --start 2024-03-01T00:00:00Z --end 2024-04-11T00:00:00Z --out data/m1/feasibility-2024-v5.json
+uv run --locked python -m acgs feasibility --manifest evidence/m1/binance-2024.json --assets data/m1/archive --policy config/m1.json --start 2024-03-01T00:00:00Z --end 2024-04-11T00:00:00Z --out data/m1/feasibility-2024-v6.json
 ```
 
 | Identifier | SHA-256 digest |
 |---|---|
 | [Dataset manifest](binance-2024.json) | `44d93cb13430d499dd3f8a4e73cb6fd1b4539357705a613fbb6ee90c26b02aa5` |
 | [OFFLINE policy](../../config/m1.json) | `dd0187eb938370e1cb72b6a02d08752da185549fbfb99741bb71acddeec4b76e` |
-| Canonical feasibility output, excluding final LF | `49727b1bd5df3c107f5265cd0cf488e9b0b84635c4b8794ed90a0b4c91142264` |
+| Canonical feasibility output, excluding final LF | `b4858aa261a01fcb747a2fcc5c05e7c671325e1a56d59dd2355abe9426ba8bcb` |
 
-The `dataset_digest` and `policy_digest` hash canonical JSON. The manifest uses only `data.binance.vision` archives, which remain reachable where Binance's REST API is geo-restricted. The v5 output marks an attempt unassessable when a critical input is unavailable, stale, a disallowed reconstruction or an uncertain spread. Rejection counts and status are unchanged. The REST-enriched manifest [binance-2024-marks.json](binance-2024-marks.json) (`107a5567997638b89fc94f6bddcbf6f670fe5d36957218e5932fb78942d543c0`) produces the same report body because feasibility never reads settlement marks.
+The `dataset_digest` and `policy_digest` hash canonical JSON. The manifest uses only `data.binance.vision` archives, which remain reachable where Binance's REST API is geo-restricted. The v6 output marks an attempt unassessable, with `assessment_reasons`, when a critical input is unavailable, stale, a disallowed reconstruction or an uncertain spread. It counts an attempt executable only when it is assessable. Rejection counts and status are unchanged. The REST-enriched manifest [binance-2024-marks.json](binance-2024-marks.json) (`107a5567997638b89fc94f6bddcbf6f670fe5d36957218e5932fb78942d543c0`) produces the same report body because feasibility never reads settlement marks.
 
 ## Coverage and provenance
 

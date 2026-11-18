@@ -106,3 +106,25 @@ The commands above, with `-v5`/`-v6` output names, gave identical outputs on two
 - public replay `a36814011d50db80a312bb6ade149760c75feec525e6e979fecd88b738d7019f` (run digest `065ac7401978886c1dadda8faec48a9e26ed1f43a31b85d554faf32e31ac8d0f`).
 
 Pinned Gitleaks scanned 53 commits with no leaks.
+
+## Third follow-up (review of `76ebee4`)
+
+All four findings were reproduced at `76ebee4` before they were fixed. Each fix has a regression test that fails on that head.
+
+| Finding | Fix |
+|---|---|
+| P1: a released credit was published at the bar's close availability, but the next open sized an entry on it 1,000 ms early and the `ENTRY_FILL` snapshot looked available. | Every funding posting advances cash availability to its own published instant. Sizing refuses the credit (`FUNDING_CASH_UNAVAILABLE`), and every later snapshot carrying it waits for that instant. |
+| P1: a settlement in the window before the horizon posted its full credit, so extending the replay one bar changed `cycle_equity` at the same timestamp. | The horizon keeps the credit withheld. A longer replay publishes identical values at shared timestamps. |
+| P2: the first capture could not withdraw filters or a listing supplied by the manifest. | Captures receive the manifest's listings and filters. Each `exchangeInfo` capture withdraws any epoch in force that it omits and records incomplete filters as `UNAVAILABLE`. |
+| P2: with a mark proxy and `allow_reconstructed=false`, the report showed 0 assessable, 71 executable and `ASSESSABLE`. | Schema `m1-feasibility-v6` uses one verdict: executable only if assessable. Rows, aggregates and the status agree, and each row lists `assessment_reasons`. The replay broker uses a proxy only when reconstruction is allowed. |
+
+Replay version is `m1-replay-v5`. Cloud agent: ruff, mypy and pytest passed with 178 tests. Docker passed smoke twice (`e2fb3f83…`) and the `check` service with 178 tests. The fixture digests are exact-clock `d0238f5d5bfe512fe86eee83e77efea04a77627ce5734d18a11b37ccaa47c56f` and released policy `e8a7c103fad0f8e1109f9cd7840fdd05509525b465d70e10f1d5827cfe3619f3`.
+
+The commands above, with `-v6`/`-v7` output names, gave identical outputs on two native runs and in Docker:
+
+- historical `81e5f113b97f80cfd8f8ea73bd75c1c8a537c50d162729e23151729d8a2920c7`, unchanged;
+- [main feasibility](feasibility.md) `b4858aa261a01fcb747a2fcc5c05e7c671325e1a56d59dd2355abe9426ba8bcb`: 8,136 unassessable attempts, 0 executable, `INCONCLUSIVE_CRITICAL_INPUT_UNAVAILABLE`;
+- empty window `6f1ab1e5d222f1b1c38e44f3fe3fb7afa8cc1e4d39aaf734ba9d2efb7225f838`;
+- public replay `154ee562aea635e9574b320ce354ed11c74607827d5e5ba80ed0b2e95e4da141` (run digest `009f03dfcac8b86fddc0ae45df927b494ff55f7552c16e424481196ea0b8aaec`).
+
+Pinned Gitleaks scanned 57 commits with no leaks.
