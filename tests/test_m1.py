@@ -1201,3 +1201,24 @@ def test_t02_capture_absence_overrides_earlier_status_learned_later(tmp_path: Pa
     assert as_of(market.listings[btc], learned + 1).status == "ABSENT_FROM_EXCHANGE_INFO"
     # An epoch that starts after the capture is not withdrawn by it.
     assert as_of(market.listings[relisted], relisted.onboard + 1).tradable
+
+
+def test_t01_historical_coverage_separates_filter_snapshots_from_withdrawals(tmp_path: Path) -> None:
+    fixture = json.loads((Path(__file__).parent / "fixtures" / "exchangeInfo.json").read_text(encoding="utf-8"))
+    incomplete = json.loads(json.dumps(fixture))
+    for item in incomplete["symbols"]:
+        item["filters"] = [f for f in item["filters"] if f["filterType"] != "MIN_NOTIONAL"]
+    db = tmp_path / "capture.sqlite3"
+    receipt = 1_794_928_320_000
+    hashes = [save_exchange_info(db, receipt, fixture), save_exchange_info(db, receipt + HOUR, incomplete)]
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "version": "m1-history-v1", "ingested_at": receipt + DAY, "candle_delay_ms": 1000,
+        "funding_delay_ms": 5000, "instruments": [], "listings": [], "assets": [],
+        "capture": {"symbols": ["BTCUSDT"], "cutoff": receipt + DAY, "digest": digest(hashes)},
+    }), encoding="utf-8")
+    out = tmp_path / "historical.json"
+    assert main(["historical", "--manifest", str(manifest), "--assets", str(tmp_path),
+                 "--capture-db", str(db), "--out", str(out)]) == 0
+    coverage, = json.loads(out.read_text(encoding="utf-8"))["coverage"].values()
+    assert (coverage["filter_observations"], coverage["filter_snapshots"], coverage["filter_withdrawals"]) == (2, 1, 1)

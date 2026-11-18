@@ -15,7 +15,7 @@ from acgs.clock import FixedClock
 from acgs.eligibility import Side
 from acgs.feasibility import feasibility
 from acgs.history_io import integer, load_history, number, read_json
-from acgs.pit import Instrument
+from acgs.pit import Filters, FilterWithdrawal, Instrument
 from acgs.sim_config import EPOCH, Policy, StopBasis, canonical, digest, instant_ms
 
 
@@ -100,7 +100,12 @@ def run_research(args: Namespace) -> int:
                 "settlements": len(market.settlements.get(inst, ())),
                 "settlements_with_mark": sum(f.mark is not None for f in market.settlements.get(inst, ())),
                 "listing_observations": len(market.listings[inst]),
+                # Withdrawals are metadata observations too, but never usable filters.
                 "filter_observations": len(market.filters.get(inst, ())),
+                "filter_snapshots": sum(isinstance(f, Filters) for f in market.filters.get(inst, ())),
+                "filter_withdrawals": sum(
+                    isinstance(f, FilterWithdrawal) for f in market.filters.get(inst, ())
+                ),
                 "maintenance_observations": len(market.maintenance.get(inst, ())),
                 "schedule_observations": len(market.schedules.get(inst, ())),
                 "spread_observations": len(market.spreads.get(inst, ())),
