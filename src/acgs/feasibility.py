@@ -16,7 +16,7 @@ from acgs.eligibility import (
     execution_slippage,
     slipped,
 )
-from acgs.pit import DAY, ZERO, Candle, Market, Provenance, as_of
+from acgs.pit import DAY, ZERO, Candle, Filters, Market, Provenance, as_of
 from acgs.sim_config import EPOCH, Policy, instant_ms
 from acgs.universe import snapshot
 
@@ -183,7 +183,7 @@ def _feasibility(
             for case in cases:
                 config = policy_variants[case.cost_factor]
                 price = last.prices.close
-                if filters is not None:
+                if isinstance(filters, Filters) and filters.evidence.provenance != Provenance.UNAVAILABLE:
                     price = slipped(price, side, execution_slippage(spread, config.slippage), filters.tick)
                 decision = evaluate(market, Candidate(
                     inst, time, side, price, mark.prices.close, case.stop_factor * policy.atr_multiple * atr,

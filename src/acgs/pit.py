@@ -207,6 +207,19 @@ class Filters:
 
 
 @dataclass(frozen=True)
+class FilterWithdrawal:
+    """An observation that invalidates earlier filters without carrying their values."""
+
+    instrument: Instrument
+    effective: int
+    evidence: Evidence
+
+    def __post_init__(self) -> None:
+        if self.evidence.provenance != Provenance.UNAVAILABLE:
+            raise ValueError("A filter withdrawal requires unavailable evidence")
+
+
+@dataclass(frozen=True)
 class Tier:
     ceiling: Decimal
     maintenance_rate: Decimal
@@ -276,7 +289,7 @@ class Dataset:
     candles: tuple[Candle, ...]
     settlements: tuple[Funding, ...] = ()
     schedules: tuple[Schedule, ...] = ()
-    filters: tuple[Filters, ...] = ()
+    filters: tuple[Filters | FilterWithdrawal, ...] = ()
     maintenance: tuple[Maintenance, ...] = ()
     spreads: tuple[Spread, ...] = ()
     mark_gaps: tuple[MarkGap, ...] = ()
@@ -309,7 +322,13 @@ class Market:
             for old, new in zip(sorted(group), sorted(group)[1:], strict=False):
                 if old.onboard == new.onboard:
                     raise ValueError("Conflicting instrument identity")
-                end = max((x.effective for x in self.listings[old] if not x.tradable), default=-1)
+                # An absence learned after relisting can withdraw stale metadata at
+                # receipt, but cannot move the earlier, attested epoch boundary.
+                end = max((
+                    x.effective for x in self.listings[old]
+                    if not x.tradable
+                    and (x.status != "ABSENT_FROM_EXCHANGE_INFO" or x.effective <= new.onboard)
+                ), default=-1)
                 if not old.onboard <= end <= new.onboard:
                     raise ValueError("Relisting requires a distinct prior epoch boundary")
                 if any(x.tradable and x.effective >= end for x in self.listings[old]):

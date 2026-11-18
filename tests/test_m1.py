@@ -377,7 +377,7 @@ def test_t18_offset_archive_settlement_uses_boundary_mark_without_rest_mark(data
     tail = replay(Market(near_end), "fixture", shipped(), clock(T + 2 * HOUR), plan(enter(T + HOUR)))
     last, = (e for e in tail.events if e.kind == "FUNDING")
     assert last.time == T + 2 * HOUR and last.detail == f"SETTLED_AT={horizon.time}"
-    assert tail.snapshots[-1].mark_source == MarkSource.MARK_KLINE_CLOSE
+    assert tail.snapshots[-1].mark_source == MarkSource.MARK_KLINE_OPEN
 
 
 def test_t18_offset_with_primary_mark_posts_once_for_unchanged_holder(dataset: Dataset) -> None:
@@ -668,10 +668,10 @@ def test_t01_t20_t23_runtime_clock_report_and_config_identity(
         return sim, report
 
     result = run_decisions()
-    assert digest(asdict(result[0])) == "d0238f5d5bfe512fe86eee83e77efea04a77627ce5734d18a11b37ccaa47c56f"
+    assert digest(asdict(result[0])) == "42f111a8cd8e17ecdc56f8dbf4004244cc53e31a24f8ec42b6420bc9f56f5102"
     # The released policy prices the entry at the settlement instant conservatively.
     released = replay(sim_market, "fixture", _policy(SETTINGS), clock(T + 2 * HOUR), run_plan)
-    assert digest(asdict(released)) == "e8a7c103fad0f8e1109f9cd7840fdd05509525b465d70e10f1d5827cfe3619f3"
+    assert digest(asdict(released)) == "187d3bac1496928cb0bf842983c5287caa1d0eae4f7aade4067462f9a1f13d8f"
     assert [e.detail for e in released.events if e.kind == "FUNDING"] == [
         f"OWNERSHIP_ADJUSTMENT,SETTLED_AT={T}"
     ]
@@ -972,20 +972,44 @@ def test_t18_released_credit_cannot_size_or_show_before_its_bar_is_published(dat
     assert later and all(s.trigger_available_at >= T + 2 * HOUR + 1000 for s in later)
 
 
-def test_t01_longer_horizon_publishes_the_same_values_at_a_shared_timestamp(dataset: Dataset) -> None:
-    before = funding(T + 2 * HOUR - 1, "-0.001", hours=2)
-    data = replace(lagged(dataset), settlements=(*dataset.settlements[:4], before))
+@pytest.mark.parametrize("recorded_mark", [None, D(101)])
+@pytest.mark.parametrize("rate", ["-0.001", "0.001"])
+def test_t01_longer_horizon_publishes_the_same_values_at_a_shared_timestamp(
+    dataset: Dataset, recorded_mark: Decimal | None, rate: str,
+) -> None:
+    boundary = T + 2 * HOUR
+    before = replace(funding(boundary - 1, rate, hours=2), mark=recorded_mark)
+    gap = change_bar(dataset, 2, prices("104", "105", "103", "104"), mark=True)
+    data = replace(lagged(gap), settlements=(*dataset.settlements[:4], before))
 
     def published(hours: int) -> list[tuple[object, ...]]:
         run = replay(Market(data), "fixture", shipped(), clock(T + hours * HOUR), plan(enter(T + HOUR)))
-        return [(s.wallet, s.cycle_equity, s.trigger_available_at)
-                for s in run.snapshots if s.timestamp <= T + 2 * HOUR]
+        return [(s.wallet, s.cycle_equity, s.mark, s.mark_source, s.trigger_available_at)
+                for s in run.snapshots if s.timestamp <= boundary]
 
     short, long = published(2), published(3)
     assert short == long
-    end = replay(Market(data), "fixture", shipped(), clock(T + 2 * HOUR), plan(enter(T + HOUR)))
-    withheld, = (e for e in end.events if e.kind == "FUNDING")
-    assert withheld.postings[0].cash == ZERO and "CREDIT_WITHHELD" in withheld.detail
+    end = replay(Market(data), "fixture", shipped(), clock(boundary), plan(enter(T + HOUR)))
+    settled, = (e for e in end.events if e.kind == "FUNDING")
+    price = recorded_mark if recorded_mark is not None else D(104)
+    assert settled.price == price and settled.postings[0].cash == min(ZERO, -price * D(rate))
+    assert ("CREDIT_WITHHELD" in settled.detail) == (D(rate) < ZERO)
+
+
+def test_t18_terminal_close_fallback_obeys_candle_availability(dataset: Dataset) -> None:
+    boundary = T + 2 * HOUR
+    before = replace(funding(boundary - 1, "0.001", hours=2), mark=None)
+    delayed = lagged(dataset)
+    data = replace(delayed, candles=tuple(b for b in delayed.candles if b.start < boundary),
+                   settlements=(*dataset.settlements[:4], before))
+    run = replay(Market(data), "fixture", shipped(), clock(boundary), plan(enter(T + HOUR)))
+
+    settled, = (e for e in run.events if e.kind == "FUNDING")
+    assert settled.postings[0].cash == D("-0.1000")
+    snap = run.snapshots[-1]
+    assert snap.sequence == settled.sequence and snap.mark_source == MarkSource.MARK_KLINE_CLOSE
+    assert not snap.observable_by(boundary)
+    assert snap.trigger_available_at == boundary + 1000
 
 
 def test_t02_first_capture_withdraws_manifest_filters_and_listings(tmp_path: Path) -> None:
@@ -1014,7 +1038,7 @@ def test_t02_first_capture_withdraws_manifest_filters_and_listings(tmp_path: Pat
                  "2026-11-17T00:00:00+00:00", payload, hashlib.sha256(payload).hexdigest()),
             )
         listings, captured, *_ = _capture_observations(
-            path, {"BTCUSDT"}, 1_900_000_000_000, (manifest_listing,), (manifest_filter,),
+            path, {"BTCUSDT"}, 1_900_000_000_000, (manifest_listing,),
         )
         market = Market(Dataset((manifest_listing, *listings), (), filters=(manifest_filter, *captured)))
         candidate = Candidate(btc, receipt + 1, Side.LONG, D(90000), D(90000), D(1000), D(50), D(50),
@@ -1025,6 +1049,81 @@ def test_t02_first_capture_withdraws_manifest_filters_and_listings(tmp_path: Pat
         assert "UNVERIFIED_CRITICAL_FILTER" not in before.reasons
         expected = "UNVERIFIED_CRITICAL_FILTER" if name == "no_minimum" else "MISSING_PIT_FILTER"
         assert expected in after.reasons
+
+
+def save_exchange_info(db: Path, time: int, body: dict[str, object]) -> str:
+    url = "https://fapi.binance.com/fapi/v1/exchangeInfo"
+    stamp = clock(time).now().isoformat()
+    payload = json.dumps(body).encode()
+    sha = hashlib.sha256(payload).hexdigest()
+    with open_ledger(db) as conn, conn:
+        conn.execute(
+            """INSERT INTO capture_attempts
+                (source_url, slot, requested_at, received_at, status, http_status,
+                 payload, sha256, provenance)
+                VALUES (?, ?, ?, ?, 'CAPTURED', 200, ?, ?, 'VERIFIED')""",
+            (url, str(time), stamp, stamp, payload, sha),
+        )
+    return digest((url, stamp, sha))
+
+
+@pytest.mark.parametrize("late_notice", [False, True])
+def test_t35_capture_preserves_an_existing_delisting_boundary(tmp_path: Path, late_notice: bool) -> None:
+    fixture = json.loads((Path(__file__).parent / "fixtures" / "exchangeInfo.json").read_text(encoding="utf-8"))
+    row = next(r for r in fixture["symbols"] if r["symbol"] == "BTCUSDT")
+    old = Instrument("BTCUSDT", row["onboardDate"])
+    receipt = 1_794_928_320_000
+    delisted = receipt - 2 * DAY
+    new = replace(old, onboard=receipt - DAY)
+    db = tmp_path / "capture.sqlite3"
+    captured = {**fixture, "symbols": [{**row, "onboardDate": new.onboard}]}
+    hashes = [save_exchange_info(db, time, captured) for time in (receipt, receipt + DAY)]
+    initial = (
+        Listing(old, old.onboard, evidence(old.onboard), "TRADING"),
+        Listing(old, delisted, evidence(receipt + DAY if late_notice else delisted), "DELISTED"),
+        Listing(new, new.onboard, evidence(new.onboard), "TRADING"),
+    )
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(canonical({
+        "version": "m1-history-v1", "ingested_at": receipt + DAY,
+        "candle_delay_ms": 1000, "funding_delay_ms": 5000,
+        "instruments": [asdict(old), asdict(new)],
+        "listings": [
+            {**asdict(listing), "id": listing.instrument.id} for listing in initial
+        ],
+        "assets": [],
+        "capture": {"symbols": ["BTCUSDT"], "cutoff": receipt + DAY, "digest": digest(hashes)},
+    }), encoding="utf-8")
+
+    market = load_history(manifest, tmp_path, db).market
+    absent = tuple(row for row in market.listings[old] if row.status == "ABSENT_FROM_EXCHANGE_INFO")
+    assert tuple(row for row in market.listings[old] if row not in absent) == initial[:2]
+    assert tuple(row.effective for row in absent) == ((receipt,) if late_notice else ())
+    assert as_of(market.listings[new], receipt + DAY).tradable
+
+
+@pytest.mark.parametrize("tick", [D("0.25"), D("0.50")])
+def test_t02_filter_withdrawal_carries_no_unobserved_tick(
+    tmp_path: Path, dataset: Dataset, tick: Decimal,
+) -> None:
+    fixture = json.loads((Path(__file__).parent / "fixtures" / "exchangeInfo.json").read_text(encoding="utf-8"))
+    row = next(r for r in fixture["symbols"] if r["symbol"] == "BTCUSDT")
+    captured = {**fixture, "symbols": [{
+        **row, "symbol": INST.symbol, "onboardDate": INST.onboard,
+        "filters": [flt for flt in row["filters"] if flt["filterType"] != "MIN_NOTIONAL"],
+    }]}
+    db = tmp_path / "capture.sqlite3"
+    save_exchange_info(db, T, captured)
+    observed_later = replace(filters(), effective=T - HOUR, evidence=evidence(T + HOUR), tick=tick)
+    listings, withdrawn, *_ = _capture_observations(db, {INST.symbol}, T, dataset.listings)
+    market = Market(replace(dataset, listings=(*dataset.listings, *listings),
+                            filters=(observed_later, *withdrawn)))
+
+    run = replay(market, "fixture", shipped(), clock(T + HOUR), plan(enter()))
+    decision, = run.decisions
+    assert not decision.executable and "UNVERIFIED_CRITICAL_FILTER" in decision.reasons
+    assert decision.candidate.entry == D(100)
+    assert as_of(market.filters[INST], T + HOUR).evidence.provenance == Provenance.UNAVAILABLE
 
 
 def test_t21_t23_proxy_mark_without_reconstruction_is_never_executable(dataset: Dataset, policy: Policy) -> None:

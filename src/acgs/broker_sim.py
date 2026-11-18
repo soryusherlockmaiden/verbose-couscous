@@ -34,7 +34,7 @@ from acgs.pit import (
 from acgs.sim_config import Policy, StopBasis, digest, instant_ms
 from acgs.sim_ledger import AccountSnapshot, Event, Journal, MarkSource
 
-REPLAY_VERSION = "m1-replay-v5"
+REPLAY_VERSION = "m1-replay-v6"
 
 
 class ReplayError(ValueError):
@@ -165,7 +165,7 @@ class _Replay:
                 self.inside_funding.setdefault(bar_start, []).append(event)
         self.exposures: list[_Exposure] = []
         self.ownership: list[_Ownership] = []
-        self.last_close: tuple[int, Decimal, MarkSource] | None = None
+        self.last_close: tuple[int, Decimal, MarkSource, int] | None = None
         self.intents: dict[tuple[int, Action], Intent] = {}
         for intent in plan.intents:
             key = intent.time, intent.action
@@ -188,10 +188,16 @@ class _Replay:
             self.bar(start)
         horizon = self.boundary_funding.get(self.end)
         if horizon is not None and horizon.time < self.end:
-            # A settlement just before the horizon still belongs to this replay. Its
-            # holder window outlives the replay, so a credit stays withheld: a longer
-            # horizon must publish the same values at this timestamp.
-            self.boundary_settlement(self.end, None, record_flat=False, resolvable=True)
+            # Use the same opening print a longer replay would see at this boundary.
+            # The holder window outlives the replay, so a credit still stays withheld.
+            trade = self.market.bar(self.inst, self.end, self.plan.interval)
+            marks = (
+                self.marks(trade)
+                if trade is not None and trade.evidence.provenance != Provenance.UNAVAILABLE
+                else None
+            )
+            opening = None if marks is None else (marks[0].opening, marks[1])
+            self.boundary_settlement(self.end, opening, record_flat=False, resolvable=True)
         self.ownership.clear()
         try:
             self.journal.verify(self.p.accounting_tolerance)
@@ -216,7 +222,7 @@ class _Replay:
         listing = as_of(self.market.listings[self.inst], time)
         filters = as_of(self.market.filters.get(self.inst, ()), time)
         tiers = as_of(self.market.maintenance.get(self.inst, ()), time)
-        if listing is None or not listing.tradable or filters is None or tiers is None:
+        if listing is None or not listing.tradable or not isinstance(filters, Filters) or tiers is None:
             return None
         for row in (filters, tiers):
             ev = row.evidence
@@ -286,8 +292,9 @@ class _Replay:
                 self.last_close = None
             else:
                 prices, _, source = marks
-                self.snapshot(seq, end, prices.close, source, self.close_available_at(trade, source))
-                self.last_close = end, prices.close, source
+                close_available = self.close_available_at(trade, source)
+                self.snapshot(seq, end, prices.close, source, close_available)
+                self.last_close = end, prices.close, source, close_available
             if trail is not None:
                 j.record(end, "REJECTED", detail="NO_POSITION")
             return
@@ -339,7 +346,7 @@ class _Replay:
                 # Charge adverse funding now; withhold a credit until the bar resolves.
                 # Adverse funding reduces margin before the protection check.
                 self.post_settlement(f, f.time, f.mark, MarkSource.FUNDING_RECORD,
-                                     self.candidates(f), resolvable=True)
+                                     self.candidates(f), resolvable=True, available_at=f.time)
             # OHLC supplies a bound, not an intrabar timestamp. Record the outcome
             # at interval end, before close/trailing and the next bar's open.
             self.protect(
@@ -351,7 +358,7 @@ class _Replay:
         self.resolve_ownership(end, mark.close, source_close, close_available)
         seq = j.record(end, "BAR_CLOSE")
         self.snapshot(seq, end, mark.close, source_close, close_available)
-        self.last_close = end, mark.close, source_close
+        self.last_close = end, mark.close, source_close, close_available
         if trail is not None and j.position.quantity:
             available = max(close_available, trail.available)
             if available <= end:
@@ -410,12 +417,13 @@ class _Replay:
         if event is None:
             return
         candidates = self.candidates(event)
+        available_at = boundary
         if event.mark is not None:
             price, source = event.mark, MarkSource.FUNDING_RECORD
         elif opening is not None:
             price, source = opening
         elif self.last_close is not None and self.last_close[0] == boundary:
-            _, price, source = self.last_close
+            _, price, source, available_at = self.last_close
         elif candidates == {ZERO}:
             return
         else:
@@ -427,11 +435,14 @@ class _Replay:
             if resolvable:
                 self.ownership.append(_Ownership(event, price, ZERO, ZERO, ZERO))
         else:
-            self.post_settlement(event, boundary, price, source, candidates, resolvable=resolvable)
+            self.post_settlement(
+                event, boundary, price, source, candidates,
+                resolvable=resolvable, available_at=available_at,
+            )
 
     def post_settlement(
         self, event: Funding, time: int, price: Decimal, source: MarkSource,
-        candidates: set[Decimal], *, resolvable: bool,
+        candidates: set[Decimal], *, resolvable: bool, available_at: int,
     ) -> None:
         """Post the most adverse funding among the possible holders; flag any ambiguity.
 
@@ -448,7 +459,7 @@ class _Replay:
         if cash < worst:
             detail.append("CREDIT_WITHHELD")
         seq = self.journal.settle(time, price, cash, holder, ",".join(detail))
-        self.funding_observed(event, seq, time, price, source, time)
+        self.funding_observed(event, seq, time, price, source, available_at)
         if resolvable:
             self.ownership.append(_Ownership(event, price, cash, worst, holder))
 
@@ -507,9 +518,9 @@ class _Replay:
         """Persist the taxonomy reasons for an entry refused on point-in-time inputs (§5.1)."""
         j = self.journal
         filters = as_of(self.market.filters.get(self.inst, ()), intent.time)
-        execution = price if filters is None else slipped(
-            price, intent.side, self.slippage(intent.time, stress=False), filters.tick,
-        )
+        execution = price
+        if isinstance(filters, Filters) and filters.evidence.provenance != Provenance.UNAVAILABLE:
+            execution = slipped(price, intent.side, self.slippage(intent.time, stress=False), filters.tick)
         decision = evaluate(self.market, Candidate(
             self.inst, intent.time, intent.side, execution, mark, intent.distance, j.wallet,
             j.collateral, self.plan.risk_pct, self.plan.leverage, self.plan.halt_level,

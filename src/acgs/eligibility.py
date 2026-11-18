@@ -159,7 +159,8 @@ def evaluate(market: Market, order: Candidate, policy: Policy) -> EligibilityDec
 
 def _evaluate(market: Market, o: Candidate, p: Policy) -> EligibilityDecision:
     listing = as_of(market.listings.get(o.instrument, ()), o.time)
-    filters = as_of(market.filters.get(o.instrument, ()), o.time)
+    filter_observation = as_of(market.filters.get(o.instrument, ()), o.time)
+    filters = filter_observation if isinstance(filter_observation, Filters) else None
     maintenance = as_of(market.maintenance.get(o.instrument, ()), o.time)
     view = funding_view(market, o.instrument, o.time, p)
     spread = current_spread(market, o.instrument, o.time, p)
@@ -171,11 +172,11 @@ def _evaluate(market: Market, o: Candidate, p: Policy) -> EligibilityDecision:
             "No observed spread; cost stress is a scenario",
         )
     evidence = (
-        filters.evidence if filters else None, maintenance.evidence if maintenance else None,
+        filter_observation.evidence if filter_observation else None, maintenance.evidence if maintenance else None,
         view.evidence, spread_evidence,
     )
     reasons: list[str] = []
-    if listing is None or not listing.tradable or filters is None:
+    if listing is None or not listing.tradable or filter_observation is None:
         reasons.append("MISSING_PIT_FILTER")
     critical = (*evidence[:2], listing.evidence if listing else None)
     if any(e is not None and (
