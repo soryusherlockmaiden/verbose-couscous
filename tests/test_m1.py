@@ -253,11 +253,11 @@ def test_t18_near_open_holder_and_t19_intrabar_funding_beside_possible_stop(
     # OHLC cannot order the settlement against the possible stop: the flat holder is a
     # candidate, so adverse funding is charged and favorable funding is omitted.
     stopped = change_bar(data, 1, prices("100", "101", "92", "95"))
-    for rate, cash in (("0.001", D("-0.1000")), ("-0.001", ZERO)):
+    for rate, cash, detail in (("0.001", D("-0.1000"), ""), ("-0.001", ZERO, "CREDIT_WITHHELD")):
         settled = replace(stopped, settlements=(*dataset.settlements, replace(late, rate=D(rate))))
         run = replay(Market(settled), "fixture", config, clock(T + 2 * HOUR), plan(enter(T + HOUR)))
         charge, = (e for e in run.events if e.kind == "FUNDING")
-        assert charge.detail == "OWNERSHIP_AMBIGUOUS" and charge.postings[0].cash == cash
+        assert charge.detail == detail and charge.postings[0].cash == cash
         assert [e.kind for e in run.events if e.sequence > charge.sequence][:1] == ["STOP"]
         assert run.snapshots[-1].funding == cash
 
@@ -285,10 +285,13 @@ def test_t18_ownership_window_charges_adverse_and_omits_favorable_funding(
     adverse = rate == "0.001"
     assert run.snapshots[-1].funding == (D("-0.1000") if adverse else ZERO)
     adjusted = [e for e in charges if e.detail.startswith("OWNERSHIP_ADJUSTMENT")]
-    assert bool(adjusted) == (opening == adverse)
+    assert bool(adjusted) == (opening and adverse)
     assert all(e.detail.endswith(f"SETTLED_AT={settlement.time}") for e in adjusted)
     posted, = (e for e in charges if e not in adjusted)
-    assert (posted.detail == f"SETTLED_AT={settlement.time}") == bool(offset)
+    assert (f"SETTLED_AT={settlement.time}" in posted.detail) == bool(offset)
+    # A credit to a holder who exits inside the window is withheld, never posted then reversed.
+    assert ("CREDIT_WITHHELD" in posted.detail) == (not opening and not adverse)
+    assert not any("CREDIT_RELEASED" in e.detail for e in run.events)
 
 
 @pytest.mark.parametrize("rate", ["0.001", "-0.001"])
@@ -308,12 +311,49 @@ def test_t18_intrabar_stop_beside_boundary_settlement_is_conservative(
     assert all("SETTLED_AT" not in e.detail for e in charges if "ADJUSTMENT" not in e.detail)
     # A stop before the boundary makes the flat account a candidate at posting time; a
     # stop after it reverses only a credit. An adverse charge already posted stands.
-    flagged = any("OWNERSHIP" in e.detail for e in charges)
+    flagged = any("OWNERSHIP" in e.detail or "CREDIT_WITHHELD" in e.detail for e in charges)
     assert flagged == (stopped_bar == 1 or rate == "-0.001")
+    assert all(p.cash <= ZERO for e in charges for p in e.postings)
     assert run.snapshots[-1].funding == (D("-0.1000") if rate == "0.001" else ZERO)
     with pytest.raises(ReplayError, match="half a bar"):
         replay(Market(data), "fixture", shipped(), clock(T + 3 * HOUR),
                replace(plan(enter(T + HOUR)), interval=30_000))
+
+
+@pytest.mark.parametrize("window", [0, 15_000])
+def test_t18_published_funding_never_depends_on_later_prices(dataset: Dataset, window: int) -> None:
+    """A snapshot at a settlement is the same whatever the bar does afterwards."""
+    policy = shipped(funding_ownership_window_ms=window)
+    inside = replace(funding(T + HOUR + 30 * 60_000, "-0.001", hours=None), interval_ms=90 * 60_000)
+    published = []
+    for low in ("99", "90"):
+        path = prices("100", "101", low, "100")
+        data = change_bar(change_bar(dataset, 1, path), 1, path, mark=True)
+        data = replace(data, settlements=(*data.settlements[:4], inside))
+        run = replay(Market(data), "fixture", policy, clock(T + 2 * HOUR), plan(enter(T + HOUR)))
+        posted = next(e for e in run.events if e.kind == "FUNDING")
+        snap = next(s for s in run.snapshots if s.sequence == posted.sequence)
+        assert posted.time == inside.time and posted.postings[0].cash == ZERO
+        published.append((snap.equity, snap.cycle_equity, snap.trigger_available_at))
+        released = [e for e in run.events if "CREDIT_RELEASED" in e.detail]
+        # Without a stop the credit is released at bar end, observable only with its OHLC.
+        if low == "99":
+            release, = released
+            assert release.time == T + 2 * HOUR and release.postings[0].cash == D("0.1000")
+            snap = next(s for s in run.snapshots if s.sequence == release.sequence)
+            assert snap.trigger_available_at == T + 2 * HOUR
+        else:
+            assert not released and any(e.kind == "STOP" for e in run.events)
+    assert published[0] == published[1]
+    # A boundary credit next to a stop in its bar is withheld, not posted and reversed.
+    path = prices("100", "101", "90", "92")
+    data = change_bar(change_bar(dataset, 2, path), 2, path, mark=True)
+    data = replace(data, settlements=(*data.settlements, funding(T + 2 * HOUR, "-0.001", hours=2)))
+    run = replay(Market(data), "fixture", shipped(), clock(T + 3 * HOUR), plan(enter(T + HOUR)))
+    assert [p.cash for e in run.events if e.kind == "FUNDING" for p in e.postings] == [ZERO]
+    assert max(s.cycle_equity for s in run.snapshots if s.timestamp >= T + 2 * HOUR) <= max(
+        s.cycle_equity for s in run.snapshots if s.timestamp < T + 2 * HOUR
+    )
 
 
 def test_t18_offset_archive_settlement_uses_boundary_mark_without_rest_mark(dataset: Dataset) -> None:
@@ -624,10 +664,10 @@ def test_t01_t20_t23_runtime_clock_report_and_config_identity(
         return sim, report
 
     result = run_decisions()
-    assert digest(asdict(result[0])) == "454318887ef980774004534408c92664a4460c70af50470a375591a7c317c031"
+    assert digest(asdict(result[0])) == "a8ee66c886d07ea0d4fbd681bf9f581c8546cda23a0fc7377581253c4a07fc0a"
     # The released policy prices the entry at the settlement instant conservatively.
     released = replay(sim_market, "fixture", _policy(SETTINGS), clock(T + 2 * HOUR), run_plan)
-    assert digest(asdict(released)) == "906243fbcc69c608272b08c49293655f2e997a47aea75c2fb99e1edc9dd1f159"
+    assert digest(asdict(released)) == "94617d2e7daf509dd50d40ebdef89e995fbc6b68fd56b7ea61c262b06de83b1d"
     assert [e.detail for e in released.events if e.kind == "FUNDING"] == [
         f"OWNERSHIP_ADJUSTMENT,SETTLED_AT={T}"
     ]

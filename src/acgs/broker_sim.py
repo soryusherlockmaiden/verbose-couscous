@@ -34,7 +34,7 @@ from acgs.pit import (
 from acgs.sim_config import Policy, StopBasis, digest, instant_ms
 from acgs.sim_ledger import AccountSnapshot, Event, Journal, MarkSource
 
-REPLAY_VERSION = "m1-replay-v3"
+REPLAY_VERSION = "m1-replay-v4"
 
 
 class ReplayError(ValueError):
@@ -100,11 +100,17 @@ class _Exposure:
 
 @dataclass
 class _Ownership:
-    """A boundary settlement whose holder can still change within the current bar."""
+    """A settlement whose holder can still change before its bar's OHLC is known.
+
+    `posted` never exceeds min(worst known cash, 0): a credit stays withheld until the
+    bar resolves, so no published snapshot depends on prices after the settlement.
+    """
 
     event: Funding
     price: Decimal
     posted: Decimal
+    final: Decimal
+    holder: Decimal
 
 
 def replay(
@@ -183,7 +189,7 @@ class _Replay:
         horizon = self.boundary_funding.get(self.end)
         if horizon is not None and horizon.time < self.end:
             # A settlement just before the horizon still belongs to this replay.
-            self.boundary_settlement(self.end, None, record_flat=False)
+            self.boundary_settlement(self.end, None, record_flat=False, resolvable=False)
         self.ownership.clear()
         try:
             self.journal.verify(self.p.accounting_tolerance)
@@ -249,7 +255,7 @@ class _Replay:
         if trade is None or trade.evidence.provenance == Provenance.UNAVAILABLE:
             if j.position.quantity or entry is not None or exit_ is not None:
                 raise ReplayError(f"Contract candle unavailable at {start}")
-            self.boundary_settlement(start, None, record_flat=False)
+            self.boundary_settlement(start, None, record_flat=False, resolvable=False)
             self.ownership.clear()
             for _ in deferred:
                 j.record(start, "REJECTED", detail="NO_POSITION")
@@ -263,7 +269,7 @@ class _Replay:
             if j.position.quantity:
                 raise ReplayError(f"Mark, listing or maintenance data unavailable for open position at {start}")
             open_mark = None if marks is None else (marks[0].opening, marks[1])
-            self.boundary_settlement(start, open_mark, record_flat=False)
+            self.boundary_settlement(start, open_mark, record_flat=False, resolvable=False)
             self.ownership.clear()
             if entry is not None and marks is not None:
                 self.reject_inputs(entry, trade.prices.opening, marks[0].opening)
@@ -287,7 +293,8 @@ class _Replay:
         pos = j.position
         if pos.quantity and not funding_complete(self.funding, start, start + 1, self.p):
             raise ReplayError(f"Funding settlement continuity unavailable at {start}")
-        self.boundary_settlement(start, (mark.opening, source_open), record_flat=True)
+        self.boundary_settlement(start, (mark.opening, source_open), record_flat=True,
+                                 resolvable=bool(self.window))
 
         stop_path = mark if self.p.stop_basis == StopBasis.MARK_PRICE else trade.prices
         open_protection = self.protect(
@@ -325,12 +332,11 @@ class _Replay:
             for f in self.inside_funding.get(start, ()):
                 if f.mark is None:
                     raise ReplayError(f"Intrabar funding has no settlement mark at {f.time}")
-                # OHLC cannot order the settlement against a possible protective exit, so
-                # a flat holder is a candidate too. Adverse funding still reduces margin
-                # before the protection check, which can only make that check stricter.
-                exit_possible = any(self.protection(worst_mark, worst_stop, tiers))
+                # OHLC cannot order the settlement against a protective exit in this bar.
+                # Charge adverse funding now; withhold a credit until the bar resolves.
+                # Adverse funding reduces margin before the protection check.
                 self.post_settlement(f, f.time, f.mark, MarkSource.FUNDING_RECORD,
-                                     self.candidates(f) | ({ZERO} if exit_possible else set()))
+                                     self.candidates(f), resolvable=True)
             # OHLC supplies a bound, not an intrabar timestamp. Record the outcome
             # at interval end, before close/trailing and the next bar's open.
             self.protect(
@@ -338,9 +344,9 @@ class _Replay:
                 filters, tiers, intrabar=True, contract_stop=self.p.stop_basis == StopBasis.CONTRACT_PRICE,
                 cost_time=start,
             )
-        self.ownership.clear()
-        seq = j.record(end, "BAR_CLOSE")
         close_available = self.close_available_at(trade, source_close)
+        self.resolve_ownership(end, mark.close, source_close, close_available)
+        seq = j.record(end, "BAR_CLOSE")
         self.snapshot(seq, end, mark.close, source_close, close_available)
         self.last_close = end, mark.close, source_close
         if trail is not None and j.position.quantity:
@@ -395,6 +401,7 @@ class _Replay:
 
     def boundary_settlement(
         self, boundary: int, opening: tuple[Decimal, MarkSource] | None, *, record_flat: bool,
+        resolvable: bool,
     ) -> None:
         event = self.boundary_funding.get(boundary)
         if event is None:
@@ -414,34 +421,58 @@ class _Replay:
             if record_flat:
                 snapped = f"SETTLED_AT={event.time}" if event.time != boundary else ""
                 self.journal.record(boundary, "FUNDING_FLAT", detail=snapped)
-            posted = ZERO
+            if resolvable:
+                self.ownership.append(_Ownership(event, price, ZERO, ZERO, ZERO))
         else:
-            posted = self.post_settlement(event, boundary, price, source, candidates)
-        if self.window:
-            self.ownership.append(_Ownership(event, price, posted))
+            self.post_settlement(event, boundary, price, source, candidates, resolvable=resolvable)
 
     def post_settlement(
         self, event: Funding, time: int, price: Decimal, source: MarkSource,
-        candidates: set[Decimal],
-    ) -> Decimal:
-        """Post the most adverse funding among the possible holders; flag any ambiguity."""
+        candidates: set[Decimal], *, resolvable: bool,
+    ) -> None:
+        """Post the most adverse funding among the possible holders; flag any ambiguity.
+
+        While a later fill or this bar's OHLC can still change the holder, only
+        min(worst, 0) posts. The rest of a credit is released once the bar resolves.
+        """
         current = self.journal.position.quantity
         holder = min(candidates, key=lambda q: (-q * price * event.rate, q != current, q))
-        cash = -holder * price * event.rate
+        worst = -holder * price * event.rate
+        cash = min(worst, ZERO) if resolvable else worst
         detail = [f"SETTLED_AT={event.time}"] if event.time != time else []
         if len(candidates) > 1:
             detail.append("OWNERSHIP_AMBIGUOUS")
+        if cash < worst:
+            detail.append("CREDIT_WITHHELD")
         seq = self.journal.settle(time, price, cash, holder, ",".join(detail))
-        self.funding_observed(event, seq, time, price, source)
-        return cash
+        self.funding_observed(event, seq, time, price, source, time)
+        if resolvable:
+            self.ownership.append(_Ownership(event, price, cash, worst, holder))
+
+    def resolve_ownership(
+        self, time: int, mark: Decimal, source: MarkSource, available_at: int,
+    ) -> None:
+        """At bar end the OHLC fixes every holder; release credits nobody could forfeit."""
+        for pending in self.ownership:
+            if pending.final > pending.posted:
+                seq = self.journal.settle(
+                    time, pending.price, pending.final - pending.posted, pending.holder,
+                    f"CREDIT_RELEASED,SETTLED_AT={pending.event.time}",
+                )
+                pending.posted = pending.final
+                self.funding_observed(pending.event, seq, time, mark, source, available_at)
+        self.ownership.clear()
 
     def funding_observed(
         self, event: Funding, seq: int, time: int, price: Decimal, source: MarkSource,
-        *, observable: bool = True,
+        available_at: int | None,
     ) -> None:
         mark_as_of = event.mark_evidence.as_of if event.mark_evidence is not None else event.time
         self.cash_available_at = max(self.cash_available_at, event.evidence.as_of, mark_as_of)
-        self.snapshot(seq, time, price, source, max(time, self.cash_available_at) if observable else None)
+        self.snapshot(
+            seq, time, price, source,
+            None if available_at is None else max(time, available_at, self.cash_available_at),
+        )
 
     def exposure_changed(
         self, earliest: int, latest: int, before: Decimal, time: int, mark: Decimal,
@@ -456,13 +487,15 @@ class _Replay:
                 continue
             holder = min((before, after), key=lambda q: -q * pending.price * event.rate)
             worst = -holder * pending.price * event.rate
-            if worst < pending.posted:
+            if worst < pending.final:
+                pending.final, pending.holder = worst, holder
+            if pending.final < pending.posted:
                 seq = self.journal.settle(
-                    time, pending.price, worst - pending.posted, holder,
+                    time, pending.price, pending.final - pending.posted, holder,
                     f"OWNERSHIP_ADJUSTMENT,SETTLED_AT={event.time}",
                 )
-                pending.posted = worst
-                self.funding_observed(event, seq, time, mark, source, observable=observable)
+                pending.posted = pending.final
+                self.funding_observed(event, seq, time, mark, source, time if observable else None)
 
     def reject_inputs(self, intent: Intent, price: Decimal, mark: Decimal) -> None:
         """Persist the taxonomy reasons for an entry refused on point-in-time inputs (§5.1)."""
