@@ -553,6 +553,7 @@ Emit an event-numbered wallet/equity snapshot after each fill, funding posting o
 ### v0.5 targeted change notes
 
 - Recorded M1 technical resolutions for SC-01, SC-02 and SC-12 with versioned OFFLINE assumptions and regression evidence.
+- Independent review (2026-11-18): isolated liquidation forfeits remaining margin; listing boundaries for held exposure also use effective time; `PERCENT_PRICE` no longer bounds stop triggers; feasibility schema v2 adds the inconclusive status. Open before M1 acceptance: trailing and trigger eligibility under positive candle lag, and millisecond settlement offsets (SC-02; [review](evidence/m1/verification.md#independent-review-claude-2026-11-18-utc)).
 
 ## 14. Change control and release policy
 

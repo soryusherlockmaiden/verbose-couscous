@@ -1,6 +1,6 @@
 # 50 USDT Execution Feasibility Report
 
-Report schema `m1-feasibility-v1`. This is an execution feasibility sample for M1. The sample is development evidence and no M2 holdout was used.
+Report schema `m1-feasibility-v2` (v2 adds the inconclusive status after the independent review; v1 output differed only in `version` and `status`). This is an execution feasibility sample for M1. The sample is development evidence and no M2 holdout was used.
 
 ## Reproduce
 
@@ -8,14 +8,16 @@ Report schema `m1-feasibility-v1`. This is an execution feasibility sample for M
 uv sync --locked
 uv run --locked python evidence/m1/fetch.py evidence/m1/binance-2024.json data/m1/archive
 uv run --locked python -m acgs historical --manifest evidence/m1/binance-2024.json --assets data/m1/archive
-uv run --locked python -m acgs feasibility --manifest evidence/m1/binance-2024.json --assets data/m1/archive --policy config/m1.json --start 2024-03-01T00:00:00Z --end 2024-04-11T00:00:00Z --out data/m1/feasibility-2024-v1.json
+uv run --locked python -m acgs feasibility --manifest evidence/m1/binance-2024.json --assets data/m1/archive --policy config/m1.json --start 2024-03-01T00:00:00Z --end 2024-04-11T00:00:00Z --out data/m1/feasibility-2024-v2.json
 ```
 
-| Identifier | SHA-256 |
+| Identifier | SHA-256 digest |
 |---|---|
 | [Dataset manifest](binance-2024.json) | `44d93cb13430d499dd3f8a4e73cb6fd1b4539357705a613fbb6ee90c26b02aa5` |
 | [OFFLINE policy](../../config/m1.json) | `307b338aa93de48205104167c161e007f6604c5fb0468d263b4fa886703cb836` |
-| Canonical feasibility output, excluding final LF | `cc6ac3f0584ffe480771a9873704cfe3ed168f0e35b80a974496c010e60a430d` |
+| Canonical feasibility output, excluding final LF | `09d90ebcb1836805fb4b2d4386ba7da8e8aedbb40fcebd30ebcd5111556ea69c` |
+
+The manifest and policy values are the `dataset_digest` and `policy_digest`: SHA-256 of their canonical JSON, not of the file bytes. The v1 output hash was `cc6ac3f0584ffe480771a9873704cfe3ed168f0e35b80a974496c010e60a430d`.
 
 ## Coverage and provenance
 
@@ -48,6 +50,6 @@ The daily probe uses the completed 60-day history, ranks on trailing 30-day aver
 | ETHUSDT | 22 | 19 | 41 | 41 | 0 |
 | DGBUSDT | 18 | 13 | 31 | 25 | 4 |
 
-The report covers 8,136 attempts across 72 scenarios. The counts by reason can overlap. The report excluded one DGBUSDT symbol-day with unavailable funding and nine after delisting. Every attempted order has an unavailable critical input. Executable size, notional, margin and risk utilization distributions are empty, and none of the stop or cost stresses changes that finding. The sampled windows yield **no trade under the available evidence**. Exchange-wide executability at 50 USDT remains inconclusive.
+The report covers 8,136 attempts across 72 scenarios. The counts by reason can overlap. The report excluded one DGBUSDT symbol-day with unavailable funding and nine after delisting. Every attempted order has an unavailable critical input, so all 8,136 decisions carry `UNAVAILABLE` provenance. Executable size, notional, margin and risk utilization distributions are empty, and none of the stop or cost stresses changes that finding. The report status is **`INCONCLUSIVE_CRITICAL_INPUT_UNAVAILABLE`**: no trade is possible under the available evidence, but the window establishes neither executability nor infeasibility at 50 USDT. Exchange-wide executability remains inconclusive.
 
 Synthetic feasibility regression `test_t01_t20_t23_runtime_clock_report_and_config_identity` exercises 72 cases with known filter/tier inputs and a reconstructed spread. It passed 38 of 72 cases. The 50 USDT, 10% Ignition baseline is risk-bound with 1.5 units, 142.65 USDT notional, 14.265 USDT margin and 98.454% risk utilization. The 50 USDT, 2% Growth baseline fails the synthetic minimum notional and risk checks. T-41 separately verifies a margin-bound order below 100% risk utilization. These are sizing regressions on a synthetic symbol.
