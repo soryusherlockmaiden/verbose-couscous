@@ -221,6 +221,9 @@ def _capture_observations(
     spreads: list[Spread] = []
     hashes: list[str] = []
     current: dict[str, Instrument] = {}
+    # Every capture is a complete snapshot: what it omits is withdrawn from its receipt.
+    known: dict[str, Instrument] = {}
+    latest_filters: dict[str, Filters] = {}
     connection = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
     try:
         schema = connection.execute("PRAGMA user_version").fetchone()[0]
@@ -267,6 +270,23 @@ def _capture_observations(
                     snapshot = _filters(inst, time, ev, item["filters"])
                     if snapshot is not None:
                         filters.append(snapshot)
+                        latest_filters[symbol] = snapshot
+                    elif symbol in latest_filters:
+                        # Keep the shape, never the authority, of the previous filters.
+                        filters.append(replace(
+                            latest_filters[symbol], instrument=inst, effective=time,
+                            evidence=Evidence(url, "exchangeInfo_filter_absence:" + sha,
+                                              Provenance.UNAVAILABLE, time,
+                                              "Latest exchangeInfo lacks a required filter"),
+                        ))
+                for symbol in known.keys() - current.keys():
+                    listings.append(Listing(
+                        known[symbol], time,
+                        Evidence(url, "exchangeInfo_absence:" + sha, Provenance.UNAVAILABLE, time,
+                                 "Symbol missing from the latest exchangeInfo"),
+                        "ABSENT_FROM_EXCHANGE_INFO",
+                    ))
+                known.update(current)
             elif endpoint in {"premiumIndex", "fundingInfo"}:
                 present = set()
                 for item in body:

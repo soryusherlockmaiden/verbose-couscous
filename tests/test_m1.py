@@ -40,6 +40,7 @@ from acgs.pit import (
     Schedule,
     Spread,
     Tier,
+    as_of,
 )
 from acgs.research_io import _plan, _policy
 from acgs.sim_config import EPOCH, Policy, StopBasis, canonical, digest
@@ -880,3 +881,43 @@ def test_t01_offline_inputs_require_exact_decimal_text(tmp_path: Path) -> None:
                    {"intents": [{**intent, "distance": 2000.5}]}):
         with pytest.raises(ValueError):
             _plan({**sample, **change}, INST, T)
+
+
+def test_t02_latest_exchange_info_withdraws_missing_filters_and_symbols(tmp_path: Path) -> None:
+    fixture = json.loads((Path(__file__).parent / "fixtures" / "exchangeInfo.json").read_text(encoding="utf-8"))
+    no_minimum = json.loads(json.dumps(fixture))
+    for item in no_minimum["symbols"]:
+        item["filters"] = [f for f in item["filters"] if f["filterType"] != "MIN_NOTIONAL"]
+    delisted = {**fixture, "symbols": [s for s in fixture["symbols"] if s["symbol"] != "BTCUSDT"]}
+    path = tmp_path / "capture.sqlite3"
+    stamps = ("2026-11-17T00:00:00+00:00", "2026-11-17T06:00:00+00:00", "2026-11-17T12:00:00+00:00")
+    with open_ledger(path) as conn, conn:
+        for idx, body in enumerate((fixture, no_minimum, delisted)):
+            payload = json.dumps(body).encode()
+            conn.execute(
+                """INSERT INTO capture_attempts
+                    (source_url, slot, requested_at, received_at, status, http_status,
+                     payload, sha256, provenance)
+                    VALUES (?, ?, ?, ?, 'CAPTURED', 200, ?, ?, 'VERIFIED')""",
+                ("https://fapi.binance.com/fapi/v1/exchangeInfo", str(idx), stamps[idx], stamps[idx],
+                 payload, hashlib.sha256(payload).hexdigest()),
+            )
+    listings, captured, *_ = _capture_observations(path, {"BTCUSDT"}, 1_900_000_000_000)
+    market = Market(Dataset(tuple(listings), (), filters=tuple(captured)))
+    inst, = market.listings
+    first, second, third = (1_794_873_600_000, 1_794_895_200_000, 1_794_916_800_000)
+    policy = _policy(SETTINGS)
+
+    def reasons(time: int) -> set[str]:
+        candidate = Candidate(inst, time, Side.LONG, D(90000), D(90000), D(1000), D(50), D(50),
+                              D("0.10"), 10)
+        return set(evaluate(market, candidate, policy).reasons)
+
+    assert as_of(market.filters[inst], first + 1).evidence.provenance == Provenance.VERIFIED
+    assert "UNVERIFIED_CRITICAL_FILTER" not in reasons(first + 1)
+    withdrawn = as_of(market.filters[inst], second + 1)
+    assert withdrawn.evidence.provenance == Provenance.UNAVAILABLE
+    assert "UNVERIFIED_CRITICAL_FILTER" in reasons(second + 1)
+    absent = as_of(market.listings[inst], third + 1)
+    assert absent.status == "ABSENT_FROM_EXCHANGE_INFO" and not absent.tradable
+    assert "MISSING_PIT_FILTER" in reasons(third + 1)
