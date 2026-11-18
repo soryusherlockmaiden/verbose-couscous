@@ -160,3 +160,14 @@ Two native runs and one Docker run gave identical outputs:
 - public replay `aa5fd629e1200dcde7b83619d8811b2a97c077d3bb1b51b9c4652df4469b138e` (run digest `a871e815cb5e4378ef17c9694d3b1b506b1ad443c473735ae884dd74dff71151`).
 
 Pinned Gitleaks scanned 63 commits with no leaks.
+
+## Sixth follow-up (review of `952ade7`)
+
+| Contract | Regression coverage |
+|---|---|
+| SC-02 / T-18, T-19, T-21 | Replay `m1-replay-v8` keeps intrabar settlement valuations for audit when a stop or liquidation can precede them. In the one-hour fixture, the 100.47555 USDT settlement valuation has a null `trigger_available_at` and the stopped account closes at 92.59165 USDT. When the position survives, the valuation becomes eligible once the bar and all relevant funding observations are available. Wallet and funding postings reconcile in both cases. |
+| SC-01 / T-02, T-35 | A late manifest row cannot reveal its epoch in earlier universe snapshots. A capture omission retains its original effective time and becomes visible for an otherwise unknown epoch once the backfill becomes observable. Repeated omissions preserve known statuses and a genuinely newer listing epoch is unaffected. |
+
+Ruff, mypy and 196 tests passed on Linux with `uv run --locked ruff check .`, `uv run --locked mypy` and `uv run --locked pytest`. Docker Compose built the runtime and check targets and passed the same 196 tests. Two smoke runs recorded and replayed `e2fb3f83500b5aa748b93e0e3151cd9fc1536048d56692da249ed0e877362505`. The local Docker build used the sandbox proxy CA as a build secret.
+
+Two native runs and one Docker run produced identical bytes for the public replay, using a new output filename. The canonical replay hash is `67da3e706e6594137fb4e3bd19db5ba2363dc18e1954a73219035cf271372929` (run digest `cd6424b076a9f1a0eb98c9886eec01db9570b9ecfcf68462d9ca3432865ac9d6`). Historical, main feasibility and empty-window hashes match the fifth follow-up. The main feasibility sample remains `INCONCLUSIVE_CRITICAL_INPUT_UNAVAILABLE`.
