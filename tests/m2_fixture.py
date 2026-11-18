@@ -71,7 +71,7 @@ def make_fixture(output):
         [[DAY_START + 10, 1, "0.001"], [DAY_START + HOUR + 60_000, 1, "0.001"]],
     ))
     manifest = {
-        "version": "m1-history-v1",
+        "version": "m2-history-v1",
         "m2_purpose": "development",
         "ingested_at": "2000-02-01T00:00:00Z",
         "candle_delay_ms": 1000,

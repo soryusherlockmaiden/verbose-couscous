@@ -15,7 +15,7 @@ from m2_fixture import (
     write_json,
 )
 
-from acgs.history_io import read_json
+from acgs.history_io import load_history, read_json
 from acgs.m2_data import AccessRefused, Window, fetch_inputs, load_research_inputs
 from acgs.m2_io import main
 from acgs.market_data import PublicResponse
@@ -260,3 +260,12 @@ def test_operator_settlement_mark_sidecar_is_local_and_matched(paths, capsys):
     target.unlink()
     with pytest.raises(FileNotFoundError):
         fetch_inputs(config_path, manifest_path, root, "development", fetch=unexpected)
+
+
+
+def test_legacy_history_entry_point_refuses_m2_manifest_before_payload_read(paths, monkeypatch):
+    _, manifest, root = paths
+    reads = forbid_payload_reads(monkeypatch, root)
+    with pytest.raises(ValueError, match="Unknown historical dataset schema"):
+        load_history(manifest, root)
+    assert reads == []

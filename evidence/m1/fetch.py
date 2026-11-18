@@ -16,7 +16,10 @@ def main() -> None:
     parser.add_argument("assets", type=Path)
     args = parser.parse_args()
     root = args.assets.resolve()
-    for entry in read_json(args.manifest)["assets"]:
+    manifest = read_json(args.manifest)
+    if manifest.get("version") != "m1-history-v1":
+        raise SystemExit("Expected an M1 history manifest")
+    for entry in manifest["assets"]:
         url = urlsplit(entry["source"])
         target = (root / entry["path"]).resolve()
         archive = (

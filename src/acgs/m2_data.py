@@ -26,6 +26,7 @@ INTERVALS = {"15m": HOUR // 4, "1h": HOUR, "1d": DAY}
 SIGNAL_INTERVALS = ("15m", "1h")
 OWNERSHIP_WINDOW_MS = 15_000  # Accepted m1-v3 contract.
 ARCHIVE_HOST = "https://data.binance.vision"
+MANIFEST_SCHEMA = "m2-history-v1"
 CANDLES = ("klines", "markPriceKlines")
 ARCHIVE = re.compile(
     r"https://data\.binance\.vision/data/futures/um/(?P<period>monthly|daily)/"
@@ -187,7 +188,8 @@ def _approve(
 
     manifest = read_json(manifest_path)
     if (
-        manifest.get("m2_purpose") != purpose or digest(manifest) != approval["manifest_sha256"]
+        manifest.get("version") != MANIFEST_SCHEMA or manifest.get("m2_purpose") != purpose
+        or digest(manifest) != approval["manifest_sha256"]
         or manifest.keys() - {
             "version", "m2_purpose", "ingested_at", "candle_delay_ms", "funding_delay_ms",
             "instruments", "assets", *METADATA,
@@ -213,7 +215,7 @@ def _approve(
             ):
                 raise AccessRefused(f"{name} evidence exceeds the approved data window")
     # Reuse M1 validation of inline evidence before either I/O entry point.
-    load_history_manifest({**manifest, "assets": []}, manifest_path.parent)
+    load_history_manifest(_m1_manifest(manifest, []), manifest_path.parent)
 
     ingestion = utc_ms(manifest["ingested_at"])
     paths: set[str] = set()
@@ -249,6 +251,10 @@ def _approve(
     return _Approved(manifest, dependencies, digest(config), policy["policy_sha256"], request, purpose)
 
 
+def _m1_manifest(manifest: dict[str, Any], assets: list[Any]) -> dict[str, Any]:
+    return {**manifest, "version": "m1-history-v1", "assets": assets}
+
+
 def _paths(root: Path, manifest: dict[str, Any]) -> list[Path]:
     base = root.absolute()
     paths = [base / entry["path"] for entry in manifest["assets"]]
@@ -267,7 +273,10 @@ def load_research_inputs(
 
 def _load(root: Path, approved: _Approved) -> Loaded:
     _paths(root, approved.manifest)
-    return load_history_manifest(approved.manifest, root)
+    market = load_history_manifest(
+        _m1_manifest(approved.manifest, approved.manifest["assets"]), root,
+    ).market
+    return Loaded(market, digest(approved.manifest), approved.manifest)
 
 
 def _fetch_archive(url: str) -> PublicResponse:
