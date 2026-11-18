@@ -15,6 +15,11 @@ class FundingView:
     publication: Schedule | None = None
 
 
+def ownership_boundary(time: int, interval: int, window: int) -> int | None:
+    nearest = (time + interval // 2) // interval * interval
+    return nearest if abs(time - nearest) <= window else None
+
+
 def inferred_interval(previous: Funding, current: Funding, policy: Policy) -> int | None:
     gap = current.time - previous.time
     if current.interval_ms is not None:

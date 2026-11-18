@@ -39,6 +39,8 @@ from acgs.pit import (
 )
 from acgs.sim_config import digest, instant_ms
 
+MAX_HISTORY_ASSET = 48_000_000
+
 
 @dataclass(frozen=True)
 class Loaded:
@@ -174,7 +176,7 @@ def _attach_funding_marks(
     return [events[(row.instrument, row.time)] for row in settlements]
 
 
-def _archive_rows(payload: bytes, kind: str, limit: int = 48_000_000) -> list[list[str]]:
+def _archive_rows(payload: bytes, kind: str, limit: int = MAX_HISTORY_ASSET) -> list[list[str]]:
     with ZipFile(io.BytesIO(payload)) as archive:
         entries = archive.infolist()
         if (len(entries) != 1 or not entries[0].filename.endswith(".csv")
@@ -346,18 +348,29 @@ def _capture_observations(
     return listings, filters, schedules, spreads, hashes
 
 
-def _asset(root: Path, info: dict[str, Any]) -> bytes:
+def read_history_asset(root: Path, info: dict[str, Any]) -> bytes:
     path = (root / str(info["path"])).resolve()
-    if not path.is_relative_to(root.resolve()) or path.stat().st_size > 48_000_000:
+    if not path.is_relative_to(root.resolve()) or path.stat().st_size > MAX_HISTORY_ASSET:
         raise ValueError("Dataset asset path/size outside allowed bounds")
-    raw = path.read_bytes()
+    with path.open("rb") as stream:
+        raw = stream.read(MAX_HISTORY_ASSET + 1)
+    if len(raw) > MAX_HISTORY_ASSET or (
+        "size_bytes" in info and len(raw) != info["size_bytes"]
+    ):
+        raise ValueError(f"Dataset asset size mismatch: {info['path']}")
     if hashlib.sha256(raw).hexdigest() != info["sha256"]:
         raise ValueError(f"Dataset checksum mismatch: {info['path']}")
     return raw
 
 
 def load_history(path: Path, root: Path, capture_db: Path | None = None) -> Loaded:
-    manifest = read_json(path)
+    return load_history_manifest(read_json(path), root, capture_db)
+
+
+def load_history_manifest(
+    manifest: dict[str, Any], root: Path, capture_db: Path | None = None,
+) -> Loaded:
+    """Parse a manifest already read by a caller's data-access boundary."""
     if manifest.get("version") != "m1-history-v1":
         raise ValueError("Unknown historical dataset schema")
     ingestion = _time(manifest["ingested_at"])
@@ -424,7 +437,7 @@ def load_history(path: Path, root: Path, capture_db: Path | None = None) -> Load
         if not inst.onboard <= start < end <= ingestion:
             raise ValueError("Invalid declared archive coverage")
         kind = info["kind"]
-        raw = _asset(root, info)
+        raw = read_history_asset(root, info)
         if kind in {"klines", "markPriceKlines"}:
             candles.extend(_candles(
                 _archive_rows(raw, kind), inst, source, info["interval_ms"], start, end,

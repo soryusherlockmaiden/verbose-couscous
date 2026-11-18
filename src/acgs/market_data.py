@@ -33,11 +33,11 @@ class _NoRedirects(HTTPRedirectHandler):
         return None
 
 
-def fetch_public(url: str) -> PublicResponse:
+def fetch_public(url: str, *, max_payload: int = MAX_PAYLOAD) -> PublicResponse:
     request = Request(url, method="GET", headers={"Accept": "application/json"})
     try:
         with build_opener(_NoRedirects()).open(request, timeout=15) as response:
-            payload = response.read(MAX_PAYLOAD + 1)
+            payload = response.read(max_payload + 1)
             return PublicResponse(response.status, payload)
     except HTTPError as error:
         try:
