@@ -19,10 +19,9 @@ def main() -> None:
     manifest = read_json(args.manifest)
     if manifest.get("version") != "m1-history-v1":
         raise SystemExit("Expected an M1 history manifest")
-    seal = registered_seal()
     assets = []
     try:
-        seal.check_manifest(manifest)
+        registered_seal().check_manifest(manifest)
         for entry in manifest["assets"]:
             url = entry["source"]
             target = resolve_asset_path(root, entry)

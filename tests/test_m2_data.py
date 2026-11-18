@@ -24,8 +24,11 @@ from m2_fixture import (
 )
 
 from acgs.__main__ import main as m1_main
+from acgs.capture import capture_due
+from acgs.clock import FixedClock
+from acgs.config import CaptureConfig, DepthTargets
 from acgs.history_io import load_history, read_history_asset, read_json
-from acgs.history_seal import AccessRefused, Window, utc_ms
+from acgs.history_seal import AccessRefused, Window, registered_seal, utc_ms
 from acgs.ledger import open_ledger
 from acgs.m2_coverage import coverage
 from acgs.m2_data import fetch_inputs, load_research_inputs
@@ -484,6 +487,83 @@ def _seal_record(tmp_path, monkeypatch, *ranges, purpose="m2-retrospective-reser
         for row in ranges
     ]})
     monkeypatch.setattr("acgs.history_seal.RECORD_PATH", record)
+
+
+def test_registered_ranges_accept_utc_midnight_and_committed_reserve(tmp_path, monkeypatch):
+    assert Window(RESERVE_START, RESERVE_END) in registered_seal().reserves
+    _seal_record(
+        tmp_path, monkeypatch, (RESERVE_START, RESERVE_END),
+        ("2026-01-01T00:00:00.000Z", "2026-01-02T00:00:00+00:00", HOLDOUT_PURPOSE),
+    )
+    seal = registered_seal()
+    assert seal.reserves == (Window(RESERVE_START, RESERVE_END),)
+    assert seal.holdouts == (Window(RESERVE_END, RESERVE_END + DAY),)
+    assert seal.ranges == seal.reserves + seal.holdouts
+
+
+@pytest.mark.parametrize("purpose", ["m2-retrospective-reserve", HOLDOUT_PURPOSE])
+@pytest.mark.parametrize("boundary", ["start", "end"])
+def test_t15_unaligned_registry_is_refused_before_payload_or_network(
+    paths, tmp_path, monkeypatch, capsys, purpose, boundary,
+):
+    config_path, manifest_path, root = paths
+    registered = {
+        "start": "2026-01-01T00:00:00Z", "end": "2026-01-02T00:00:00Z",
+    }
+    registered[boundary] = {
+        "start": "2026-01-01T00:00:00.000000001Z", "end": "2026-01-02T00:00:00.001Z",
+    }[boundary]
+    _seal_record(tmp_path, monkeypatch, (registered["start"], registered["end"], purpose))
+    message = f"Registered {purpose} {boundary} must be exactly 00:00:00.000 UTC"
+    with pytest.raises(AccessRefused, match=message):
+        registered_seal()
+
+    legacy = read_json(manifest_path)
+    legacy["version"] = "m1-history-v1"
+    legacy.pop("m2_purpose")
+    asset = archive(root, "klines", "1h", "2000-01", START, START + HOUR,
+                    candles(START, HOUR, [0]), period="monthly")
+    legacy["assets"] = [asset]
+    legacy_path = tmp_path / "legacy.json"
+    write_json(legacy_path, legacy)
+    base_args = ["--manifest", str(legacy_path), "--assets", str(root)]
+    window_args = ["--policy", str(POLICY), "--start", "2000-01-01T00:00:00Z",
+                   "--end", "2000-01-01T01:00:00Z"]
+    script = REPO / "evidence" / "m1" / "fetch.py"
+    monkeypatch.setattr(sys, "argv", [str(script), str(legacy_path), str(root)])
+    config = read_json(config_path)
+    config["access"]["holdout"]["end"] = "2026-01-03T00:00:00Z"
+    write_json(config_path, config)
+    db_path, _ = _boundary_capture(tmp_path, "2026-01-02T00:00:00.000000+00:00", RESERVE_END + DAY)
+    clock = FixedClock(EPOCH + timedelta(milliseconds=RESERVE_END + DAY + HOUR))
+    with forbid_io(root):
+        with pytest.raises(AccessRefused, match=message):
+            load_history(legacy_path, root)
+        for command, extra in (
+            ("historical", []), ("feasibility", window_args), ("replay", [*window_args, "--plan", "unused"]),
+        ):
+            assert m1_main([command, *base_args, *extra]) == 1
+            assert message in capsys.readouterr().err
+        with pytest.raises(SystemExit, match=message):
+            runpy.run_path(str(script), run_name="__main__")
+        (root / asset["path"]).unlink()
+        with pytest.raises(SystemExit, match=message):
+            runpy.run_path(str(script), run_name="__main__")
+        with pytest.raises(AccessRefused, match=message):
+            load_research_inputs(config_path, manifest_path, root, "development", Window(START, END))
+        for command in ("fetch", "coverage"):
+            assert cli(paths, "development", command) == 1
+            assert message in capsys.readouterr().err
+        queries = []
+        with open_ledger(db_path) as conn:
+            conn.set_trace_callback(queries.append)
+            for mode in DepthTargets:
+                with pytest.raises(AccessRefused, match=message):
+                    capture_due(conn, CaptureConfig(depth_targets=mode), clock,
+                                lambda url: pytest.fail("Unexpected capture request"), lambda _: None)
+        assert not any("SELECT payload" in query for query in queries)
+        assert m1_main(["--db", str(db_path), "capture"]) == 1
+        assert message in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("registered_holdout", [False, True])

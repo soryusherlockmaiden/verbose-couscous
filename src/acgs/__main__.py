@@ -13,6 +13,7 @@ from acgs.capture import BLOCKED, RESTRICTED, capture_due, clear_access_restrict
 from acgs.clock import FixedClock
 from acgs.config import ConfigError
 from acgs.config_io import load_config
+from acgs.history_seal import AccessRefused
 from acgs.ledger import open_ledger
 from acgs.ledger_types import LedgerStateError
 from acgs.market_data import fetch_public
@@ -96,6 +97,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if not args.watch:
                     return int(any(key != "CAPTURED" for key in outcomes))
                 time.sleep(30)
+    except AccessRefused as error:
+        print(f"Capture refused: {error}", file=sys.stderr)
+        return 1
     except ConfigError as error:
         print(f"Configuration refused: {error}", file=sys.stderr)
         return 2

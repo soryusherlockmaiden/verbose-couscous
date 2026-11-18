@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
+from acgs.pit import DAY
 from acgs.sim_config import instant_ms
 
 RECORD_PATH = Path(__file__).with_name("history_seal.json")
@@ -124,14 +125,12 @@ class HistorySeal:
     def seals_time(self, time: int) -> bool:
         return any(window.start <= time < window.end for window in self.ranges)
 
-    def permits_prospective_capture_selection(self, receipt: int, slot: Window) -> bool:
-        """Allow M0 scheduling from a receipt inside the same prospective holdout."""
-        if any(
+    def permits_capture_selection(self, receipt: int, slot: Window) -> bool:
+        """Allow M0 scheduling from an earlier receipt outside retrospective reserves."""
+        return receipt < slot.start and not any(
             reserve.start <= receipt < reserve.end or (slot.start < reserve.end and reserve.start < slot.end)
             for reserve in self.reserves
-        ):
-            return False
-        return any(window.start <= receipt < slot.start and window.contains(slot) for window in self.holdouts)
+        )
 
     def require_unsealed(self, window: Window, subject: str) -> None:
         if any(window.start < sealed.end and sealed.start < window.end for sealed in self.ranges):
@@ -170,13 +169,29 @@ class HistorySeal:
             self.require_unsealed(Window(cutoff, cutoff + 1), "Capture cutoff")
 
 
+def _registered_boundary(row: Mapping[str, Any], field: str) -> int:
+    message = f"Registered {row['purpose']} {field} must be exactly 00:00:00.000 UTC"
+    value = row[field]
+    try:
+        time = utc_ms(value)
+    except ValueError as error:
+        raise AccessRefused(message) from error
+    # ISO parsing truncates fractional digits beyond microseconds.
+    if time % DAY or (isinstance(value, str) and re.search(r"[.,]0*[1-9]", value)):
+        raise AccessRefused(message)
+    return time
+
+
 def registered_seal() -> HistorySeal:
     raw = json.loads(RECORD_PATH.read_text(encoding="utf-8"))
     if raw.get("version") != VERSION or not raw.get("ranges"):
         raise AccessRefused("Expected a versioned history seal with registered ranges")
     if any(row.get("purpose") not in PURPOSES for row in raw["ranges"]):
         raise AccessRefused("Each registered sealed range needs a known purpose")
-    ranges = tuple(Window.parse(row) for row in raw["ranges"])
+    ranges = tuple(
+        Window(_registered_boundary(row, "start"), _registered_boundary(row, "end"))
+        for row in raw["ranges"]
+    )
     by_purpose = {
         purpose: tuple(window for window, row in zip(ranges, raw["ranges"], strict=True) if row["purpose"] == purpose)
         for purpose in PURPOSES

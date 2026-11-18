@@ -27,6 +27,7 @@ from acgs.market_data import PublicResponse
 from acgs.sim_config import instant_ms
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
+PROSPECTIVE_END = NOW + timedelta(days=1)
 FIXTURES = Path(__file__).parent / "fixtures"
 # Byte hashes of the committed public-response excerpts (LF line endings).
 FIXTURE_SHA256 = {
@@ -533,7 +534,7 @@ def registered_prospective_holdout(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     record = tmp_path / "history_seal.json"
     record.write_text(json.dumps({"version": "history-seal-v1", "ranges": [
         {"purpose": "m2-prospective-holdout", "start": utc_iso(NOW),
-         "end": utc_iso(NOW + timedelta(minutes=10))},
+         "end": utc_iso(PROSPECTIVE_END)},
     ]}), encoding="utf-8")
     monkeypatch.setattr("acgs.history_seal.RECORD_PATH", record)
     return record
@@ -553,13 +554,19 @@ def test_prospective_capture_keeps_broad_targets_and_research_skips_receipts(
         assert selection == "PROSPECTIVE_HOLDOUT_EXCHANGE_INFO"
         assert json.loads(targets) == ["ALTUSDT", "BTCUSDT", "ETHUSDT"]
         assert json.loads(coverage)["captured"] == 1
-        clock.instant = NOW + timedelta(minutes=10)
-        outcomes = capture_due(connection, DYNAMIC, clock, fixture_response, clock.advance)
-        assert outcomes[0] == "DEPTH_FALLBACK_SEALED_EXCHANGE_INFO"
-        next_targets, = connection.execute(
-            "SELECT targets FROM capture_depth_cycles ORDER BY slot DESC LIMIT 1",
+        clock.instant = PROSPECTIVE_END
+        assert capture_due(connection, DYNAMIC, clock, fixture_response, clock.advance) == ["CAPTURED"] * 6
+        next_selection, next_targets = connection.execute(
+            "SELECT selection, targets FROM capture_depth_cycles ORDER BY slot DESC LIMIT 1",
         ).fetchone()
-        assert json.loads(next_targets) == ["BTCUSDT", "ETHUSDT"]
+        assert next_selection == "PROSPECTIVE_HOLDOUT_EXCHANGE_INFO"
+        assert json.loads(next_targets) == ["ALTUSDT", "BTCUSDT", "ETHUSDT"]
+        unsealed_ids = [
+            row_id for row_id, in connection.execute(
+                "SELECT id FROM capture_attempts WHERE received_at >= ? ORDER BY received_at, id",
+                (utc_iso(PROSPECTIVE_END),),
+            )
+        ]
 
     queries: list[str] = []
     original_connect = sqlite3.connect
@@ -570,18 +577,40 @@ def test_prospective_capture_keeps_broad_targets_and_research_skips_receipts(
         return conn
 
     monkeypatch.setattr("acgs.history_io.sqlite3.connect", traced)
-    _, _, _, spreads, _ = _capture_observations(path, {"ALTUSDT"}, instant_ms(NOW + timedelta(minutes=11)))
+    _, _, _, spreads, _ = _capture_observations(
+        path, {"ALTUSDT"}, instant_ms(PROSPECTIVE_END + timedelta(minutes=1)),
+    )
     assert spreads == []
     assert not any("capture_depth_cycles" in query for query in queries)
-    assert sum("SELECT payload" in query for query in queries) == 3  # Only new unsealed receipts.
+    assert [query.rsplit("=", 1)[1].strip() for query in queries if "SELECT payload" in query] == [
+        str(row_id) for row_id in unsealed_ids
+    ]
 
 
-def test_prospective_plan_does_not_publish_late_depth_payload(
+def test_prospective_capture_keeps_targets_for_slot_straddling_holdout_end(
     tmp_path: Path, registered_prospective_holdout: Path,
 ) -> None:
     path = tmp_path / "capture.sqlite3"
     seed_snapshot(path, fixture_exchange(symbol_row("ALTUSDT")), NOW + timedelta(seconds=1))
-    clock = AdvancingClock(NOW + timedelta(minutes=9, seconds=58))
+    clock = AdvancingClock(PROSPECTIVE_END)
+    config = replace(DYNAMIC, interval_seconds=420)
+    with open_ledger(path) as connection:
+        assert capture_due(connection, config, clock, fixture_response, clock.advance) == ["CAPTURED"] * 6
+        slot, ends_at, targets = connection.execute(
+            "SELECT slot, ends_at, targets FROM capture_depth_cycles",
+        ).fetchone()
+    assert datetime.fromisoformat(slot) < PROSPECTIVE_END < datetime.fromisoformat(ends_at)
+    assert json.loads(targets) == ["ALTUSDT", "BTCUSDT", "ETHUSDT"]
+
+
+@pytest.mark.parametrize("after_holdout", [False, True])
+def test_prospective_plan_does_not_publish_late_depth_payload(
+    tmp_path: Path, registered_prospective_holdout: Path, after_holdout: bool,
+) -> None:
+    path = tmp_path / "capture.sqlite3"
+    seed_snapshot(path, fixture_exchange(symbol_row("ALTUSDT")), NOW + timedelta(seconds=1))
+    slot_end = PROSPECTIVE_END + timedelta(minutes=5 if after_holdout else 0)
+    clock = AdvancingClock(slot_end - timedelta(seconds=2))
 
     def fetch(url: str) -> PublicResponse:
         if depth_symbol(url) == "ALTUSDT":
@@ -589,9 +618,10 @@ def test_prospective_plan_does_not_publish_late_depth_payload(
         return fixture_response(url)
 
     with open_ledger(path) as connection:
-        assert capture_due(connection, DYNAMIC, clock, fetch, clock.advance) == [
-            "CAPTURED", "RECEIVED_AFTER_SLOT", "DEFERRED_CAPTURE_WINDOW",
-        ]
+        captured_metadata = ["CAPTURED"] * (3 if after_holdout else 1)
+        assert capture_due(connection, DYNAMIC, clock, fetch, clock.advance) == (
+            captured_metadata + ["RECEIVED_AFTER_SLOT", "DEFERRED_CAPTURE_WINDOW"]
+        )
         row = connection.execute(
             "SELECT status, payload, sha256 FROM capture_attempts WHERE source_url LIKE '%symbol=ALTUSDT%'",
         ).fetchone()
@@ -600,18 +630,16 @@ def test_prospective_plan_does_not_publish_late_depth_payload(
         assert json.loads(coverage)["missed"] == {"ALTUSDT": "RECEIVED_AFTER_SLOT"}
 
 
-@pytest.mark.parametrize("boundary", ["partial_slot", "overlapping_reserve"])
-def test_prospective_selection_refuses_out_of_scope_payload_before_read(
-    tmp_path: Path, registered_prospective_holdout: Path, boundary: str,
+@pytest.mark.parametrize("receipt_in_reserve", [False, True])
+def test_dynamic_selection_refuses_retrospective_reserve_before_payload_read(
+    tmp_path: Path, registered_prospective_holdout: Path, receipt_in_reserve: bool,
 ) -> None:
     raw = json.loads(registered_prospective_holdout.read_text(encoding="utf-8"))
-    if boundary == "partial_slot":
-        raw["ranges"][0]["end"] = utc_iso(NOW + timedelta(minutes=8))
-    else:
-        raw["ranges"].append(raw["ranges"][0] | {"purpose": "m2-retrospective-reserve"})
+    raw["ranges"].append(raw["ranges"][0] | {"purpose": "m2-retrospective-reserve"})
     registered_prospective_holdout.write_text(json.dumps(raw), encoding="utf-8")
     path = tmp_path / "capture.sqlite3"
-    seed_snapshot(path, fixture_exchange(symbol_row("ALTUSDT")), NOW + timedelta(seconds=1))
+    stamp = NOW + timedelta(seconds=1 if receipt_in_reserve else -1)
+    seed_snapshot(path, fixture_exchange(symbol_row("ALTUSDT")), stamp)
     clock = AdvancingClock(NOW + timedelta(minutes=5))
     queries: list[str] = []
     with open_ledger(path) as connection:

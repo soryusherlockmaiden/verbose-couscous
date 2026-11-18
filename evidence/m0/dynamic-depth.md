@@ -45,7 +45,7 @@ capture_dir=$(mktemp -d /tmp/acgs-live-depth.XXXXXX)
 
 ## PR #6 prospective capture review
 
-At `ea3c509`, a synthetic exchange snapshot captured inside a registered prospective holdout reduced the next slot to the configured symbols. M0 now uses that snapshot only for acquisition in a slot wholly inside the same prospective range. The retrospective reserve remains sealed even when the fixture also registers that period as a prospective holdout. The restriction is checked before selecting the snapshot BLOB. A holdout-derived depth response arriving at or after slot end records a missed sample without a payload.
+At `ea3c509`, a synthetic exchange snapshot captured inside a registered prospective holdout reduced the next slot to the configured symbols. Commit `4b3f9d2` first allowed that snapshot to plan a slot wholly within the same prospective range. The follow-up below extends this acquisition rule. The retrospective reserve remains sealed even when the fixture also registers that period as a prospective holdout. The restriction is checked before selecting the snapshot BLOB. A holdout-derived depth response arriving at or after slot end records a missed sample without a payload.
 
 The recorder's slot plans, targets and coverage are sealed operational metadata for any slot or source snapshot touching a registered range. Keep those journal rows outside research inputs. A query-traced regression verifies that the shared history loader skips prospective payloads and leaves the journal alone. T-15 research entry points use the same receipt and asset checks as before. No market request was needed to reproduce the issue or verify the follow-up. [P2 review](https://github.com/soryusherlockmaiden/verbose-couscous/pull/6#discussion_r4613749166)
 
@@ -79,3 +79,33 @@ Two new schema-3 databases were populated with one simulated UTC day each. For e
 | 400 | 115,490 | 25,045,069 | 4,649,949 | 115,503,104 |
 
 That is about 87–116 MB/day or 32–42 GB/year. The operating estimate from the original README was about 150 KB raw per live all-symbol premium snapshot. Live compression ratios, symbol counts, retries, journal files, backups and filesystem use can change deployment growth. Measure database growth and free disk during the first days on the host. [P3 review](https://github.com/soryusherlockmaiden/verbose-couscous/pull/6#discussion_r4613750751)
+
+## PR #6 UTC boundaries and capture continuity
+
+The operator requires the start and end of every registered retrospective reserve and prospective holdout to be exactly `00:00:00.000 UTC`. The seal refuses unaligned boundaries before payload reads or network requests. The committed registry and aligned fixture ranges load unchanged. T-15 regressions check four invalid boundary cases through M1 historical, feasibility, replay, the loader and fetch script, M2 coverage, loader and fetch, and both modes of M0 capture. Audit hooks guard files and requests, and SQLite tracing guards capture BLOB reads.
+
+M0 retains dynamic depth targets at the end of a prospective holdout, including when a slot straddles the boundary. The snapshot and slot must be outside all retrospective reserves. Tests verify continued suppression of late depth payloads for holdout-derived slots and that M1 reads only unsealed receipts without reading the slot journal. The four invalid registry cases and two capture-continuity cases failed on `82b9b29` and pass with this follow-up.
+
+Local uv sync, Ruff and mypy passed. The full suite passed **271** cases. The explicit capture, M2 data and import-contract run passed **139** cases. Legacy and dynamic smoke digests reproduced twice. Two independent synthetic M2 audits matched byte for byte and reproduced manifest `35c72ed42f63a396605e7bbfb8b042694c59f086058af7d4cd0add0dc9ac9f00` and coverage `b2782e2f034d982ea08a3216c5747688c1cc2190de3cec20a734d4e854842de5`. Compose config passed, and the local Docker socket denied the build. Verification used fixtures. [PR checks](https://github.com/soryusherlockmaiden/verbose-couscous/pull/6/checks)
+
+```sh
+uv sync --locked
+uv run --locked ruff check .
+uv run --locked mypy
+uv run --locked pytest -q
+uv run --locked pytest -q tests/test_capture.py tests/test_m2_data.py tests/test_import_contracts.py
+dir=$(mktemp -d /tmp/acgs-midnight-check.XXXXXX)
+for run in a b; do
+  .venv/bin/python -m acgs --db "$dir/dynamic.sqlite3" --config config/m0.toml smoke
+  .venv/bin/python -m acgs --db "$dir/legacy.sqlite3" smoke
+  .venv/bin/python tests/m2_fixture.py "$dir/$run"
+  .venv/bin/python -m acgs.m2_io --config "$dir/$run/m2.json" --manifest "$dir/$run/manifest.json" --assets "$dir/$run/assets" --purpose development coverage --policy config/m1.json --start 2000-01-01T00:00:00Z --end 2000-01-01T02:00:00Z > "$dir/$run/coverage.json"
+done
+cmp "$dir/a/manifest.json" "$dir/b/manifest.json"
+cmp "$dir/a/coverage.json" "$dir/b/coverage.json"
+sha256sum "$dir/a/manifest.json" "$dir/a/coverage.json"
+git diff --exit-code 82b9b29 -- PRD.md 'evidence/m1/*.json' tests/fixtures src/acgs/history_seal.json config
+git diff --check
+docker compose config --quiet
+docker compose build acgs
+```

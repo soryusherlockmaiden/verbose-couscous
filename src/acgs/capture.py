@@ -10,7 +10,7 @@ from urllib.parse import urlencode
 
 from acgs.clock import Clock, utc_iso
 from acgs.config import CaptureConfig, Config, DepthTargets
-from acgs.history_seal import Window, registered_seal
+from acgs.history_seal import HistorySeal, Window, registered_seal
 from acgs.ledger import insert_state_event
 from acgs.market_data import BASE_URL, PublicResponse, retry_delay, valid_payload
 from acgs.sim_config import instant_ms
@@ -113,7 +113,7 @@ def _eligible_symbols(raw: bytes) -> tuple[str, ...]:
 
 
 def _depth_selection(
-    connection: sqlite3.Connection, start: datetime, end: datetime, max_age: int,
+    connection: sqlite3.Connection, seal: HistorySeal, start: datetime, end: datetime, max_age: int,
 ) -> tuple[str, tuple[str, ...] | None, str | None, str | None]:
     latest = connection.execute(
         """SELECT id, received_at, sha256 FROM capture_attempts
@@ -133,12 +133,9 @@ def _depth_selection(
         return "STALE_EXCHANGE_INFO", None, stamp, sha
     floor_ms = received.replace(microsecond=received.microsecond // 1_000 * 1_000)
     receipt = instant_ms(floor_ms)
-    seal = registered_seal()
-    selection = "EXCHANGE_INFO"
-    if seal.seals_time(receipt):
-        if not seal.permits_prospective_capture_selection(receipt, Window(instant_ms(start), instant_ms(end))):
-            return "SEALED_EXCHANGE_INFO", None, stamp, sha
-        selection = PROSPECTIVE_SELECTION
+    if not seal.permits_capture_selection(receipt, Window(instant_ms(start), instant_ms(end))):
+        return "SEALED_EXCHANGE_INFO", None, stamp, sha
+    selection = PROSPECTIVE_SELECTION if seal.seals_time(receipt) else "EXCHANGE_INFO"
     payload, encoding = connection.execute(
         "SELECT payload, payload_encoding FROM capture_attempts WHERE id = ?", (row_id,),
     ).fetchone()
@@ -185,7 +182,7 @@ def _close_cycle(connection: sqlite3.Connection, cycle: _DepthCycle, *, expired:
 
 
 def _depth_cycle(
-    connection: sqlite3.Connection, config: CaptureConfig, now: datetime,
+    connection: sqlite3.Connection, config: CaptureConfig, now: datetime, seal: HistorySeal,
 ) -> tuple[_DepthCycle, str | None]:
     utc_iso(now)
     latest = connection.execute(
@@ -210,7 +207,7 @@ def _depth_cycle(
                 gap_from = end
         ends_at = start + timedelta(seconds=config.interval_seconds)
         selection, selected, receipt, sha = _depth_selection(
-            connection, start, ends_at, config.exchange_info_max_age_seconds,
+            connection, seal, start, ends_at, config.exchange_info_max_age_seconds,
         )
         targets = tuple(sorted(set(config.symbols).union(selected or ())))
         cycle = _DepthCycle(slot, ends_at, selected, targets, uses_holdout_snapshot=selection == PROSPECTIVE_SELECTION)
@@ -270,6 +267,7 @@ def capture_due(
     fetch: Callable[[str], PublicResponse],
     pace: Callable[[float], None],
 ) -> list[str]:
+    seal = registered_seal()
     if restriction_open(connection):
         return [BLOCKED]
     outcomes: list[str] = []
@@ -277,7 +275,7 @@ def capture_due(
     symbols = config.symbols
     if config.depth_targets == DepthTargets.TRADING_USDT_PERPETUALS:
         now = clock.now()
-        cycle, fallback = _depth_cycle(connection, config, now)
+        cycle, fallback = _depth_cycle(connection, config, now, seal)
         if now < datetime.fromisoformat(cycle.slot):
             return ["DEFERRED_CLOCK_BEFORE_CAPTURE_SLOT"]
         symbols = cycle.targets if not cycle.closed else ()
