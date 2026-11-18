@@ -734,7 +734,9 @@ def test_t01_ingest_integrity_cli_and_immutable_outputs(tmp_path: Path) -> None:
         "listings": [{"id": INST.id, "effective": INST.onboard, "status": "TRADING",
                       "evidence": dict(source="fixture", method="test", as_of=INST.onboard,
                                        provenance="VERIFIED")}],
-        "assets": [{"id": INST.id, "source": "fixture", "path": asset.name, "start": T,
+        "assets": [{"id": INST.id, "source": "https://data.binance.vision/data/futures/um/daily/"
+                    f"klines/{INST.symbol}/1h/{INST.symbol}-1h-1970-03-22.zip",
+                    "path": asset.name, "start": T,
                     "end": T + HOUR, "kind": "klines", "interval_ms": HOUR,
                     "sha256": hashlib.sha256(asset.read_bytes()).hexdigest()}],
     }
@@ -788,6 +790,10 @@ def test_t18_archive_mark_enrichment_requires_exact_settlement_match(tmp_path: P
     row = {"symbol": INST.symbol, "fundingTime": time, "fundingRate": "0.001", "markPrice": "105"}
     mark = tmp_path / "funding.json"
     mark.write_text(json.dumps([row]), encoding="utf-8")
+    funding_source = ("https://data.binance.vision/data/futures/um/daily/"
+                      f"fundingRate/{INST.symbol}/{INST.symbol}-1970-03-22.zip")
+    mark_source = ("https://fapi.binance.com/fapi/v1/fundingRate?"
+                   f"symbol={INST.symbol}&startTime={T}&endTime={T + HOUR - 1}&limit=1000")
     manifest = {
         "version": "m1-history-v1", "ingested_at": T + HOUR, "candle_delay_ms": 1000,
         "funding_delay_ms": 5000,
@@ -799,8 +805,8 @@ def test_t18_archive_mark_enrichment_requires_exact_settlement_match(tmp_path: P
             {"id": INST.id, "source": source, "path": file.name, "start": T, "end": T + HOUR,
              "kind": kind, "sha256": hashlib.sha256(file.read_bytes()).hexdigest()}
             for file, kind, source in (
-                (archive, "fundingRate", "archive-source"),
-                (mark, "fundingMarks", "rest-source"),
+                (archive, "fundingRate", funding_source),
+                (mark, "fundingMarks", mark_source),
             )
         ],
     }
@@ -808,9 +814,9 @@ def test_t18_archive_mark_enrichment_requires_exact_settlement_match(tmp_path: P
     path.write_text(json.dumps(manifest), encoding="utf-8")
     attached, = load_history(path, tmp_path).market.settlements[INST]
     assert attached.time == time and attached.rate == D("0.001") and attached.interval_ms == 8 * HOUR
-    assert attached.evidence.source == "archive-source"
+    assert attached.evidence.source == funding_source
     assert attached.mark == D(105) and attached.mark_evidence is not None
-    assert attached.mark_evidence.source == "rest-source" and attached.mark_evidence.as_of == time + 5000
+    assert attached.mark_evidence.source == mark_source and attached.mark_evidence.as_of == time + 5000
     for mutation in ({"fundingTime": time + 1}, {"fundingRate": "0.002"}, {"markPrice": None}):
         mark.write_text(json.dumps([row | mutation]), encoding="utf-8")
         manifest["assets"][1]["sha256"] = hashlib.sha256(mark.read_bytes()).hexdigest()

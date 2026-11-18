@@ -15,6 +15,7 @@ from urllib.parse import parse_qs, urlsplit
 from zipfile import ZipFile
 
 from acgs.capture import stored_payload
+from acgs.history_seal import HistorySeal, Window, registered_seal
 from acgs.market_data import BASE_URL
 from acgs.pit import (
     HOUR,
@@ -218,8 +219,11 @@ def _filters(
 def _capture_observations(
     path: Path, wanted: set[str], cutoff: int,
     prior_listings: tuple[Listing, ...] = (),
+    *, seal: HistorySeal | None = None, expected_digest: str | None = None,
 ) -> tuple[list[Listing], list[Filters | FilterWithdrawal], list[Schedule], list[Spread], list[str]]:
     """Import M0 captures with the manifest listings they can supersede."""
+    seal = registered_seal() if seal is None else seal
+    seal.require_unsealed(Window(cutoff, cutoff + 1), "Capture cutoff")
     listings: list[Listing] = []
     filters: list[Filters | FilterWithdrawal] = []
     schedules: list[Schedule] = []
@@ -234,22 +238,37 @@ def _capture_observations(
             prior.setdefault(row.instrument, []).append(row)
     connection = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
     try:
+        connection.execute("BEGIN")
         schema = connection.execute("PRAGMA user_version").fetchone()[0]
         if schema not in (1, 2):
             raise ValueError("Unsupported M0 capture schema")
         compression = "payload_encoding" if schema == 2 else "NULL"
         rows = connection.execute(
-            f"""SELECT source_url, received_at, payload, sha256, {compression}
+            """SELECT id, source_url, received_at, sha256
                FROM capture_attempts WHERE status = 'CAPTURED' AND provenance = 'VERIFIED'
                ORDER BY received_at, id"""
         )
-        for url, stamp, payload, sha, encoding in rows:
+        receipts: list[tuple[int, str, int, str]] = []
+        for row_id, url, stamp, sha in rows:
             observation = datetime.fromisoformat(stamp)
             # Round observation UP to the millisecond so the snapshot is never backdated.
             base = observation.replace(microsecond=observation.microsecond // 1000 * 1000)
-            time = instant_ms(base) + int(base != observation)
+            received = instant_ms(base)
+            time = received + int(base != observation)
             if time > cutoff:
                 break
+            # Apply the seal to the actual receipt, including sub-ms receipts at the end.
+            if seal.seals_time(received):
+                continue
+            receipts.append((row_id, url, time, sha))
+            hashes.append(digest((url, stamp, sha)))
+        if expected_digest is not None and digest(hashes) != expected_digest:
+            raise ValueError("Capture selection differs from the pinned manifest")
+
+        for row_id, url, time, sha in receipts:
+            payload, encoding = connection.execute(
+                f"SELECT payload, {compression} FROM capture_attempts WHERE id = ?", (row_id,)
+            ).fetchone()
             raw = stored_payload(payload, encoding)
             if hashlib.sha256(raw).hexdigest() != sha:
                 raise ValueError("M0 capture content hash mismatch")
@@ -259,7 +278,6 @@ def _capture_observations(
             endpoint = parsed_url.path.rsplit("/", 1)[-1]
             ev = Evidence(url, "m0_capture:" + sha, Provenance.VERIFIED, time)
             body = json.loads(raw, object_pairs_hook=_unique)
-            hashes.append(digest((url, stamp, sha)))
             if endpoint == "exchangeInfo":
                 current = {}
                 for item in body["symbols"]:
@@ -349,6 +367,7 @@ def _capture_observations(
 
 
 def read_history_asset(root: Path, info: dict[str, Any]) -> bytes:
+    registered_seal().check_asset(info)
     path = (root / str(info["path"])).resolve()
     if not path.is_relative_to(root.resolve()) or path.stat().st_size > MAX_HISTORY_ASSET:
         raise ValueError("Dataset asset path/size outside allowed bounds")
@@ -373,6 +392,8 @@ def load_history_manifest(
     """Parse a manifest already read by a caller's data-access boundary."""
     if manifest.get("version") != "m1-history-v1":
         raise ValueError("Unknown historical dataset schema")
+    seal = registered_seal()
+    seal.check_manifest(manifest)
     ingestion = _time(manifest["ingested_at"])
     if ingestion < 0:
         raise ValueError("Invalid ingestion timestamp")
@@ -427,6 +448,19 @@ def load_history_manifest(
         MarkGap(instruments[x["id"]], _time(x["start"]), _time(x["end"]), _evidence(x["evidence"]))
         for x in manifest.get("mark_gaps", [])
     )
+    if capture_db is not None:
+        capture = manifest["capture"]
+        captured_listings, captured_filters, captured_schedules, captured_spreads, _ = _capture_observations(
+            capture_db, set(capture["symbols"]), _time(capture["cutoff"]),
+            tuple(listings), seal=seal, expected_digest=capture["digest"],
+        )
+        listings.extend(captured_listings)
+        filters.extend(captured_filters)
+        schedules.extend(captured_schedules)
+        spreads.extend(captured_spreads)
+    elif "capture" in manifest:
+        raise ValueError("Dataset requires the pinned M0 capture database")
+
     candles: list[Candle] = []
     funding: list[Funding] = []
     funding_marks: list[Funding] = []
@@ -454,21 +488,6 @@ def load_history_manifest(
             raise ValueError(f"Unknown historical asset type: {kind}")
     if funding_marks:
         funding = _attach_funding_marks(funding, funding_marks)
-    hashes: list[str] = []
-    if capture_db is not None:
-        capture = manifest["capture"]
-        captured_listings, captured_filters, captured_schedules, captured_spreads, hashes = _capture_observations(
-            capture_db, set(capture["symbols"]), _time(capture["cutoff"]),
-            tuple(listings),
-        )
-        if digest(hashes) != capture["digest"]:
-            raise ValueError("Capture selection differs from the pinned manifest")
-        listings.extend(captured_listings)
-        filters.extend(captured_filters)
-        schedules.extend(captured_schedules)
-        spreads.extend(captured_spreads)
-    elif "capture" in manifest:
-        raise ValueError("Dataset requires the pinned M0 capture database")
     return Loaded(Market(Dataset(
         tuple(listings), tuple(candles), tuple(funding), tuple(schedules), tuple(filters),
         tuple(maintenance), tuple(spreads), marks,

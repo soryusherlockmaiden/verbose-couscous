@@ -15,6 +15,7 @@ from acgs.clock import FixedClock
 from acgs.eligibility import Side
 from acgs.feasibility import feasibility
 from acgs.history_io import integer, load_history, number, read_json
+from acgs.history_seal import Window, registered_seal
 from acgs.pit import Filters, FilterWithdrawal, Instrument
 from acgs.sim_config import EPOCH, Policy, StopBasis, canonical, digest, instant_ms
 
@@ -86,6 +87,9 @@ def _plan(raw: dict[str, Any], inst: Instrument, start: int) -> ReplayPlan:
 
 
 def run_research(args: Namespace) -> int:
+    if args.command != "historical":
+        window = Window(_parse_time(args.start), _parse_time(args.end))
+        registered_seal().require_unsealed(window, "M1 research request")
     loaded = load_history(args.manifest, args.assets, args.capture_db)
     market = loaded.market
     if args.command == "historical":
