@@ -13,7 +13,7 @@ At five-minute intervals there are 288 samples per day per symbol. The recorded 
 | Criterion | Result |
 |---|---|
 | Dynamic selection and coverage | Met on fixture. TRADING, quoteAsset and contractType apply independently. Index and pegged examples are included. Configured-only symbols are reported separately. |
-| Point-in-time membership and safe fallback | Met on fixture. Missing, invalid, stale and sealed snapshots use the configured list. A newly arrived snapshot changes the next slot. Removal and addition affect only that next plan. |
+| Point-in-time membership and safe fallback | Met on fixture. Missing, invalid, stale and inaccessible snapshots use the configured list. A newly arrived snapshot changes the next slot. Removal and addition affect only that next plan. |
 | Pacing and recovery | Met on fixture. 400 perpetuals plus two configured extras and three metadata requests complete within 102 seconds with 250 ms of modeled latency per request and a 1,200 weight budget. A second test uses 1 ms latency and a 600 weight budget and completes within 83 seconds. Both check every rolling minute. Interruption, retry/restriction stops, late receipts and expired gaps are tested. |
 | M1 and import contracts (T-13, T-16) | Met on fixture. The existing importer returns spread observations for the requested symbols using schema 3. The M1 manifests, canonical fixtures and holdout seal are byte-identical to main. Full tests and import contracts passed. |
 | Current public endpoint cycle | **BLOCKED on this host.** One actual GET to exchangeInfo returned HTTP 451 after about 300 ms. The collector latched, recorded one `ACCESS_RESTRICTED` result and stored zero payload bytes. It issued no depth or follow-up request. A complete live cycle remains unverified. |
@@ -42,3 +42,9 @@ docker compose build acgs
 capture_dir=$(mktemp -d /tmp/acgs-live-depth.XXXXXX)
 .venv/bin/python -m acgs --db "$capture_dir/live.sqlite3" --config config/m0.toml capture
 ```
+
+## PR #6 prospective capture review
+
+At `ea3c509`, a synthetic exchange snapshot captured inside a registered prospective holdout reduced the next slot to the configured symbols. M0 now uses that snapshot only for acquisition in a slot wholly inside the same prospective range. The retrospective reserve remains sealed even when the fixture also registers that period as a prospective holdout. The restriction is checked before selecting the snapshot BLOB. A holdout-derived depth response arriving at or after slot end records a missed sample without a payload.
+
+The recorder's slot plans, targets and coverage are sealed operational metadata for any slot or source snapshot touching a registered range. Keep those journal rows outside research inputs. A query-traced regression verifies that the shared history loader skips prospective payloads and leaves the journal alone. T-15 research entry points use the same receipt and asset checks as before. No market request was needed to reproduce the issue or verify the follow-up. [P2 review](https://github.com/soryusherlockmaiden/verbose-couscous/pull/6#discussion_r4613749166)

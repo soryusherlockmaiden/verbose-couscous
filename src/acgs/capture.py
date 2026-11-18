@@ -10,7 +10,7 @@ from urllib.parse import urlencode
 
 from acgs.clock import Clock, utc_iso
 from acgs.config import CaptureConfig, Config, DepthTargets
-from acgs.history_seal import registered_seal
+from acgs.history_seal import Window, registered_seal
 from acgs.ledger import insert_state_event
 from acgs.market_data import BASE_URL, PublicResponse, retry_delay, valid_payload
 from acgs.sim_config import instant_ms
@@ -19,6 +19,7 @@ DAILY = 86_400
 PAYLOAD_ENCODING = "zlib"
 RESTRICTED = "ACCESS_RESTRICTED"
 BLOCKED = "BLOCKED_ACCESS_RESTRICTED"
+PROSPECTIVE_SELECTION = "PROSPECTIVE_HOLDOUT_EXCHANGE_INFO"
 EXCHANGE_INFO = f"{BASE_URL}/fapi/v1/exchangeInfo"
 # The USD-M fundingInfo endpoint has weight zero and a separate shared IP limit.
 # Charge it one unit locally as well. It remains scheduled once per UTC day.
@@ -92,6 +93,7 @@ class _DepthCycle:
     expected: tuple[str, ...] | None
     targets: tuple[str, ...]
     closed: bool = False
+    uses_holdout_snapshot: bool = False
 
 
 def _eligible_symbols(raw: bytes) -> tuple[str, ...]:
@@ -111,7 +113,7 @@ def _eligible_symbols(raw: bytes) -> tuple[str, ...]:
 
 
 def _depth_selection(
-    connection: sqlite3.Connection, start: datetime, max_age: int,
+    connection: sqlite3.Connection, start: datetime, end: datetime, max_age: int,
 ) -> tuple[str, tuple[str, ...] | None, str | None, str | None]:
     latest = connection.execute(
         """SELECT id, received_at, sha256 FROM capture_attempts
@@ -130,8 +132,13 @@ def _depth_selection(
     if start - received > timedelta(seconds=max_age):
         return "STALE_EXCHANGE_INFO", None, stamp, sha
     floor_ms = received.replace(microsecond=received.microsecond // 1_000 * 1_000)
-    if registered_seal().seals_time(instant_ms(floor_ms)):
-        return "SEALED_EXCHANGE_INFO", None, stamp, sha
+    receipt = instant_ms(floor_ms)
+    seal = registered_seal()
+    selection = "EXCHANGE_INFO"
+    if seal.seals_time(receipt):
+        if not seal.permits_prospective_capture_selection(receipt, Window(instant_ms(start), instant_ms(end))):
+            return "SEALED_EXCHANGE_INFO", None, stamp, sha
+        selection = PROSPECTIVE_SELECTION
     payload, encoding = connection.execute(
         "SELECT payload, payload_encoding FROM capture_attempts WHERE id = ?", (row_id,),
     ).fetchone()
@@ -139,7 +146,7 @@ def _depth_selection(
         raw = stored_payload(payload, encoding)
         if hashlib.sha256(raw).hexdigest() != sha:
             raise ValueError("Exchange snapshot checksum mismatch")
-        return "EXCHANGE_INFO", _eligible_symbols(raw), stamp, sha
+        return selection, _eligible_symbols(raw), stamp, sha
     except (ValueError, zlib.error):
         return "INVALID_EXCHANGE_INFO", None, stamp, sha
 
@@ -182,7 +189,7 @@ def _depth_cycle(
 ) -> tuple[_DepthCycle, str | None]:
     utc_iso(now)
     latest = connection.execute(
-        """SELECT slot, ends_at, expected_symbols, targets, coverage
+        """SELECT slot, ends_at, expected_symbols, targets, coverage, selection
            FROM capture_depth_cycles ORDER BY slot DESC LIMIT 1"""
     ).fetchone()
     slot = _slot(now, config.interval_seconds)
@@ -190,10 +197,10 @@ def _depth_cycle(
     gap_from = None
     with connection:
         if latest is not None:
-            old_slot, end, expected, targets, coverage = latest
+            old_slot, end, expected, targets, coverage, prior_selection = latest
             previous = _DepthCycle(
                 old_slot, datetime.fromisoformat(end), None if expected is None else tuple(json.loads(expected)),
-                tuple(json.loads(targets)), coverage is not None,
+                tuple(json.loads(targets)), coverage is not None, prior_selection == PROSPECTIVE_SELECTION,
             )
             if now < previous.ends_at:
                 return previous, None
@@ -201,9 +208,12 @@ def _depth_cycle(
                 _close_cycle(connection, previous, expired=True)
             if previous.ends_at < start:
                 gap_from = end
-        selection, selected, receipt, sha = _depth_selection(connection, start, config.exchange_info_max_age_seconds)
+        ends_at = start + timedelta(seconds=config.interval_seconds)
+        selection, selected, receipt, sha = _depth_selection(
+            connection, start, ends_at, config.exchange_info_max_age_seconds,
+        )
         targets = tuple(sorted(set(config.symbols).union(selected or ())))
-        cycle = _DepthCycle(slot, start + timedelta(seconds=config.interval_seconds), selected, targets)
+        cycle = _DepthCycle(slot, ends_at, selected, targets, uses_holdout_snapshot=selection == PROSPECTIVE_SELECTION)
         connection.execute(
             """INSERT INTO capture_depth_cycles
                (slot, ends_at, gap_from, exchange_info_received_at, exchange_info_sha256,
@@ -312,6 +322,12 @@ def capture_due(
         response = fetch(url)
         end = clock.now()
         status = _status(endpoint, response)
+        if (
+            status == "CAPTURED" and endpoint == "depth" and cycle is not None
+            and cycle.uses_holdout_snapshot and end >= cycle.ends_at
+        ):
+            # A holdout-derived plan must not produce usable payloads after its slot.
+            status = "RECEIVED_AFTER_SLOT"
         retry_at = None
         payload = digest = provenance = encoding = None
         if status == "CAPTURED":
@@ -322,7 +338,7 @@ def capture_due(
         elif status == "RATE_LIMITED":
             delay = retry_delay(response.retry_after, end.timestamp(), 300)
             retry_at = utc_iso(end + timedelta(seconds=min(delay, 31_536_000)))
-        elif status != RESTRICTED:
+        elif status not in {RESTRICTED, "RECEIVED_AFTER_SLOT"}:
             retry_at = utc_iso(end + timedelta(seconds=60))
 
         with connection:

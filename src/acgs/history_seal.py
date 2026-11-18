@@ -119,9 +119,19 @@ class HistorySeal:
     ranges: tuple[Window, ...]
     # Registered holdouts also bound research chronology: approved data ends before each.
     holdouts: tuple[Window, ...] = ()
+    reserves: tuple[Window, ...] = ()
 
     def seals_time(self, time: int) -> bool:
         return any(window.start <= time < window.end for window in self.ranges)
+
+    def permits_prospective_capture_selection(self, receipt: int, slot: Window) -> bool:
+        """Allow M0 scheduling from a receipt inside the same prospective holdout."""
+        if any(
+            reserve.start <= receipt < reserve.end or (slot.start < reserve.end and reserve.start < slot.end)
+            for reserve in self.reserves
+        ):
+            return False
+        return any(window.start <= receipt < slot.start and window.contains(slot) for window in self.holdouts)
 
     def require_unsealed(self, window: Window, subject: str) -> None:
         if any(window.start < sealed.end and sealed.start < window.end for sealed in self.ranges):
@@ -167,8 +177,8 @@ def registered_seal() -> HistorySeal:
     if any(row.get("purpose") not in PURPOSES for row in raw["ranges"]):
         raise AccessRefused("Each registered sealed range needs a known purpose")
     ranges = tuple(Window.parse(row) for row in raw["ranges"])
-    holdouts = tuple(
-        window for window, row in zip(ranges, raw["ranges"], strict=True)
-        if row["purpose"] == HOLDOUT
-    )
-    return HistorySeal(ranges, holdouts)
+    by_purpose = {
+        purpose: tuple(window for window, row in zip(ranges, raw["ranges"], strict=True) if row["purpose"] == purpose)
+        for purpose in PURPOSES
+    }
+    return HistorySeal(ranges, by_purpose[HOLDOUT], by_purpose[RESERVE])
