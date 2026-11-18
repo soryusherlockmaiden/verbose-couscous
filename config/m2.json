@@ -28,8 +28,16 @@
   "proposed": {
     "holdout_design": "prospective_after_protocol_freeze",
     "windows": {
-      "development": {"start": "2023-01-01T00:00:00Z", "end": "2023-12-31T00:00:00Z"},
-      "validation": {"start": "2024-01-01T00:00:00Z", "end": "2024-12-31T00:00:00Z"},
+      "development": {
+        "decision": {"start": "2023-04-01T00:00:00Z", "end": "2023-12-31T00:00:00Z"},
+        "data": {"start": "2023-01-01T00:00:00Z", "end": "2024-01-01T00:00:00Z"}
+      },
+      "validation": {
+        "decision": {"start": "2024-05-01T00:00:00Z", "end": "2024-12-31T00:00:00Z"},
+        "data": {"start": "2024-01-01T00:00:00Z", "end": "2025-01-01T00:00:00Z"}
+      },
+      "research_cutoff": "2025-01-01T00:00:00Z",
+      "scope": "O1 step 1 inventory and coverage audit only; not a manifest approval",
       "holdout": null
     },
     "majors": ["BTCUSDT", "ETHUSDT"],
