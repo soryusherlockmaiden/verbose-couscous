@@ -1,6 +1,6 @@
 # Inventaris metadata M2 O2 tahap 1
 
-**Status bukti:** inventaris arsip dan pencocokan checksum selesai. Pengambilan HTTP langsung pada run pertama `BLOCKED`. Kueri Wayback kemudian mengembalikan `NOT_ARCHIVED` untuk kelima URL dalam cakupan. Operator menyimpan kelima publikasi sebagai PDF melalui browser. Lingkup data pasar mencakup `BTCUSDT`, `ETHUSDT` dan `DGBUSDT` dalam rentang `[2023-01-01T00:00:00Z, 2025-01-01T00:00:00Z)`. [Matriks JSON](o2-inventory.json) · [Bukti pengumuman](o2-notices.json) · [Keputusan O2](protocol.md#operator-decisions)
+Operator menyimpan kelima publikasi sebagai PDF melalui browser. Inventaris arsip dan pencocokan checksum juga sudah selesai untuk `BTCUSDT`, `ETHUSDT` dan `DGBUSDT` dalam rentang `[2023-01-01T00:00:00Z, 2025-01-01T00:00:00Z)`. [Bukti pengumuman](o2-notices.json) · [Matriks JSON](o2-inventory.json) · [Keputusan O2](protocol.md#operator-decisions)
 
 ## Cakupan arsip
 
