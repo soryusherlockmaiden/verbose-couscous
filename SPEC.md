@@ -136,6 +136,8 @@ Persist source, method, as-of time, coverage and limitations. Exploratory resear
 
 **Expected coverage and forward capture:** Binance public endpoints are expected to expose only current instrument filters (to be confirmed in M1), so most historical filters will be `RECONSTRUCTED`. From M0, a credential-free forward-capture job records daily `exchangeInfo` and `fundingInfo` snapshots, periodic `premiumIndex` snapshots (all symbols) and periodic order-book/spread samples for the candidate universe. These are `VERIFIED` from their capture time onward and are the preferred basis for promotion-grade feasibility and cost evidence on later periods.
 
+**M0 capture-depth-v1 (SQLite schema 3).** Dynamic capture uses the latest fresh, valid `CAPTURED` exchange snapshot received strictly before the slot boundary. It journals every trading USDT-quoted perpetual and any configured depth symbols as a sorted plan. A snapshot that arrives during the slot can first change the next plan. Missing, invalid, sealed or stale metadata falls back to the configured list with its reason recorded. Window gaps and late receipts are explicit. Public request reservations survive restart and enforce the declared rolling request-weight budget. Capture membership supplies no M2 universe eligibility decision. [Verification](evidence/m0/dynamic-depth.md)
+
 
 ### 4.3.1 Funding evidence
 

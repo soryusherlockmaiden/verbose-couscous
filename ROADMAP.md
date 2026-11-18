@@ -235,7 +235,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 1. **PRD v1.4 is Approved & Locked** as the product baseline; no further PRD approval task remains.
 2. **M1 accepted** by the operator on 2026-11-18 (UTC) and merged through PR #4.
-3. **M2 Phase A accepted** by the operator on 2026-11-18 (UTC) and merged through PR #5. Before Phase B: extend forward capture depth sampling from the fixed symbol list to every trading USDT perpetual (a versioned M0 tooling change), run capture continuously, and decide the exact O1 dates and O2–O4. Then continue SC-03, SC-04 and SC-05, including the delayed-trailing and funding-cost reporting noted in SPEC §4.5.1. P3-2 and P3-3 are due before Phase C.
+3. **M2 Phase A accepted** by the operator on 2026-11-18 (UTC) and merged through PR #5. Before Phase B, review [the M0 dynamic depth follow-up](evidence/m0/dynamic-depth.md), run capture continuously from an eligible host, and decide the exact O1 dates and O2–O4. Then continue SC-03, SC-04 and SC-05, including the delayed-trailing and funding-cost reporting noted in SPEC §4.5.1. P3-2 and P3-3 are due before Phase C.
 4. **M0 accepted** by the operator on 2026-11-17 (UTC) and merged through PR #2. Start continuous forward capture on the VPS (`docker compose --profile capture up -d capture`).
 5. Continue forward capture to extend point-in-time evidence for M2 feasibility and cost research.
 6. Pre-register M2 numeric promotion criteria **before** holdout evaluation.
@@ -244,6 +244,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 ## 13. v0.4 targeted change notes
 
+- M0 capture-depth-v1 adds dynamic order-book sampling for every trading USD-M USDT perpetual, slot-level coverage and a request-weight budget. [Verification](evidence/m0/dynamic-depth.md)
 - M2 Phase A accepted by the operator on 2026-11-18 (UTC) at code commit `496a933` and merged through PR #5; M2 remains `IN PROGRESS`.
 - M2 Phase A records retrospective development, a prospective holdout after freeze, the sealed 2025 reserve and the shared history access checks. Exact research dates remain open.
 
