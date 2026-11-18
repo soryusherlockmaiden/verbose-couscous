@@ -1,10 +1,16 @@
 import hashlib
 import json
+from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from typing import Any
 
-import ingest_notices as ingest
 import pytest
+
+SCRIPT = Path(__file__).resolve().parents[1] / "evidence/m2/ingest_notices.py"
+spec = spec_from_file_location("ingest_notices", SCRIPT)
+assert spec is not None and spec.loader is not None
+ingest = module_from_spec(spec)
+spec.loader.exec_module(ingest)
 
 URL = "https://www.binance.com/en/support/announcement/detail/example"
 SAVE = "2026-11-18T22:18:25Z"

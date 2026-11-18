@@ -90,12 +90,14 @@ Validator memeriksa 504 baris bulanan unik, tujuh key harian di batas DGBUSDT, c
 
 Pada follow-up auditabilitas, `mypy src evidence/m2/collect.py evidence/m2/finalize.py` lulus pada 28 berkas. Pemeriksaan dengan koneksi tiruan menguji penolakan GET ZIP, listing, key pasca-cutoff dan URL pengumuman di luar daftar. Pemeriksaan juga menguji penghentian request setelah HTTP `403`, `451`, dan `202` kosong untuk pengumuman. Rerender offline mempertahankan seluruh observasi run asli dan hanya menambahkan referensi ke log discovery.
 
-Pada follow-up salinan pengumuman, kelima PDF dibuka dengan `pypdf`, URL pada footer diperiksa, dan halaman pertama dirender dengan `pdftoppm`. SHA-256 dan ukuran kelima PDF cocok dengan ledger. Pemeriksaan berikut lulus dengan 28 berkas untuk mypy dan **296 tes** untuk pytest, termasuk enam kasus impor notice.
+Pada follow-up salinan pengumuman, kelima PDF dibuka dengan `pypdf`, URL pada footer diperiksa, dan halaman pertama dirender dengan `pdftoppm`. SHA-256 dan ukuran kelima PDF cocok dengan ledger. Enam kasus impor notice berada di `tests/test_ingest_notices.py` dan masuk dalam **296 tes** pada pemanggilan pytest standar. Image Docker `check` menyertakan helper impor yang diuji.
 
 ```powershell
 .\.venv\Scripts\ruff.exe check .
-.\.venv\Scripts\mypy.exe src evidence/m2/ingest_notices.py evidence/m2/test_ingest_notices.py
-.\.venv\Scripts\python.exe -m pytest -q tests evidence/m2/test_ingest_notices.py --basetemp=C:\dev\acgs\data\o2-inventory\pytest-notices
+.\.venv\Scripts\mypy.exe src evidence/m2/ingest_notices.py tests/test_ingest_notices.py
+.\.venv\Scripts\pytest.exe -q --basetemp=C:\dev\acgs\data\o2-inventory\pytest-notices-ci
+docker compose -p acgs-o2-notices-ci --profile check build check
+docker compose -p acgs-o2-notices-ci --profile check run --rm check
 .\.venv\Scripts\python.exe evidence/m2/finalize.py --work-dir data/o2-inventory --output evidence/m2/o2-inventory.json
 git diff --check
 ```
