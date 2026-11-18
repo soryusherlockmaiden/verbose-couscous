@@ -1,6 +1,6 @@
 # Inventaris metadata M2 O2 tahap 1
 
-**Status tugas: `BLOCKED` untuk salinan mentah pengumuman.** Inventaris arsip dan pencocokan checksum selesai pada 2026-11-18 UTC. Lingkup operator mencakup `BTCUSDT`, `ETHUSDT` dan `DGBUSDT` dalam rentang `[2023-01-01T00:00:00Z, 2025-01-01T00:00:00Z)`. Aset berperiode 2025 dan sesudahnya tetap di luar inventaris. [Matriks JSON](o2-inventory.json) · [Keputusan O2](protocol.md#operator-decisions)
+**Status bukti:** inventaris arsip dan pencocokan checksum selesai. Pengambilan HTTP langsung pada run pertama `BLOCKED`. Kueri Wayback kemudian mengembalikan `NOT_ARCHIVED` untuk kelima URL dalam cakupan. Operator menyimpan kelima publikasi sebagai PDF melalui browser. Lingkup data pasar mencakup `BTCUSDT`, `ETHUSDT` dan `DGBUSDT` dalam rentang `[2023-01-01T00:00:00Z, 2025-01-01T00:00:00Z)`. [Matriks JSON](o2-inventory.json) · [Bukti pengumuman](o2-notices.json) · [Keputusan O2](protocol.md#operator-decisions)
 
 ## Cakupan arsip
 
@@ -23,17 +23,42 @@ Pencarian discovery memakai pembatas tanggal dan kata kunci untuk listing, perub
 
 | Jenis bukti | Temuan dan celah |
 |---|---|
-| Listing, status dan epoch | BTCUSDT dan ETHUSDT memiliki kandidat sumber peluncuran resmi dari discovery, sementara snapshot dan tanggal efektif yang terverifikasi pada run ini masih kosong. DGBUSDT memiliki `CLOSE_ONLY` pada 1 April 2024 pukul 08:30 UTC dan delisting pukul 09:00 UTC dari bukti M1. Tanggal onboard DGBUSDT yang persis, cakupan perubahan status sepanjang periode, dan relabel multiplier ketiga simbol belum terverifikasi. |
+| Listing, status dan epoch | Blog menyebut peluncuran BTCUSDT pada 9 September 2019. Blog ETHUSDT menyatakan perdagangan mulai pada hari publikasi, sementara tanggal yang ditampilkan berbeda antara tab dan PDF. Pengumuman DGBUSDT menyatakan larangan posisi baru pada 1 April 2024 pukul 08:30 UTC, settlement terjadwal pukul 09:00 UTC, dan delisting setelah settlement. Onboard instants, cakupan perubahan status sepanjang periode, dan relabel multiplier ketiga simbol masih belum lengkap. |
 | Filter | Parameter filter USD-M *point-in-time*, termasuk step size, minimum kuantitas/notional dan tick size selama 2023–2024, belum cukup untuk menilai eksekusi. Hasil pencarian terkait spot atau kontrak delivery tidak dipakai sebagai bukti perpetual. |
-| Maintenance tier | Bukti M1 mencakup bracket terendah DGBUSDT yang efektif 25 Maret 2024 pukul 10:30 UTC, diterbitkan pukul 04:40 UTC. Cakupan tier lengkap dan masa berlakunya, termasuk untuk BTCUSDT/ETHUSDT, masih perlu bukti bertanggal. |
+| Maintenance tier | Salinan operator mencatat cap, rate dan leverage pascaperubahan untuk DGBUSDT serta dua jadwal BTCUSDT/ETHUSDT. Deduction tidak tercantum pada tabel. Pengumuman Januari melaporkan perubahan BTC/ETH yang efektif pada Desember, sebelum tanggal publikasinya. Pengumuman Mei menyebut penyelesaian perubahan dalam sekitar 30 menit. Gunakan kesempatan melihat bukti sesuai waktu publikasi dan batas penerapan yang dinyatakan. Cakupan lintas periode dan kelayakan penerapan masih perlu ditelaah di O3. |
 | Spread | Inventaris tidak menemukan bukti spread retrospektif dalam set M1 yang menjadi rujukan. Bucket candle dan funding tidak mengukur spread. |
+
+### Wayback dan salinan operator
+
+| Publikasi | CDX Wayback | Salinan operator |
+|---|---|---|
+| DGBUSDT delisting dan tier | `NOT_ARCHIVED` | PDF diperiksa |
+| Riwayat peluncuran BTCUSDT | `NOT_ARCHIVED` | PDF diperiksa |
+| Peluncuran ETHUSDT | `NOT_ARCHIVED` | PDF diperiksa |
+| Tier BTCUSDT/ETHUSDT, pengumuman Januari | `NOT_ARCHIVED` | PDF diperiksa |
+| Tier BTCUSDT/ETHUSDT, perubahan Mei | `NOT_ARCHIVED` | PDF diperiksa |
+
+CDX diperiksa dengan URL asli persis, status `200` dan batas capture `20241231235959`. Kelima respons HTTP `200` berisi array kosong. Status ini hanya berlaku untuk kueri tersebut. Satu percobaan Python gagal pada verifikasi TLS sebelum ada HTTP response. Lima kueri HTTP selesai menggunakan curl dengan Schannel, tanpa proxy atau redirect. Browser bawaan Codex kemudian membuka lima URL resmi atas permintaan operator. Jumlah subrequest otomatis browser tidak diukur. Operator mencetak kelimanya ke PDF dan salinan disimpan di `data/o2-inventory/notices-operator/`. Hash membuktikan byte PDF yang disimpan. Waktu simpan diambil dari `CreationDate` PDF dan dikonversi ke UTC. [URL kueri, hash dan fakta](o2-notices.json)
+
+Untuk DGBUSDT, waktu larangan membuka posisi, batas settlement terjadwal, waktu perubahan tier dan nilai bracket terendah (cap 5.000 USDT, rate 2%, max leverage 11×) cocok dengan catatan M1. PDF menampilkan publikasi 25 Maret pukul 04:40 tanpa label zona waktu. Tab menampilkan 11:40. Dokumen tidak menetapkan waktu terpisah untuk penyelesaian settlement/delisting dan tidak menyatakan deduction. Catat pembatasan ini sebelum memakai hasil sebagai metadata eligibility. [Pembanding M1](../m1/feasibility.md) · [Pencocokan terstruktur](o2-notices.json)
+
+### Mendaftarkan salinan operator
+
+Simpan halaman dari browser biasa sebagai PDF atau HTML dalam `data/o2-inventory/notices-operator/`. Pertahankan URL di header/footer PDF. Catat waktu simpan UTC dan salin tanggal publikasi sebagaimana dicetak. Dari root checkout, gunakan perintah berikut untuk contoh DGBUSDT yang sudah diperiksa.
+
+```powershell
+.\.venv\Scripts\python.exe evidence/m2/ingest_notices.py --url 'https://www.binance.com/en/support/announcement/detail/ce74360a3fd444b2b35da7186f8dd0ad' --file data/o2-inventory/notices-operator/DGBUSDT-delisting-2024-03-25.pdf --saved-at 2026-11-18T22:18:25Z --published-display '2024-03-25 04:40' --facts data/o2-inventory/notices-operator/DGBUSDT-delisting-2024-03-25.facts.json
+```
+
+Untuk salinan baru, `--facts` opsional. Tanpanya ledger menandai fakta `PENDING_REVIEW`. Untuk menyelesaikan review, sediakan array JSON dengan `symbol`, `kind` dan fakta yang disalin setelah memeriksa isi halaman, lalu ulangi impor dengan file dan metadatanya yang sama. Gunakan `null` untuk nilai yang tidak dinyatakan. Impor bersifat offline. Salinan dan file transkripsi lokal tetap di luar Git. Ledger mencatat provenance `operator-saved browser copy` dan tetap menyimpan hasil CDX secara terpisah.
 
 ## Metode dan jumlah request
 
 | Host | Request langsung | Hasil |
 |---|---:|---|
 | `data.binance.vision` | 455 × `HEAD` ZIP, 454 × `GET` CHECKSUM | 908 HTTP `200`, satu HTTP `404` pada key funding harian DGBUSDT. |
-| `www.binance.com` | 5 × `GET` halaman | 5 HTTP `202` kosong. Jalur snapshot mentah `BLOCKED`. |
+| `www.binance.com` | 5 × `GET` halaman pada run awal | 5 HTTP `202` kosong. Bukti lanjutan memakai lima navigasi browser atas permintaan operator. |
+| `web.archive.org` | 5 × HTTP CDX pada follow-up | 5 HTTP `200` dengan daftar kosong. Satu percobaan TLS tambahan tidak mencapai HTTP. |
 
 Discovery menggunakan 18 kueri indeks bertanggal. Request internal penyedia indeks tidak termasuk hitungan koneksi langsung. Arsip diperiksa dari key simbol × tanggal × seri yang dibentuk langsung. Koneksi langsung tidak mengikuti redirect dan tidak memakai listing direktori, daftar simbol aktif, GET ZIP, maupun permintaan Range. Payload pasar yang diunduh berjumlah **0 byte**.
 
@@ -65,10 +90,20 @@ Validator memeriksa 504 baris bulanan unik, tujuh key harian di batas DGBUSDT, c
 
 Pada follow-up auditabilitas, `mypy src evidence/m2/collect.py evidence/m2/finalize.py` lulus pada 28 berkas. Pemeriksaan dengan koneksi tiruan menguji penolakan GET ZIP, listing, key pasca-cutoff dan URL pengumuman di luar daftar. Pemeriksaan juga menguji penghentian request setelah HTTP `403`, `451`, dan `202` kosong untuk pengumuman. Rerender offline mempertahankan seluruh observasi run asli dan hanya menambahkan referensi ke log discovery.
 
+Pada follow-up salinan pengumuman, kelima PDF dibuka dengan `pypdf`, URL pada footer diperiksa, dan halaman pertama dirender dengan `pdftoppm`. SHA-256 dan ukuran kelima PDF cocok dengan ledger. Pemeriksaan berikut lulus dengan 28 berkas untuk mypy dan **296 tes** untuk pytest, termasuk enam kasus impor notice.
+
+```powershell
+.\.venv\Scripts\ruff.exe check .
+.\.venv\Scripts\mypy.exe src evidence/m2/ingest_notices.py evidence/m2/test_ingest_notices.py
+.\.venv\Scripts\python.exe -m pytest -q tests evidence/m2/test_ingest_notices.py --basetemp=C:\dev\acgs\data\o2-inventory\pytest-notices
+.\.venv\Scripts\python.exe evidence/m2/finalize.py --work-dir data/o2-inventory --output evidence/m2/o2-inventory.json
+git diff --check
+```
+
 ## Handoff
 
 - **T-15 untuk ruang lingkup inventaris** memenuhi pembatasan tanggal dan segregasi akses. Persetujuan manifest, payload dan holdout berada pada tahap berikutnya.
 - **T-14** memiliki daftar celah provenance pada level inventaris. Kebijakan rekonstruksi O3 dan sensitivitas penelitian masih terbuka.
 - **T-21** memiliki inventaris key mark dan funding. Kesesuaian settle-time dan mark intrabar memerlukan payload yang sudah disetujui.
 - O2 tahap 2 tetap terbuka untuk ranking, publication lag, histori kontigu, exclusions dan aturan konflik kandidat. O1 final, pin manifest dan parameter O3–O9 tetap terbuka.
-- Review matriks tiga probe sebelum memperluas simbol. Bukti pengumuman yang belum tersimpan memerlukan salinan dari akses resmi yang diizinkan atau dokumen primer yang sudah dipegang operator.
+- Review matriks tiga probe sebelum memperluas simbol. Bawa batas bukti tanggal, efektivitas tier, dan deduction ke keputusan O3.
