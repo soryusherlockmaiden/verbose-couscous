@@ -17,8 +17,12 @@ ARCHIVE_HOST = "https://data.binance.vision"
 CANDLES = ("klines", "markPriceKlines")
 METADATA = ("listings", "filters", "maintenance", "spreads", "schedules", "mark_gaps")
 # Instrument onboard instants are identity anchors and stay admissible. Event
-# times and spans in inline metadata describe market state and are sealed.
+# times and spans in inline metadata are sealed when observed at or after the
+# start of the range they describe. A forecast published earlier stays admissible.
 EVENT_TIMES = ("effective", "next_time")
+RESERVE = "m2-retrospective-reserve"
+HOLDOUT = "m2-prospective-holdout"
+PURPOSES = (RESERVE, HOLDOUT)
 EVENT_SPANS = (("start", "end"), ("effective", "until"))
 ARCHIVE = re.compile(
     r"https://data\.binance\.vision/data/futures/um/(?P<period>monthly|daily)/"
@@ -99,6 +103,8 @@ def _source_bundle(entry: Mapping[str, Any]) -> tuple[Window, str | None]:
 @dataclass(frozen=True)
 class HistorySeal:
     ranges: tuple[Window, ...]
+    # Registered holdouts also bound research chronology: approved data ends before each.
+    holdouts: tuple[Window, ...] = ()
 
     def seals_time(self, time: int) -> bool:
         return any(window.start <= time < window.end for window in self.ranges)
@@ -119,17 +125,22 @@ class HistorySeal:
             self.check_asset(entry)
         for field in METADATA:
             for row in manifest.get(field, []):
-                if self.seals_time(utc_ms(row["evidence"]["as_of"])):
+                as_of = utc_ms(row["evidence"]["as_of"])
+                if self.seals_time(as_of):
                     raise AccessRefused(f"{field} observations include a registered sealed range")
                 # A later observation can still describe the sealed period, e.g. a
-                # backfilled status change or a gap. Seal the described event time too.
-                if any(self.seals_time(utc_ms(row[key])) for key in EVENT_TIMES if key in row):
+                # backfilled status change or a gap. Seal what was learned at or after
+                # the range began; the M0 capture path follows the same rule because
+                # its event times are its receipt times.
+                described = [Window(utc_ms(row[start]), utc_ms(row[end]))
+                             for start, end in EVENT_SPANS if start in row and end in row]
+                described.extend(Window(t, t + 1) for t in (
+                    utc_ms(row[key]) for key in EVENT_TIMES if key in row))
+                if any(
+                    sealed.start <= as_of and span.start < sealed.end and sealed.start < span.end
+                    for sealed in self.ranges for span in described
+                ):
                     raise AccessRefused(f"{field} evidence describes a registered sealed range")
-                for start, end in EVENT_SPANS:
-                    if start in row and end in row:
-                        self.require_unsealed(
-                            Window(utc_ms(row[start]), utc_ms(row[end])), f"{field} evidence span",
-                        )
         if "capture" in manifest:
             cutoff = utc_ms(manifest["capture"]["cutoff"])
             self.require_unsealed(Window(cutoff, cutoff + 1), "Capture cutoff")
@@ -139,4 +150,11 @@ def registered_seal() -> HistorySeal:
     raw = json.loads(RECORD_PATH.read_text(encoding="utf-8"))
     if raw.get("version") != VERSION or not raw.get("ranges"):
         raise AccessRefused("Expected a versioned history seal with registered ranges")
-    return HistorySeal(tuple(Window.parse(row) for row in raw["ranges"]))
+    if any(row.get("purpose") not in PURPOSES for row in raw["ranges"]):
+        raise AccessRefused("Each registered sealed range needs a known purpose")
+    ranges = tuple(Window.parse(row) for row in raw["ranges"])
+    holdouts = tuple(
+        window for window, row in zip(ranges, raw["ranges"], strict=True)
+        if row["purpose"] == HOLDOUT
+    )
+    return HistorySeal(ranges, holdouts)

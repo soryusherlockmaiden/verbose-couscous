@@ -195,3 +195,14 @@ Independent review found two P3 gaps. Both are fixed with regressions that fail 
 | M2 refused any data window after the start of the holdout envelope, so evidence between the 2025 reserve and a later prospective holdout could never be approved. | M2 checks the approved data window against every registered range and keeps the configured holdout as an ordering guard. A config still cannot unseal a registered range. | `test_t15_m2_approves_data_between_a_registered_range_and_the_holdout`; `test_t15_m2_config_cannot_unseal_the_registered_reserve` |
 
 Linux, uv 0.13.7: Ruff passed, mypy passed (26 source files), pytest passed **228** tests. Canonical M1 manifests, policy, raw fixtures and the M1 engine modules are unchanged. The seal preflight passed for the three M1 manifests. The synthetic fixture manifest and coverage hashes are unchanged from the first follow-up. The public M1 hash reruns remain pending operator authorization to re-fetch the pinned 2024 archives.
+
+## Third review follow-up on `8a6bcd2`
+
+Operator review found a P2 regression and a P3 inconsistency in the second follow-up. Both are fixed with regressions that fail on `8a6bcd2`.
+
+| Finding | Fix | Tests |
+|---|---|---|
+| P2: removing the covering rule let the config move the chronology guard. A config could truncate the reserve, and with a registered prospective holdout a config moved later admitted development data after that holdout ended. | Registered ranges carry a `purpose`, and an unknown purpose is refused. M2 refuses a configured holdout that truncates a registered range or starts after a registered `m2-prospective-holdout`, and refuses approved data ending after a registered holdout starts. Data after the 2025 reserve stays admissible. | `test_t15_config_cannot_shift_research_chronology` (3 cases, loader and fetch CLI); `test_t15_holdout_registration_keeps_prior_development_valid` |
+| P3: a pre-seal `premiumIndex` forecast whose next funding time is the first sealed instant loaded through the M0 capture path but was refused inline. | One rule for both paths: evidence observed at or after a range begins cannot describe an event time or span inside it. Earlier forecasts stay admissible. | `test_t15_pre_seal_forecast_is_admissible_on_both_input_paths` (inline and capture); `test_t15_later_evidence_cannot_describe_a_sealed_period` still refuses backfills |
+
+Linux, uv 0.13.7: Ruff passed, mypy passed (26 source files), pytest passed **234** tests. The seal preflight passed for the three M1 manifests.

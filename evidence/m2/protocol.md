@@ -8,7 +8,7 @@ Use OFFLINE execution, one shared simulated USDT wallet, and a maximum of one po
 
 ## Windows and seal
 
-**OPERATOR DECISION.** Use retrospective development and a prospective holdout that starts after protocol freeze. Exact decision and data dates are **OPEN**. The committed seal reserves the entire half-open interval [2025-01-01, 2026-01-01) UTC. Register the prospective window in the same record once selected. Before setting that window, verify the coverage of filters, maintenance tiers, and spreads separately. In M2, maintenance-tier evidence must come from dated exchange announcements. The bracket endpoint requires account access and M2 uses no credentials. [Registered seal](../../src/acgs/history_seal.json)
+**OPERATOR DECISION.** Use retrospective development and a prospective holdout that starts after protocol freeze. Exact decision and data dates are **OPEN**. The committed seal reserves the entire half-open interval [2025-01-01, 2026-01-01) UTC. Register the prospective window in the same record once selected, with purpose `m2-prospective-holdout`, so approved data must end before it. Before setting that window, verify the coverage of filters, maintenance tiers, and spreads separately. In M2, maintenance-tier evidence must come from dated exchange announcements. The bracket endpoint requires account access and M2 uses no credentials. [Registered seal](../../src/acgs/history_seal.json)
 
 | Window | Candidate range | Role |
 |---|---|---|

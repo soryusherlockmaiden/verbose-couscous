@@ -115,10 +115,20 @@ def _approve(
     safe = Window.parse(approval["data_window"])
     decisions = Window.parse(approval["decision_window"])
     request = decisions if request is None else request
-    # The registry is the sealing authority; the configured holdout only adds an
-    # ordering guard. Approved data may fall between registered ranges, e.g. a
-    # reserve and a later prospective holdout, but never inside one.
+    # The registry is the sealing authority. The configured holdout may only tighten
+    # it: it cannot truncate a registered range or start after a registered holdout.
+    # Approved data may fall between a reserve and a later holdout, never inside a
+    # registered range and never after the start of a registered holdout.
+    if any(
+        holdout.start < sealed.end and sealed.start < holdout.end and not holdout.contains(sealed)
+        for sealed in seal.ranges
+    ):
+        raise AccessRefused("Configured holdout truncates a registered sealed range")
+    if any(holdout.start > registered.start for registered in seal.holdouts):
+        raise AccessRefused("Configured holdout starts after a registered holdout")
     seal.require_unsealed(safe, "Approved data window")
+    if any(safe.end > registered.start for registered in seal.holdouts):
+        raise AccessRefused("Approved data window ends after a registered holdout starts")
     if safe.end > holdout.start:
         raise AccessRefused("Approved data window crosses the holdout seal")
     if request.end > holdout.start:

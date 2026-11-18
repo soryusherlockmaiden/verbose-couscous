@@ -341,8 +341,8 @@ def test_t15_legacy_monthly_fetch_preflights_a_straddling_bundle(paths, tmp_path
     _, manifest_path, root = paths
     record = tmp_path / "seal.json"
     write_json(record, {"version": "history-seal-v1", "ranges": [
-        {"start": "2024-12-15T00:00:00Z", "end": RESERVE_START},
-        {"start": RESERVE_START, "end": RESERVE_END},
+        {"purpose": "m2-retrospective-reserve", "start": "2024-12-15T00:00:00Z", "end": RESERVE_START},
+        {"purpose": "m2-retrospective-reserve", "start": RESERVE_START, "end": RESERVE_END},
     ]})
     monkeypatch.setattr("acgs.history_seal.RECORD_PATH", record)
     manifest = read_json(manifest_path)
@@ -396,17 +396,18 @@ def test_t15_m2_config_cannot_unseal_the_registered_reserve(paths, capsys, start
     manifest["ingested_at"] = RESERVE_END
     pin(paths, config, manifest)
     with forbid_io(root):
-        with pytest.raises(AccessRefused, match="overlaps a registered sealed range"):
+        with pytest.raises(AccessRefused, match="(overlaps|truncates) a registered sealed range"):
             load_research_inputs(config_path, manifest_path, root, "development", Window(START, END))
         for command in ("fetch", "coverage"):
             assert cli(paths, "development", command) == 1
-            assert "overlaps a registered sealed range" in capsys.readouterr().err
+            assert "a registered sealed range" in capsys.readouterr().err
 
 
-def _seal_record(tmp_path, monkeypatch, *ranges):
+def _seal_record(tmp_path, monkeypatch, *ranges, purpose="m2-retrospective-reserve"):
     record = tmp_path / "seal.json"
     write_json(record, {"version": "history-seal-v1", "ranges": [
-        {"start": start, "end": end} for start, end in ranges
+        {"purpose": row[2] if len(row) > 2 else purpose, "start": row[0], "end": row[1]}
+        for row in ranges
     ]})
     monkeypatch.setattr("acgs.history_seal.RECORD_PATH", record)
 
@@ -584,3 +585,120 @@ def test_t15_capture_gate_reads_only_allowed_blobs_by_receipt(tmp_path, monkeypa
     with pytest.raises(AccessRefused, match="Capture cutoff overlaps"):
         load_history(manifest_path, tmp_path, db)
     assert queries == []
+
+
+HOLDOUT_PURPOSE = "m2-prospective-holdout"
+
+
+@pytest.mark.parametrize("case", ["config_after_registered", "data_after_registered", "truncated_reserve"])
+def test_t15_config_cannot_shift_research_chronology(paths, tmp_path, monkeypatch, capsys, case):
+    config_path, manifest_path, root = paths
+    config = read_json(config_path)
+    approval = config["access"]["approvals"]["development"]
+    if case == "truncated_reserve":
+        # The registered 2025 reserve, cut short by the config.
+        config["access"]["holdout"] = {"start": RESERVE_START, "end": RESERVE_START + 150 * DAY}
+        approval["data_window"]["end"] = HOLDOUT_START
+        expected = "truncates a registered sealed range"
+    else:
+        # A registered prospective holdout one day long, with the config moved later.
+        registered = (HOLDOUT_START, HOLDOUT_START + DAY, HOLDOUT_PURPOSE)
+        _seal_record(tmp_path, monkeypatch, registered)
+        later = HOLDOUT_START + 10 * DAY
+        config["access"]["holdout"] = {"start": later, "end": later + DAY}
+        expected = "starts after a registered holdout"
+        if case == "data_after_registered":
+            # Development data after the registered holdout ends, before the moved config.
+            approval["data_window"] = {"start": HOLDOUT_START + 2 * DAY, "end": later}
+            approval["decision_window"] = {"start": HOLDOUT_START + 3 * DAY,
+                                           "end": HOLDOUT_START + 4 * DAY}
+    write_json(config_path, config)
+    with forbid_io(root):
+        with pytest.raises(AccessRefused, match=expected):
+            load_research_inputs(config_path, manifest_path, root, "development", None)
+        assert cli(paths, "development", "fetch") == 1
+        assert expected in capsys.readouterr().err
+
+
+def test_t15_holdout_registration_keeps_prior_development_valid(paths, tmp_path, monkeypatch):
+    config_path, manifest_path, root = paths
+    _seal_record(tmp_path, monkeypatch,
+                 (HOLDOUT_START, HOLDOUT_START + DAY, HOLDOUT_PURPOSE),
+                 (HOLDOUT_START + 20 * DAY, HOLDOUT_START + 30 * DAY))
+    config = read_json(config_path)
+    config["access"]["holdout"] = {"start": HOLDOUT_START, "end": HOLDOUT_START + 30 * DAY}
+    write_json(config_path, config)
+    assert load_research_inputs(config_path, manifest_path, root, "development", Window(START, END))
+    record = read_json(tmp_path / "seal.json")
+    record["ranges"][0]["purpose"] = "holdout"
+    write_json(tmp_path / "seal.json", record)
+    with pytest.raises(AccessRefused, match="known purpose"):
+        load_research_inputs(config_path, manifest_path, root, "development", Window(START, END))
+
+
+def _boundary_capture(tmp_path, receipt, next_time):
+    db = tmp_path / "boundary.sqlite3"
+    exchange = json.dumps({"symbols": [{
+        "symbol": "BTCUSDT", "onboardDate": 1569398400000, "status": "TRADING",
+        "quoteAsset": "USDT", "contractType": "PERPETUAL", "filters": [],
+    }]}).encode()
+    premium = json.dumps([{"symbol": "BTCUSDT", "nextFundingTime": next_time}]).encode()
+    rows = [
+        ("https://fapi.binance.com/fapi/v1/exchangeInfo", exchange),
+        ("https://fapi.binance.com/fapi/v1/premiumIndex", premium),
+    ]
+    with open_ledger(db) as conn, conn:
+        conn.executemany(
+            """INSERT INTO capture_attempts
+               (source_url, slot, requested_at, received_at, status, http_status,
+                payload, sha256, provenance, payload_encoding)
+               VALUES (?, ?, ?, ?, 'CAPTURED', 200, ?, ?, 'VERIFIED', NULL)""",
+            [(url, url, receipt, receipt, body, hashlib.sha256(body).hexdigest())
+             for url, body in rows],
+        )
+    hashes = [digest((url, receipt, hashlib.sha256(body).hexdigest())) for url, body in rows]
+    return db, digest(hashes)
+
+
+@pytest.mark.parametrize("path", ["inline", "capture"])
+def test_t15_pre_seal_forecast_is_admissible_on_both_input_paths(tmp_path, path):
+    # A premiumIndex forecast received before the reserve may name its first instant.
+    receipt_ms = RESERVE_START - 60_000
+    receipt = "2024-12-31T23:59:00+00:00"
+    epoch = "BTCUSDT@1569398400000"
+    manifest = {
+        "version": "m1-history-v1", "ingested_at": RESERVE_END, "candle_delay_ms": 1000,
+        "funding_delay_ms": 5000, "instruments": [{"symbol": "BTCUSDT", "onboard": 1569398400000}],
+        "listings": [], "assets": [],
+    }
+    db = None
+    if path == "inline":
+        manifest["listings"] = [{
+            "id": epoch, "effective": 1569398400000, "status": "TRADING", "quote": "USDT",
+            "contract": "PERPETUAL", "excluded_product": False,
+            "evidence": {"source": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+                         "method": "m0_capture", "provenance": "VERIFIED", "as_of": receipt_ms},
+        }]
+        manifest["schedules"] = [{
+            "id": epoch, "effective": receipt_ms, "next_time": RESERVE_START,
+            "evidence": {"source": "https://fapi.binance.com/fapi/v1/premiumIndex",
+                         "method": "m0_capture", "provenance": "VERIFIED", "as_of": receipt_ms},
+        }]
+    else:
+        db, selection = _boundary_capture(tmp_path, receipt, RESERVE_START)
+        manifest["capture"] = {"cutoff": RESERVE_START - 1, "symbols": ["BTCUSDT"],
+                               "digest": selection}
+    manifest_path = tmp_path / "boundary.json"
+    write_json(manifest_path, manifest)
+    market = load_history(manifest_path, tmp_path, db).market
+    schedules = [row for rows in market.schedules.values() for row in rows]
+    assert [(row.effective, row.next_time) for row in schedules if row.next_time] == [
+        (receipt_ms, RESERVE_START),
+    ]
+
+    # The same forecast recorded after the reserve began describes the sealed period.
+    if path == "inline":
+        manifest["schedules"][0]["evidence"]["as_of"] = RESERVE_END
+        write_json(manifest_path, manifest)
+        with pytest.raises(AccessRefused, match="describes a registered sealed range"):
+            load_history(manifest_path, tmp_path)
