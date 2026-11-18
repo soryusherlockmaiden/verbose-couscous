@@ -1,0 +1,17 @@
+{
+  "candidate_version": "m1-public-sample-v1",
+  "instrument_id": "BTCUSDT@1704067200000",
+  "interval_ms": 86400000,
+  "equity": "50",
+  "risk_pct": "0.10",
+  "leverage": 10,
+  "intents": [
+    {
+      "time": "2024-03-01T00:00:00Z",
+      "available": "2024-02-29T23:59:59Z",
+      "action": "ENTER",
+      "side": "LONG",
+      "distance": "2000"
+    }
+  ]
+}

@@ -5,7 +5,9 @@ import time
 from collections import Counter
 from collections.abc import Sequence
 from datetime import UTC, datetime
+from decimal import DecimalException
 from pathlib import Path
+from zipfile import BadZipFile
 
 from acgs.capture import BLOCKED, RESTRICTED, capture_due, clear_access_restriction
 from acgs.clock import FixedClock
@@ -14,6 +16,7 @@ from acgs.config_io import load_config
 from acgs.ledger import open_ledger
 from acgs.ledger_types import LedgerStateError
 from acgs.market_data import fetch_public
+from acgs.research_io import arguments, run_research
 from acgs.smoke import run_smoke
 from acgs.wallclock import SystemClock
 
@@ -34,10 +37,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="Record operator review of an HTTP 403/451 stop and clear it",
     )
+    arguments(commands)
     args = parser.parse_args(argv)
 
     try:
         config = load_config(args.config)
+        if args.command in {"historical", "feasibility", "replay"}:
+            try:
+                return run_research(args)
+            except (ValueError, KeyError, TypeError, DecimalException, BadZipFile, OSError, sqlite3.Error) as error:
+                print(f"OFFLINE historical operation refused: {error}", file=sys.stderr)
+                return 1
         with open_ledger(args.db) as connection:
             if args.command == "smoke":
                 clock = FixedClock(datetime(2026, 1, 1, tzinfo=UTC))

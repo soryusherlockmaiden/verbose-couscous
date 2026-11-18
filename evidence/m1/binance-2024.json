@@ -1,0 +1,421 @@
+{
+  "version": "m1-history-v1",
+  "ingested_at": "2026-11-17T23:20:00Z",
+  "candle_delay_ms": 1000,
+  "funding_delay_ms": 5000,
+  "instruments": [
+    {
+      "symbol": "BTCUSDT",
+      "onboard": 1704067200000
+    },
+    {
+      "symbol": "ETHUSDT",
+      "onboard": 1704067200000
+    },
+    {
+      "symbol": "DGBUSDT",
+      "onboard": 1704067200000
+    }
+  ],
+  "listings": [
+    {
+      "id": "BTCUSDT@1704067200000",
+      "effective": 1704067200000,
+      "status": "TRADING",
+      "evidence": {
+        "source": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2024-01.zip",
+        "method": "observed_trading_coverage_start",
+        "provenance": "RECONSTRUCTED",
+        "as_of": "2024-01-02T00:00:01Z",
+        "limitation": "Observed sample anchor, not historical onboard date; continued membership bounded by data coverage."
+      }
+    },
+    {
+      "id": "ETHUSDT@1704067200000",
+      "effective": 1704067200000,
+      "status": "TRADING",
+      "evidence": {
+        "source": "https://data.binance.vision/data/futures/um/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2024-01.zip",
+        "method": "observed_trading_coverage_start",
+        "provenance": "RECONSTRUCTED",
+        "as_of": "2024-01-02T00:00:01Z",
+        "limitation": "Observed sample anchor, not historical onboard date; continued membership bounded by data coverage."
+      }
+    },
+    {
+      "id": "DGBUSDT@1704067200000",
+      "effective": 1704067200000,
+      "status": "TRADING",
+      "evidence": {
+        "source": "https://data.binance.vision/data/futures/um/monthly/klines/DGBUSDT/1d/DGBUSDT-1d-2024-01.zip",
+        "method": "observed_trading_coverage_start",
+        "provenance": "RECONSTRUCTED",
+        "as_of": "2024-01-02T00:00:01Z",
+        "limitation": "Observed sample anchor, not historical onboard date; continued membership bounded by data coverage."
+      }
+    },
+    {
+      "id": "DGBUSDT@1704067200000",
+      "effective": "2024-04-01T08:30:00Z",
+      "status": "CLOSE_ONLY",
+      "evidence": {
+        "source": "https://www.binance.com/en/support/announcement/detail/ce74360a3fd444b2b35da7186f8dd0ad",
+        "method": "binance_futures_delisting_announcement",
+        "provenance": "VERIFIED",
+        "as_of": "2024-03-25T04:40:00Z"
+      }
+    },
+    {
+      "id": "DGBUSDT@1704067200000",
+      "effective": "2024-04-01T09:00:00Z",
+      "status": "DELISTED",
+      "evidence": {
+        "source": "https://www.binance.com/en/support/announcement/detail/ce74360a3fd444b2b35da7186f8dd0ad",
+        "method": "binance_futures_delisting_announcement",
+        "provenance": "VERIFIED",
+        "as_of": "2024-03-25T04:40:00Z"
+      }
+    }
+  ],
+  "maintenance": [
+    {
+      "id": "DGBUSDT@1704067200000",
+      "effective": "2024-03-25T10:30:00Z",
+      "evidence": {
+        "source": "https://www.binance.com/en/support/announcement/detail/ce74360a3fd444b2b35da7186f8dd0ad",
+        "method": "binance_published_lowest_notional_tier_only",
+        "provenance": "VERIFIED",
+        "as_of": "2024-03-25T04:40:00Z"
+      },
+      "tiers": [
+        {
+          "ceiling": "5000",
+          "rate": "0.02",
+          "deduction": "0",
+          "max_leverage": 11
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "path": "fundingRate/BTCUSDT-fundingRate-2024-01.zip",
+      "kind": "fundingRate",
+      "id": "BTCUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-2024-01.zip",
+      "sha256": "3e0d30870672aa8f0f937881056e3cfd55913ae5c780cd50b33f2763aa0ba58e",
+      "start": "2024-01-01T00:00:00Z",
+      "end": "2024-02-01T00:00:00Z"
+    },
+    {
+      "path": "fundingRate/BTCUSDT-fundingRate-2024-02.zip",
+      "kind": "fundingRate",
+      "id": "BTCUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-2024-02.zip",
+      "sha256": "daf1e4901e3d6436d82ad60f90d007eb5300be8047cfef121007203a7212cde6",
+      "start": "2024-02-01T00:00:00Z",
+      "end": "2024-03-01T00:00:00Z"
+    },
+    {
+      "path": "fundingRate/BTCUSDT-fundingRate-2024-03.zip",
+      "kind": "fundingRate",
+      "id": "BTCUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-2024-03.zip",
+      "sha256": "711dcaf2a341aedfd06447b4117b540f60adb0784c5e64a313c718e4cf092bc3",
+      "start": "2024-03-01T00:00:00Z",
+      "end": "2024-04-01T00:00:00Z"
+    },
+    {
+      "path": "fundingRate/BTCUSDT-fundingRate-2024-04.zip",
+      "kind": "fundingRate",
+      "id": "BTCUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-2024-04.zip",
+      "sha256": "6d220b8e2815362a11d294d35dbca28568370d8295351937eceec10f2b359b85",
+      "start": "2024-04-01T00:00:00Z",
+      "end": "2024-05-01T00:00:00Z"
+    },
+    {
+      "path": "fundingRate/DGBUSDT-fundingRate-2024-01.zip",
+      "kind": "fundingRate",
+      "id": "DGBUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/fundingRate/DGBUSDT/DGBUSDT-fundingRate-2024-01.zip",
+      "sha256": "336f7d7e0acb6dd9faa55c2e5ca9724e04d969fa3fdc82f0c5a6a904cb108f31",
+      "start": "2024-01-01T00:00:00Z",
+      "end": "2024-02-01T00:00:00Z"
+    },
+    {
+      "path": "fundingRate/DGBUSDT-fundingRate-2024-02.zip",
+      "kind": "fundingRate",
+      "id": "DGBUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/fundingRate/DGBUSDT/DGBUSDT-fundingRate-2024-02.zip",
+      "sha256": "0840c87285a8df38899e9314b8388090401012cb37ab402a09e94cce0e522e1d",
+      "start": "2024-02-01T00:00:00Z",
+      "end": "2024-03-01T00:00:00Z"
+    },
+    {
+      "path": "fundingRate/DGBUSDT-fundingRate-2024-03.zip",
+      "kind": "fundingRate",
+      "id": "DGBUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/fundingRate/DGBUSDT/DGBUSDT-fundingRate-2024-03.zip",
+      "sha256": "8784f7db613e0e3bcb4f04ab1993fafd7492b97c7c686e684734795dbc802f57",
+      "start": "2024-03-01T00:00:00Z",
+      "end": "2024-04-01T00:00:00Z"
+    },
+    {
+      "path": "fundingRate/ETHUSDT-fundingRate-2024-01.zip",
+      "kind": "fundingRate",
+      "id": "ETHUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETHUSDT/ETHUSDT-fundingRate-2024-01.zip",
+      "sha256": "5a71469b0b363886df904e784dddefc484dd943334b1fb7454713ce4ed715a4b",
+      "start": "2024-01-01T00:00:00Z",
+      "end": "2024-02-01T00:00:00Z"
+    },
+    {
+      "path": "fundingRate/ETHUSDT-fundingRate-2024-02.zip",
+      "kind": "fundingRate",
+      "id": "ETHUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETHUSDT/ETHUSDT-fundingRate-2024-02.zip",
+      "sha256": "915fad950c48935f3875d88992b8d78290bc8a6fada44408e3ed14aef9a56670",
+      "start": "2024-02-01T00:00:00Z",
+      "end": "2024-03-01T00:00:00Z"
+    },
+    {
+      "path": "fundingRate/ETHUSDT-fundingRate-2024-03.zip",
+      "kind": "fundingRate",
+      "id": "ETHUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETHUSDT/ETHUSDT-fundingRate-2024-03.zip",
+      "sha256": "e9c1d0f3e7e3b493277c7f826afb223482d56bdc7611144d398ac10e47307907",
+      "start": "2024-03-01T00:00:00Z",
+      "end": "2024-04-01T00:00:00Z"
+    },
+    {
+      "path": "fundingRate/ETHUSDT-fundingRate-2024-04.zip",
+      "kind": "fundingRate",
+      "id": "ETHUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETHUSDT/ETHUSDT-fundingRate-2024-04.zip",
+      "sha256": "b54c9f05af116ccd921b32b25960ae26954c4983992d44f2390bf1de08b2c724",
+      "start": "2024-04-01T00:00:00Z",
+      "end": "2024-05-01T00:00:00Z"
+    },
+    {
+      "path": "klines/BTCUSDT-1d-2024-01.zip",
+      "kind": "klines",
+      "id": "BTCUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2024-01.zip",
+      "sha256": "26b06a00b615b9a85c6c7404971a8756c1006ef8192f8b1a02aadb9fef7e61f5",
+      "start": "2024-01-01T00:00:00Z",
+      "end": "2024-02-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "klines/BTCUSDT-1d-2024-02.zip",
+      "kind": "klines",
+      "id": "BTCUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2024-02.zip",
+      "sha256": "082bc500af56b944e9f68707e7f32aef98d6793ccd542ecfc2ffbaf9dda2377a",
+      "start": "2024-02-01T00:00:00Z",
+      "end": "2024-03-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "klines/BTCUSDT-1d-2024-03.zip",
+      "kind": "klines",
+      "id": "BTCUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2024-03.zip",
+      "sha256": "44dcb588ee5f82601710d37492246575585ab70d7c938b79e0d7163434d25436",
+      "start": "2024-03-01T00:00:00Z",
+      "end": "2024-04-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "klines/BTCUSDT-1d-2024-04.zip",
+      "kind": "klines",
+      "id": "BTCUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2024-04.zip",
+      "sha256": "e09120d5e8c029f132670d03e173420bd599ac582c5ab38bc02136bfc7b2fabc",
+      "start": "2024-04-01T00:00:00Z",
+      "end": "2024-05-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "klines/DGBUSDT-1d-2024-01.zip",
+      "kind": "klines",
+      "id": "DGBUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/klines/DGBUSDT/1d/DGBUSDT-1d-2024-01.zip",
+      "sha256": "a062331b0455cf8bbdde2e1fc3b7ab7327393c83e80622e640996eeb7519a752",
+      "start": "2024-01-01T00:00:00Z",
+      "end": "2024-02-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "klines/DGBUSDT-1d-2024-02.zip",
+      "kind": "klines",
+      "id": "DGBUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/klines/DGBUSDT/1d/DGBUSDT-1d-2024-02.zip",
+      "sha256": "6b6e45dbe148a1f80299168a4d088886416adb4828c87187b716e7145efa1163",
+      "start": "2024-02-01T00:00:00Z",
+      "end": "2024-03-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "klines/DGBUSDT-1d-2024-03.zip",
+      "kind": "klines",
+      "id": "DGBUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/klines/DGBUSDT/1d/DGBUSDT-1d-2024-03.zip",
+      "sha256": "3e68ee9b4147a98cae414d4843f35cb7d627a36c44db5b031b4caa78ef0c77af",
+      "start": "2024-03-01T00:00:00Z",
+      "end": "2024-04-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "klines/ETHUSDT-1d-2024-01.zip",
+      "kind": "klines",
+      "id": "ETHUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2024-01.zip",
+      "sha256": "8aad2a309ca1e4d2f8220ba7cf6f4eca7b8bf9a05524f4dd9ce51ee75a22f315",
+      "start": "2024-01-01T00:00:00Z",
+      "end": "2024-02-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "klines/ETHUSDT-1d-2024-02.zip",
+      "kind": "klines",
+      "id": "ETHUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2024-02.zip",
+      "sha256": "7941d26996140a7e2788f5c56eb0e8c2d1a5e9afddb2dae37a2f3a438b42314d",
+      "start": "2024-02-01T00:00:00Z",
+      "end": "2024-03-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "klines/ETHUSDT-1d-2024-03.zip",
+      "kind": "klines",
+      "id": "ETHUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2024-03.zip",
+      "sha256": "43c489e116da4f928638fe7daf47754daf41ab97037c0bf5b7362870a8224b19",
+      "start": "2024-03-01T00:00:00Z",
+      "end": "2024-04-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "klines/ETHUSDT-1d-2024-04.zip",
+      "kind": "klines",
+      "id": "ETHUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2024-04.zip",
+      "sha256": "42be54149c2cdf2786d609fdf2121deb19a5868dd4778ccaf6c73f69231eb741",
+      "start": "2024-04-01T00:00:00Z",
+      "end": "2024-05-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "markPriceKlines/BTCUSDT-1d-2024-01.zip",
+      "kind": "markPriceKlines",
+      "id": "BTCUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BTCUSDT/1d/BTCUSDT-1d-2024-01.zip",
+      "sha256": "9cd52e983f6d965c24ab56c4412328e3c14de6f12986d6f22c91709eb87745fb",
+      "start": "2024-01-01T00:00:00Z",
+      "end": "2024-02-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "markPriceKlines/BTCUSDT-1d-2024-02.zip",
+      "kind": "markPriceKlines",
+      "id": "BTCUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BTCUSDT/1d/BTCUSDT-1d-2024-02.zip",
+      "sha256": "261ed899c642945b9b08c280b7908e67676eb87af3955dddf01f2b778421c6ad",
+      "start": "2024-02-01T00:00:00Z",
+      "end": "2024-03-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "markPriceKlines/BTCUSDT-1d-2024-03.zip",
+      "kind": "markPriceKlines",
+      "id": "BTCUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BTCUSDT/1d/BTCUSDT-1d-2024-03.zip",
+      "sha256": "7f8ff4e533bcfd6ca9d762cf701915c08c47dff4dbbb2f99e0a554ab7f14183a",
+      "start": "2024-03-01T00:00:00Z",
+      "end": "2024-04-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "markPriceKlines/BTCUSDT-1d-2024-04.zip",
+      "kind": "markPriceKlines",
+      "id": "BTCUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BTCUSDT/1d/BTCUSDT-1d-2024-04.zip",
+      "sha256": "276a4c8604769e4446c41a29e8c7f59ac80e4175a24cd92bf6479bc5993bb692",
+      "start": "2024-04-01T00:00:00Z",
+      "end": "2024-05-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "markPriceKlines/DGBUSDT-1d-2024-01.zip",
+      "kind": "markPriceKlines",
+      "id": "DGBUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/DGBUSDT/1d/DGBUSDT-1d-2024-01.zip",
+      "sha256": "8aea385b18adce6390673c04fd96c42a767ddf6e000850c754fc7fe88765cebb",
+      "start": "2024-01-01T00:00:00Z",
+      "end": "2024-02-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "markPriceKlines/DGBUSDT-1d-2024-02.zip",
+      "kind": "markPriceKlines",
+      "id": "DGBUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/DGBUSDT/1d/DGBUSDT-1d-2024-02.zip",
+      "sha256": "540515b9f4e24452403d30a959ff6c3797b5202c13ccf6efa2ca11023230ea72",
+      "start": "2024-02-01T00:00:00Z",
+      "end": "2024-03-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "markPriceKlines/DGBUSDT-1d-2024-03.zip",
+      "kind": "markPriceKlines",
+      "id": "DGBUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/DGBUSDT/1d/DGBUSDT-1d-2024-03.zip",
+      "sha256": "75309ad6847533c320e7e8334d9a5f367cbf4515d5d7728aa05689600e20bc1d",
+      "start": "2024-03-01T00:00:00Z",
+      "end": "2024-04-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "markPriceKlines/ETHUSDT-1d-2024-01.zip",
+      "kind": "markPriceKlines",
+      "id": "ETHUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETHUSDT/1d/ETHUSDT-1d-2024-01.zip",
+      "sha256": "1b1094a694ef8209c8ed28fdb166e00d0a86342b3471ffd92bb3428cc8cf0cb2",
+      "start": "2024-01-01T00:00:00Z",
+      "end": "2024-02-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "markPriceKlines/ETHUSDT-1d-2024-02.zip",
+      "kind": "markPriceKlines",
+      "id": "ETHUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETHUSDT/1d/ETHUSDT-1d-2024-02.zip",
+      "sha256": "eea117aefe82b47b4befc5fa63aeb02f0cb46ba7ee9bcec2330fb3cd01ef4a8b",
+      "start": "2024-02-01T00:00:00Z",
+      "end": "2024-03-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "markPriceKlines/ETHUSDT-1d-2024-03.zip",
+      "kind": "markPriceKlines",
+      "id": "ETHUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETHUSDT/1d/ETHUSDT-1d-2024-03.zip",
+      "sha256": "aa9fc3e1ede89b7d3ac70cf44fd361b9d68401c63c1b13ebdd62f336b2cf9d08",
+      "start": "2024-03-01T00:00:00Z",
+      "end": "2024-04-01T00:00:00Z",
+      "interval_ms": 86400000
+    },
+    {
+      "path": "markPriceKlines/ETHUSDT-1d-2024-04.zip",
+      "kind": "markPriceKlines",
+      "id": "ETHUSDT@1704067200000",
+      "source": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETHUSDT/1d/ETHUSDT-1d-2024-04.zip",
+      "sha256": "14599e4593090d62fb0da7a2bcdca5baae00bc6e4fced789ea1a70c353900884",
+      "start": "2024-04-01T00:00:00Z",
+      "end": "2024-05-01T00:00:00Z",
+      "interval_ms": 86400000
+    }
+  ]
+}

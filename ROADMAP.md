@@ -98,6 +98,7 @@ Verify all applicable items at the start of M5, including re-verification of ite
 **Scope**
 - Volatility Breakout baseline **without pyramiding**: candidate 15m/1h, ADX(14), prior Donchian(20), EMA(200), prior-volume filter, ATR-based exit. Run as a **versioned OFFLINE research candidate**; promotion approval is not required to investigate it.
 - Freeze precise signal timing, indexing, warm-up, stop-level computation and the trigger/halt evaluation cadence in SPEC (SC-04). Simulator fill/stop/funding processing is fixed by M1 (SPEC §4.5.1) and not redefined here.
+- Account for the M1 delayed-trailing rule. With a positive candle lag, a trailing update takes effect one full bar after its source close. Declare the reliance in SC-04 and report sensitivity before the holdout (SPEC §4.5.1). Funding near a bar boundary is priced at the adverse candidate holder (SC-02); report its cost effect.
 - Evaluate Major + Dynamic Top Movers universe against no-trade, seeded random-entry and filter-ablation baselines with calendar-block resampling (SPEC §11); isolate incremental value of ranking and filters.
 - Chronological development/validation, walk-forward, untouched holdout.
 - Cost-aware 50 USDT execution feasibility, regime sensitivity, tail-risk and parameter robustness.
@@ -224,7 +225,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 | Milestone | Status | Owner | Evidence | Decision |
 |---|---|---|---|---|
 | M0 | PASS | Operator | [M0 verification](evidence/m0/verification.md) | **Accepted by the operator on 2026-11-17 (UTC)** at code commit `e16d08f`: all ROADMAP §3 checks passed ([hosted CI](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44191231342)), including Windows live capture (five `CAPTURED`/`VERIFIED` responses). Merged to `main` through PR #2. |
-| M1 | NOT STARTED | TBD | — | Pending |
+| M1 | PASS | Operator | [M1 verification](evidence/m1/verification.md) · [50 USDT report](evidence/m1/feasibility.md) | **Accepted by the operator on 2026-11-18 (UTC)** at code commit `92567ee`: all ROADMAP §4 checks passed ([hosted CI](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44243174445)). SC-01, SC-02 and SC-12 are resolved in SPEC §13.1, and the operator chose adverse-candidate funding ownership. The 2024 feasibility sample is `INCONCLUSIVE` for lack of point-in-time filters. Merged to `main` through PR #4. |
 | M2 | NOT STARTED | TBD | — | Pending |
 | M3 | NOT STARTED | TBD | — | Pending |
 | M4 | NOT STARTED | TBD | — | Pending |
@@ -233,14 +234,18 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 ### Immediate next actions
 
 1. **PRD v1.4 is Approved & Locked** as the product baseline; no further PRD approval task remains.
-2. Review SPEC open contracts **SC-01/SC-02** and M0 scope; ensure M1 simulator accounting/event priority is resolved before M1 exit; do not pre-approve research-only risk settings.
+2. **M1 accepted** by the operator on 2026-11-18 (UTC) and merged through PR #4. Start M2 by preregistering SC-03, SC-04 and SC-05, including the delayed-trailing and funding-cost reporting noted in SPEC §4.5.1.
 3. **M0 accepted** by the operator on 2026-11-17 (UTC) and merged through PR #2. Start continuous forward capture on the VPS (`docker compose --profile capture up -d capture`).
-4. Plan M1 data provenance and exchange-feasibility research. M1 remains not started until it is assigned.
+4. Continue forward capture to extend point-in-time evidence for M2 feasibility and cost research.
 5. Pre-register M2 numeric promotion criteria **before** holdout evaluation.
 
 **Roadmap acceptance:** This document plans work; it does not authorize live orders, real transfers, or a production deployment.
 
 ## 13. v0.4 targeted change notes
+
+M1 tracker update (2026-11-18, Asia/Bangkok) records the M1 implementation and evidence awaiting independent review.
+
+Independent review update (2026-11-18 UTC) records review fixes and the follow-up SC-02 and SC-12 verification. M1 accepted by the operator on 2026-11-18 (UTC) at code commit `92567ee`; tracker status `PASS`.
 
 - M0 accepted by the operator on 2026-11-17 (UTC) at code commit `e16d08f` and merged through PR #2; tracker status `PASS`.
 - Recorded the independent Windows live capture re-verification at `e16d08f`; M0 technical verification is PASS, with operator acceptance still pending and M1 not started.
