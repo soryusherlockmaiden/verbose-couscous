@@ -84,3 +84,25 @@ uv run --locked python -m acgs replay --manifest evidence/m1/binance-2024.json -
 ```
 
 Two native runs and a Docker run (`docker compose run --rm -v "${PWD}:/sample:ro" acgs …` with outputs in the named `/data` volume) gave identical outputs. Docker also passed `docker compose config --quiet`, smoke twice (`e2fb3f83500b5aa748b93e0e3151cd9fc1536048d56692da249ed0e877362505`) and the `check` service with 169 tests. The images were built with a sandbox-only proxy CA layer; the hosted `container` job builds the unmodified Dockerfile. Historical: `81e5f113b97f80cfd8f8ea73bd75c1c8a537c50d162729e23151729d8a2920c7`. [Main feasibility](feasibility.md): `bd9e602c364943b303ec639730ed8783908ff0c67313257e77e3c3c45e854b46`. Empty window: `fc3773841538a0390a7cf530ca3909f98499092c1d6b7d5fc1a85cdfd03b959d`. Public replay: `66b69060dbeedfbfa268a247f435bf55055af610d0c62505dc214aaa511b3a80` (run digest `d10308314a46cc83b5af95135099022c6ddbe7e1e8d99f42040b24267c3094df`). `fapi.binance.com` returns HTTP 451 to this host, so the marks manifest was not reloaded here. Its outputs for these commands match the archive-only body except for the dataset digest. The earlier Windows and Docker run of `d07a47a` is preserved in its commit.
+
+## Second follow-up (Codex review of `ff91950`)
+
+All four findings were reproduced at `ff91950` before they were fixed. Each fix has a regression test that fails on that head.
+
+| Finding | Fix |
+|---|---|
+| P1: a funding snapshot was eligible before its cash was knowable. Changing only the rest-of-bar low changed the published equity, and a boundary credit could be posted and later reversed. | Replay `m1-replay-v4` posts only min(cash, 0) while the holder can still change. The credit is `CREDIT_WITHHELD` and becomes `CREDIT_RELEASED` at bar end, available with the bar's close. Published snapshots at a settlement are identical whatever the bar does afterwards. |
+| P2: a later `exchangeInfo` capture missing a filter or symbol left the earlier metadata in force. | An omitted symbol gets a non-tradable `ABSENT_FROM_EXCHANGE_INFO` listing and incomplete filters become `UNAVAILABLE`, both from receipt. |
+| P2: the liquidation step-down checked only the stressed stop. | It also covers survival at the mark. A cap landing on 0.85 units now fills 0.80 instead of rejecting. |
+| P2: a `RECONSTRUCTED` spread passed with `allow_reconstructed=false`. | It is now `SPREAD_COST_UNCERTAIN`. Schema `m1-feasibility-v5` counts such attempts and disallowed reconstructions as unassessable. |
+
+Cloud agent: ruff, mypy and pytest passed with 174 tests. Docker passed smoke twice (`e2fb3f83…`) and the `check` service with 174 tests, using the sandbox CA layer described above. The fixture digests are exact-clock `a8ee66c886d07ea0d4fbd681bf9f581c8546cda23a0fc7377581253c4a07fc0a` and released policy `94617d2e7daf509dd50d40ebdef89e995fbc6b68fd56b7ea61c262b06de83b1d`.
+
+The commands above, with `-v5`/`-v6` output names, gave identical outputs on two native runs and in Docker:
+
+- historical `81e5f113b97f80cfd8f8ea73bd75c1c8a537c50d162729e23151729d8a2920c7`, unchanged;
+- [main feasibility](feasibility.md) `49727b1bd5df3c107f5265cd0cf488e9b0b84635c4b8794ed90a0b4c91142264`, still 8,136 unassessable attempts and `INCONCLUSIVE_CRITICAL_INPUT_UNAVAILABLE`;
+- empty window `52f673f576b6db225deefcb4c71b607db135a8db355827a59bc2638e3a0c330d`;
+- public replay `a36814011d50db80a312bb6ade149760c75feec525e6e979fecd88b738d7019f` (run digest `065ac7401978886c1dadda8faec48a9e26ed1f43a31b85d554faf32e31ac8d0f`).
+
+Pinned Gitleaks scanned 53 commits with no leaks.
