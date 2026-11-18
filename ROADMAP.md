@@ -244,6 +244,8 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 ## 13. v0.4 targeted change notes
 
+- `capture-depth-v2` adds slot outcome reporting, restart-safe rotation and cross-slot retries, and hardens SC-01 capture import and T-15 sidecar preflight. Deployment-host coverage, cycle duration and growth remain operator checks. [Verification](evidence/m0/dynamic-depth.md#capture-depth-v2)
+
 - PR #6 merged M0 capture-depth-v1, which adds dynamic order-book sampling for every trading USD-M USDT perpetual, slot-level coverage and a request-weight budget. [Verification](evidence/m0/dynamic-depth.md)
 - M2 Phase A accepted by the operator on 2026-11-18 (UTC) at code commit `496a933` and merged through PR #5; M2 remains `IN PROGRESS`.
 - M2 Phase A records retrospective development, a prospective holdout after freeze, the sealed 2025 reserve and the shared history access checks. Exact research dates remain open.
