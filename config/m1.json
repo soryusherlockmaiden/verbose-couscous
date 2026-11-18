@@ -1,5 +1,5 @@
 {
-  "version": "m1-v1",
+  "version": "m1-v2",
   "stop_basis": "CONTRACT_PRICE",
   "allow_documented_mark_proxy": false,
   "allow_reconstructed": true,
@@ -10,6 +10,7 @@
   "top_liquid": 30,
   "funding_intervals_ms": [3600000, 7200000, 14400000, 28800000],
   "funding_jitter_ms": 5000,
+  "funding_ownership_window_ms": 15000,
   "taker_fee": "0.0005",
   "slippage": "0.001",
   "stressed_slippage": "0.003",

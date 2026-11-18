@@ -6,7 +6,7 @@ import io
 import json
 import re
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
@@ -135,6 +135,42 @@ def _settlements(
             interval_ms=int(row[1]) * HOUR,
         ))
     return result
+
+
+def _rest_settlements(
+    raw: bytes, inst: Instrument, source: str, start: int, end: int, delay: int,
+) -> list[Funding]:
+    payload = json.loads(raw, object_pairs_hook=_unique)
+    if not isinstance(payload, list) or not payload:
+        raise ValueError("Expected USD-M fundingRate response array")
+    result = []
+    for row in payload:
+        time = integer(row["fundingTime"])
+        if row["symbol"] != inst.symbol or not start <= time < end:
+            raise ValueError("Unexpected instrument/time in funding response")
+        result.append(Funding(
+            inst, time, number(row["fundingRate"]),
+            Evidence(source, "usd_m_funding_rate_rest", Provenance.VERIFIED, time + delay),
+            number(row["markPrice"]) if row.get("markPrice") else None,
+        ))
+    return result
+
+
+def _attach_funding_marks(
+    settlements: list[Funding], observations: list[Funding],
+) -> list[Funding]:
+    # Match the literal epoch, timestamp and rate. The sidecar can only add a mark
+    # to an existing event; it cannot fill a gap or change decision-time spacing.
+    events = {(row.instrument, row.time): row for row in settlements}
+    for mark in observations:
+        key = mark.instrument, mark.time
+        event = events.get(key)
+        if event is None or event.rate != mark.rate or mark.mark is None:
+            raise ValueError("Funding mark does not match an archived instrument, settlement and rate")
+        if event.interval_ms is None or event.mark is not None:
+            raise ValueError("Funding mark requires a unique archive settlement without a mark")
+        events[key] = replace(event, mark=mark.mark, mark_evidence=mark.evidence)
+    return [events[(row.instrument, row.time)] for row in settlements]
 
 
 def _archive_rows(payload: bytes, kind: str, limit: int = 48_000_000) -> list[list[str]]:
@@ -334,6 +370,7 @@ def load_history(path: Path, root: Path, capture_db: Path | None = None) -> Load
     )
     candles: list[Candle] = []
     funding: list[Funding] = []
+    funding_marks: list[Funding] = []
     for info in manifest["assets"]:
         inst = instruments[info["id"]]
         source = info["source"]
@@ -351,21 +388,13 @@ def load_history(path: Path, root: Path, capture_db: Path | None = None) -> Load
             funding.extend(_settlements(
                 _archive_rows(raw, kind), inst, source, start, end, funding_delay,
             ))
-        elif kind == "fundingRest":
-            payload = json.loads(raw, object_pairs_hook=_unique)
-            if not isinstance(payload, list) or not payload:
-                raise ValueError("Expected USD-M fundingRate response array")
-            for settlement in payload:
-                time = int(settlement["fundingTime"])
-                if settlement["symbol"] != inst.symbol or not start <= time < end:
-                    raise ValueError("Unexpected instrument/time in funding response")
-                funding.append(Funding(
-                    inst, time, number(settlement["fundingRate"]),
-                    Evidence(source, "usd_m_funding_rate_rest", Provenance.VERIFIED, time + funding_delay),
-                    number(settlement["markPrice"]) if settlement.get("markPrice") else None,
-                ))
+        elif kind in {"fundingRest", "fundingMarks"}:
+            target = funding_marks if kind == "fundingMarks" else funding
+            target.extend(_rest_settlements(raw, inst, source, start, end, funding_delay))
         else:
             raise ValueError(f"Unknown historical asset type: {kind}")
+    if funding_marks:
+        funding = _attach_funding_marks(funding, funding_marks)
     hashes: list[str] = []
     if capture_db is not None:
         capture = manifest["capture"]

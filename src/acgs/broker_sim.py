@@ -1,5 +1,6 @@
 """Deterministic, isolated single-instrument replay; no exchange capability."""
 
+from bisect import bisect_left
 from dataclasses import asdict, dataclass, replace
 from decimal import Decimal, localcontext
 from enum import StrEnum
@@ -33,6 +34,8 @@ from acgs.pit import (
 )
 from acgs.sim_config import Policy, StopBasis, digest, instant_ms
 from acgs.sim_ledger import AccountSnapshot, Event, Journal, MarkSource
+
+REPLAY_VERSION = "m1-replay-v2"
 
 
 class ReplayError(ValueError):
@@ -70,12 +73,20 @@ class ReplayPlan:
 
 @dataclass(frozen=True)
 class Replay:
+    version: str
     run_digest: str
     dataset_digest: str
     policy_digest: str
     decisions: tuple[EligibilityDecision, ...]
     events: tuple[Event, ...]
     snapshots: tuple[AccountSnapshot, ...]
+
+
+@dataclass(frozen=True)
+class DeferredTrail:
+    intent: Intent
+    closing_price: Decimal
+    position_epoch: int
 
 
 def replay(
@@ -104,8 +115,11 @@ class _Replay:
         self.inst = plan.instrument
         if self.inst not in market.listings:
             raise ReplayError("Unknown listing epoch")
-        self.run_id = digest((dataset_digest, policy.digest, asdict(plan), end))
+        self.run_id = digest((REPLAY_VERSION, dataset_digest, policy.digest, asdict(plan), end))
         self.journal = Journal(plan.equity)
+        self.cash_available_at = plan.start
+        self.position_epoch = 0
+        self.deferred_trails: dict[int, list[DeferredTrail]] = {}
         self.liquidated = False
         self.decisions: list[EligibilityDecision] = []
         self.funding = market.settlements.get(self.inst, ())
@@ -114,7 +128,8 @@ class _Replay:
         for intent in plan.intents:
             key = intent.time, intent.action
             if (
-                intent.time % plan.interval or intent.available > intent.time
+                intent.time % plan.interval
+                or (intent.action != Action.TRAIL and intent.available > intent.time)
                 or not plan.start <= intent.time <= end or key in self.intents
                 or (intent.action != Action.TRAIL and intent.time == end)
                 or (intent.action == Action.TRAIL and intent.time == plan.start)
@@ -129,21 +144,41 @@ class _Replay:
     def run(self) -> Replay:
         for start in range(self.plan.start, self.end, self.plan.interval):
             self.bar(start)
+        self.verify_funding_ownership()
         try:
             self.journal.verify(self.p.accounting_tolerance)
         except ValueError as error:
             raise ReplayError(str(error)) from error
         return Replay(
-            self.run_id, self.dataset_digest, self.p.digest, tuple(self.decisions),
+            REPLAY_VERSION, self.run_id, self.dataset_digest, self.p.digest, tuple(self.decisions),
             tuple(self.journal.events), tuple(self.journal.snapshots),
         )
 
+    def verify_funding_ownership(self) -> None:
+        window = self.p.funding_ownership_window_ms
+        if not window:
+            return
+        # Audit the resulting fills. Future settlement records must never affect
+        # candidate decisions, but can show an ambiguity in the completed replay.
+        settlements = [f.time for f in self.funding if f.rate]
+        for event in self.journal.events:
+            if event.kind not in {"ENTRY_FILL", "PARTIAL_FILL", "EXIT_FILL", "STOP", "LIQUIDATION"}:
+                continue
+            index = bisect_left(settlements, event.time - window)
+            if index < len(settlements) and settlements[index] <= event.time + window:
+                raise ReplayError(
+                    f"Ambiguous funding ownership: {event.kind} at {event.time} "
+                    f"within {window} ms of settlement {settlements[index]}"
+                )
+
     def snapshot(
-        self, seq: int, time: int, mark: Decimal | None, source: MarkSource, observable: bool = True,
+        self, seq: int, time: int, mark: Decimal | None, source: MarkSource,
+        available_at: int | None,
     ) -> AccountSnapshot:
         return self.journal.snapshot(
             seq, time, mark, source, self.p.taker_fee + self.slippage(time, stress=True),
-            observable, self.run_id, self.p.accounting_tolerance,
+            max(available_at, self.cash_available_at) if available_at is not None else None,
+            self.run_id, self.p.accounting_tolerance,
         )
 
     def inputs(self, time: int) -> tuple[Filters, Maintenance] | None:
@@ -172,12 +207,13 @@ class _Replay:
             return bar.prices, MarkSource.CANDLE_OPEN_PROXY, MarkSource.CANDLE_CLOSE_PROXY
         return None
 
-    def close_available(self, trade: Candle, source: MarkSource) -> bool:
+    def close_available_at(self, trade: Candle, source: MarkSource) -> int:
+        if source == MarkSource.CANDLE_CLOSE_PROXY:
+            return trade.available
         mark_bar = self.market.bar(self.inst, trade.start, self.plan.interval, mark=True)
-        return trade.available <= trade.end and (
-            source == MarkSource.CANDLE_CLOSE_PROXY
-            or (mark_bar is not None and mark_bar.available <= trade.end)
-        )
+        if mark_bar is None:
+            raise ReplayError("Mark close has no availability record")
+        return max(trade.available, mark_bar.available)
 
     def bar(self, start: int) -> None:
         end = start + self.plan.interval
@@ -186,10 +222,16 @@ class _Replay:
         due = tuple(f for f in self.funding if start <= f.time < end)
         entry = self.intents.get((start, Action.ENTER))
         exit_ = self.intents.get((start, Action.EXIT))
+        trail = self.intents.get((end, Action.TRAIL))
+        deferred = self.deferred_trails.pop(start, [])
         if trade is None or trade.evidence.provenance == Provenance.UNAVAILABLE:
             if j.position.quantity or entry is not None or exit_ is not None:
                 raise ReplayError(f"Contract candle unavailable at {start}")
-            self.snapshot(j.record(end, "NO_DATA"), end, None, MarkSource.MARK_UNAVAILABLE, False)
+            for _ in deferred:
+                j.record(start, "REJECTED", detail="NO_POSITION")
+            self.snapshot(j.record(end, "NO_DATA"), end, None, MarkSource.MARK_UNAVAILABLE, None)
+            if trail is not None:
+                j.record(end, "REJECTED", detail="NO_POSITION")
             return
         marks = self.marks(trade)
         inputs = self.inputs(start)
@@ -200,12 +242,16 @@ class _Replay:
                 self.reject_inputs(entry, trade.prices.opening, marks[0].opening)
             elif entry is not None:
                 j.record(start, "REJECTED", detail="MARK_UNAVAILABLE")
+            for _ in deferred:
+                j.record(start, "REJECTED", detail="NO_POSITION")
             seq = j.record(end, "BAR_CLOSE")
             if marks is None:
-                self.snapshot(seq, end, None, MarkSource.MARK_UNAVAILABLE, False)
+                self.snapshot(seq, end, None, MarkSource.MARK_UNAVAILABLE, None)
             else:
                 prices, _, source = marks
-                self.snapshot(seq, end, prices.close, source, self.close_available(trade, source))
+                self.snapshot(seq, end, prices.close, source, self.close_available_at(trade, source))
+            if trail is not None:
+                j.record(end, "REJECTED", detail="NO_POSITION")
             return
         mark, source_open, source_close = marks
         filters, tiers = inputs
@@ -225,6 +271,11 @@ class _Replay:
             self.exit_intent(exit_, trade.prices.opening, mark.opening, source_open, filters)
         elif exit_ is not None:
             j.record(start, "REJECTED", detail="PROTECTIVE_EXIT_AT_OPEN")
+        for pending in deferred:
+            if not j.position.quantity or pending.position_epoch != self.position_epoch:
+                j.record(start, "REJECTED", detail="TRAIL_POSITION_CLOSED")
+            else:
+                self.trail(pending.intent, start, pending.closing_price, stop_path.opening, filters)
         if entry is not None:
             if self.liquidated:
                 j.record(start, "REJECTED", detail="LIQUIDATION_LATCH")
@@ -262,14 +313,26 @@ class _Replay:
                 cost_time=start,
             )
         seq = j.record(end, "BAR_CLOSE")
-        close_available = self.close_available(trade, source_close)
+        close_available = self.close_available_at(trade, source_close)
         self.snapshot(seq, end, mark.close, source_close, close_available)
-        trail = self.intents.get((end, Action.TRAIL))
         if trail is not None and j.position.quantity:
-            if close_available:
-                self.trail(trail, stop_path.close, filters)
+            available = max(close_available, trail.available)
+            if available <= end:
+                closing_inputs = self.inputs(end)
+                if closing_inputs is None:
+                    j.record(end, "REJECTED", detail="PIT_INPUTS")
+                else:
+                    self.trail(trail, end, stop_path.close, stop_path.close, closing_inputs[0])
             else:
-                j.record(end, "REJECTED", detail="TRAIL_CLOSE_UNAVAILABLE")
+                interval = self.plan.interval
+                opening = (available + interval - 1) // interval * interval
+                if opening < self.end:
+                    self.deferred_trails.setdefault(opening, []).append(
+                        DeferredTrail(trail, stop_path.close, self.position_epoch),
+                    )
+                    j.record(end, "TRAIL_DEFERRED", detail=f"next_eligible_open={opening}")
+                else:
+                    j.record(end, "REJECTED", detail="TRAIL_OUTSIDE_REPLAY")
         elif trail is not None:
             j.record(end, "REJECTED", detail="NO_POSITION")
 
@@ -291,9 +354,11 @@ class _Replay:
         if self.journal.position.quantity:
             price = event.mark if event.mark is not None else mark
             seq = self.journal.settle(event.time, price, event.rate)
+            mark_as_of = event.mark_evidence.as_of if event.mark_evidence is not None else event.time
+            self.cash_available_at = max(self.cash_available_at, event.evidence.as_of, mark_as_of)
             self.snapshot(
                 seq, event.time, price, MarkSource.FUNDING_RECORD if event.mark else source,
-                event.evidence.as_of <= event.time,
+                self.cash_available_at,
             )
         else:
             self.journal.record(event.time, "FUNDING_FLAT")
@@ -320,6 +385,9 @@ class _Replay:
     ) -> None:
         j = self.journal
         pos = j.position
+        if intent.time < self.cash_available_at:
+            j.record(intent.time, "REJECTED", detail="FUNDING_CASH_UNAVAILABLE")
+            return
         if pos.quantity * intent.side < ZERO:
             j.record(intent.time, "REJECTED", detail="POSITION_SIDE")
             return
@@ -378,11 +446,13 @@ class _Replay:
                 j.record(intent.time, "REJECTED", detail="COMBINED_LIQUIDATION_BUFFER")
                 return
         kind = "PARTIAL_FILL" if qty < ordered else "ENTRY_FILL"
+        if not pos.quantity:
+            self.position_epoch += 1
         seq = j.fill(
             intent.time, kind, qty * intent.side, execution, self.p.taker_fee,
             margin=decision.margin, reserve=decision.reserve, stop=stop,
         )
-        self.snapshot(seq, intent.time, mark, source)
+        self.snapshot(seq, intent.time, mark, source, intent.time)
         if kind == "PARTIAL_FILL":
             j.record(intent.time, "CANCELED", detail="UNFILLED_REMAINDER")
 
@@ -406,7 +476,7 @@ class _Replay:
             return
         fill = slipped(price, side, self.slippage(intent.time, stress=False), filters.tick)
         seq = j.fill(intent.time, "EXIT_FILL", qty * side, fill, self.p.taker_fee)
-        self.snapshot(seq, intent.time, mark, source)
+        self.snapshot(seq, intent.time, mark, source, intent.time)
 
     def protection(self, mark: Decimal, trigger: Decimal, tiers: Maintenance) -> tuple[bool, bool]:
         pos = self.journal.position
@@ -437,10 +507,12 @@ class _Replay:
             forfeit=pos.margin + self.journal.credits if liquidate else None,
         )
         self.liquidated |= liquidate
-        self.snapshot(seq, time, snapshot_mark, source, not intrabar)
+        self.snapshot(seq, time, snapshot_mark, source, None if intrabar else time)
         return True
 
-    def trail(self, intent: Intent, closing_price: Decimal, filters: Filters) -> None:
+    def trail(
+        self, intent: Intent, time: int, closing_price: Decimal, current_price: Decimal, filters: Filters,
+    ) -> None:
         pos = self.journal.position
         side = Side.LONG if pos.quantity > ZERO else Side.SHORT
         candidate = stop_price(closing_price, intent.distance, side, filters.tick)
@@ -448,16 +520,16 @@ class _Replay:
             reason = "POSITION_SIDE"
         elif not filters.min_price <= candidate <= filters.max_price or candidate <= ZERO:
             reason = "PRICE_TICK"
-        elif side * (closing_price - candidate) <= ZERO:
+        elif min(side * (closing_price - candidate), side * (current_price - candidate)) <= ZERO:
             reason = "STOP_IMMEDIATELY_TRIGGERABLE"
         elif side * (candidate - pos.stop) <= ZERO:
             reason = "TRAIL_NOT_FAVORABLE"
         else:
             self.journal.position = replace(pos, stop=candidate)
-            self.journal.record(intent.time, "TRAIL_RATCHET", price=candidate)
+            self.journal.record(time, "TRAIL_RATCHET", price=candidate)
             return
         # Keep the existing stop and record why the step-wise update was not applied.
-        self.journal.record(intent.time, "REJECTED", price=candidate, detail=reason)
+        self.journal.record(time, "REJECTED", price=candidate, detail=reason)
 
     def slippage(self, time: int, *, stress: bool) -> Decimal:
         rate = self.p.stressed_slippage if stress else self.p.slippage

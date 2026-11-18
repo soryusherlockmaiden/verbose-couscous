@@ -85,9 +85,11 @@ def _status(rows: list[tuple[EligibilityDecision, Provenance]]) -> str:
     When every attempt lacks a critical input, the window cannot show infeasibility
     (PRD §6.1, SPEC §4.3): the result is inconclusive, not a no-trade conclusion.
     """
+    if not rows:
+        return "INCONCLUSIVE_NO_ASSESSABLE_ATTEMPTS"
     if any(decision.executable for decision, _ in rows):
         return "ASSESSABLE"
-    if rows and all(provenance == Provenance.UNAVAILABLE for _, provenance in rows):
+    if all(provenance == Provenance.UNAVAILABLE for _, provenance in rows):
         return "INCONCLUSIVE_CRITICAL_INPUT_UNAVAILABLE"
     return "NO_TRADE_IN_DECLARED_WINDOW"
 
@@ -169,7 +171,9 @@ def _feasibility(
                     Decimal(30) if case.phase == "IGNITION" else None,
                 ), config)
                 provenance = decision.provenance
-                if provenance == Provenance.VERIFIED and (
+                if {"STALE_METADATA", "UNVERIFIED_CRITICAL_FILTER"}.intersection(decision.reasons):
+                    provenance = Provenance.UNAVAILABLE
+                elif provenance == Provenance.VERIFIED and (
                     proxy or any(e.provenance != Provenance.VERIFIED for e in rank.evidence)
                 ):
                     provenance = Provenance.RECONSTRUCTED
@@ -181,7 +185,7 @@ def _feasibility(
                     "atr": atr, "executable": decision.executable, **asdict(decision),
                 })
     return {
-        "version": "m1-feasibility-v2", "dataset_digest": dataset_digest,
+        "version": "m1-feasibility-v3", "dataset_digest": dataset_digest,
         "policy_digest": policy.digest, "start": start, "end_exclusive": end,
         "status": _status([row for items in results.values() for row in items]),
         "universe_exclusions": dict(exclusions), "universe_snapshots": snapshots,

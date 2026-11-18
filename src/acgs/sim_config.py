@@ -28,6 +28,7 @@ class Policy:
     top_liquid: int
     funding_intervals_ms: tuple[int, ...]
     funding_jitter_ms: int
+    funding_ownership_window_ms: int
     taker_fee: Decimal
     slippage: Decimal
     stressed_slippage: Decimal
@@ -59,11 +60,12 @@ class Policy:
             self.funding_reserve_horizon_ms,
         )
         if (
-            self.version != "m1-v1"
+            self.version != "m1-v2"
             or min(counts) <= 0 or self.history_days <= self.momentum_days
             or self.history_days < max(15, self.volume_days)
             or not 28 <= self.decimal_precision <= 50
             or not 0 <= self.funding_jitter_ms < HOUR // 2
+            or not 0 <= self.funding_ownership_window_ms < HOUR // 2
             or not self.funding_intervals_ms
             or tuple(sorted(set(self.funding_intervals_ms))) != self.funding_intervals_ms
             or min(self.funding_intervals_ms) < HOUR

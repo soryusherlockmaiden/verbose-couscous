@@ -62,7 +62,12 @@ class AccountSnapshot:
     mark_source: MarkSource
     cycle_equity: Decimal
     trigger_observable: bool
+    trigger_available_at: int | None
     run_digest: str
+
+    def observable_by(self, time: int) -> bool:
+        """Whether this valuation is available for a decision at this UTC instant."""
+        return self.trigger_available_at is not None and self.trigger_available_at <= time
 
 
 class Journal:
@@ -147,11 +152,13 @@ class Journal:
 
     def snapshot(
         self, sequence: int, time: int, mark: Decimal | None, source: MarkSource,
-        close_rate: Decimal, observable: bool, run_digest: str, tolerance: Decimal,
+        close_rate: Decimal, available_at: int | None, run_digest: str, tolerance: Decimal,
     ) -> AccountSnapshot:
         pos = self.position
         if mark is None and pos.quantity:
             raise ValueError("Cannot value an open position without a mark")
+        if available_at is not None and available_at < time:
+            raise ValueError("Snapshot cannot be observed before its event time")
         unrealized = pos.quantity * (mark - pos.basis) if mark is not None else ZERO
         equity = self.wallet + unrealized
         closing_cost = abs(pos.quantity) * mark * close_rate if mark is not None else ZERO
@@ -162,7 +169,8 @@ class Journal:
             raise ValueError("Simulated cash/equity reconciliation failed")
         snapshot = AccountSnapshot(
             sequence, time, pos, self.wallet, self.realized, self.funding, self.fees, unrealized,
-            equity, self.collateral, mark, source, equity - closing_cost, observable, run_digest,
+            equity, self.collateral, mark, source, equity - closing_cost,
+            available_at == time, available_at, run_digest,
         )
         self.snapshots.append(snapshot)
         return snapshot

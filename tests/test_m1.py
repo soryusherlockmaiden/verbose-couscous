@@ -85,7 +85,9 @@ def filters() -> Filters:
 
 @pytest.fixture
 def policy() -> Policy:
-    return _policy(SETTINGS)
+    # The existing event-order fixtures deliberately exercise the exact clock
+    # sensitivity. Separate fixtures below exercise the conservative default.
+    return replace(_policy(SETTINGS), funding_ownership_window_ms=0)
 
 
 @pytest.fixture
@@ -214,13 +216,13 @@ def test_t17_reconciliation_rederives_snapshots_from_immutable_postings() -> Non
     tolerance = D("0.00000001")
     journal = Journal(D(50))
     fill = journal.fill(T, "ENTRY_FILL", D(1), D(100), D("0.0005"), margin=D(10))
-    journal.snapshot(fill, T, D(101), MarkSource.MARK_KLINE_OPEN, D("0.0035"), True, "run", tolerance)
+    journal.snapshot(fill, T, D(101), MarkSource.MARK_KLINE_OPEN, D("0.0035"), T, "run", tolerance)
     journal.verify(tolerance)
     # Cash moved outside the event log keeps the running totals self-consistent ...
     journal.wallet += 1
     journal.realized += 1
     close = journal.record(T + HOUR, "BAR_CLOSE")
-    journal.snapshot(close, T + HOUR, D(101), MarkSource.MARK_KLINE_CLOSE, D("0.0035"), True, "run",
+    journal.snapshot(close, T + HOUR, D(101), MarkSource.MARK_KLINE_CLOSE, D("0.0035"), T + HOUR, "run",
                      tolerance)
     # ... but cannot be re-derived from the immutable postings.
     with pytest.raises(ValueError, match="reconcile with event postings"):
@@ -251,6 +253,46 @@ def test_t18_near_open_holder_and_t19_unresolved_intrabar_funding_stop(
     data = change_bar(data, 1, prices("100", "101", "92", "95"))
     with pytest.raises(ReplayError, match="Ambiguous intrabar"):
         replay(Market(data), "fixture", config, clock(T + 2 * HOUR), plan(enter(T + HOUR)))
+
+
+@pytest.mark.parametrize("offset", [-1, 0, 1, 15_000])
+@pytest.mark.parametrize("opening", [True, False])
+def test_t18_conservative_policy_refuses_near_boundary_ownership_change(
+    dataset: Dataset, offset: int, opening: bool,
+) -> None:
+    policy = replace(_policy(SETTINGS), funding_jitter_ms=20_000)
+    settlement = funding(T + 2 * HOUR + offset, hours=2)
+    market = Market(replace(dataset, settlements=(*dataset.settlements, settlement)))
+    intents = (enter(T + 2 * HOUR),) if opening else (enter(T + HOUR), exit_(T + 2 * HOUR))
+    with pytest.raises(ReplayError, match="Ambiguous funding ownership"):
+        replay(market, "fixture", policy, clock(T + 3 * HOUR), plan(*intents))
+
+
+def test_t18_offset_with_primary_mark_posts_once_for_unchanged_holder(dataset: Dataset) -> None:
+    policy = _policy(SETTINGS)
+    raw = funding(T + 2 * HOUR + 15, delay=5000, hours=2)
+    record = replace(raw, mark=D(105), mark_evidence=evidence(raw.time + 6000))
+    data = replace(dataset, settlements=(*dataset.settlements, record))
+    run = replay(Market(data), "fixture", policy, clock(T + 3 * HOUR), plan(enter(T + HOUR)))
+    event, = (e for e in run.events if e.kind == "FUNDING")
+    assert event.time == record.time and event.postings[0].cash == D("-0.105")
+    snap, = (s for s in run.snapshots if s.sequence == event.sequence)
+    assert snap.mark_source == MarkSource.FUNDING_RECORD and snap.mark == D(105)
+    assert not snap.observable_by(record.time + 5999) and snap.observable_by(record.time + 6000)
+
+
+def test_t18_funding_cash_cannot_size_entry_before_observation(dataset: Dataset, policy: Policy) -> None:
+    payment = funding(T + HOUR, delay=1000, hours=1)
+    data = replace(dataset, settlements=(*dataset.settlements, payment))
+    run = replay(Market(data), "fixture", policy, clock(T + 2 * HOUR),
+                 plan(enter(), exit_(T + HOUR), enter(T + HOUR)))
+    assert [e.kind for e in run.events if e.time == T + HOUR] == [
+        "BAR_CLOSE", "FUNDING", "EXIT_FILL", "REJECTED",
+    ]
+    assert any(e.detail == "FUNDING_CASH_UNAVAILABLE" for e in run.events)
+    sequences = {e.sequence for e in run.events if e.kind in {"FUNDING", "EXIT_FILL"}}
+    delayed = [s.trigger_available_at for s in run.snapshots if s.sequence in sequences]
+    assert delayed == [T + HOUR + 1000, T + HOUR + 1000]
 
 
 def test_t19_t21_gap_and_missing_mark_or_candle_fail_closed(dataset: Dataset, policy: Policy) -> None:
@@ -302,11 +344,51 @@ def test_t37_trailing_stop_only_at_completed_available_close_and_only_ratchets(
         replace(b, available=b.end + 1000) if b.start == T and not b.is_mark else b
         for b in dataset.candles
     ))
-    run = replay(Market(lagged), "fixture", policy, clock(T + 2 * HOUR), plan(*trade))
-    assert not any(e.kind == "TRAIL_RATCHET" for e in run.events)
-    assert any(e.detail == "TRAIL_CLOSE_UNAVAILABLE" for e in run.events)
+    result = replay(Market(lagged), "fixture", policy, clock(T + 3 * HOUR), plan(*trade))
+    deferred, = (e for e in result.events if e.kind == "TRAIL_DEFERRED")
+    assert deferred.time == T + HOUR
+    assert [(e.time, e.price) for e in result.events if e.kind == "TRAIL_RATCHET"] == [
+        (T + 2 * HOUR, D(99))
+    ]
+    first_close = next(s for s in result.snapshots if s.timestamp == T + HOUR)
+    assert first_close.trigger_available_at == T + HOUR + 1000
+    assert not first_close.observable_by(T + HOUR + 999)
+    assert first_close.observable_by(T + HOUR + 1000)
     flat = replay(market, "fixture", policy, clock(T + 2 * HOUR), plan(*trade[1:]))
     assert [e.detail for e in flat.events if e.kind == "REJECTED"] == ["NO_POSITION"] * 2
+
+
+@pytest.mark.parametrize("path,reason", [
+    (prices("98", "101", "98", "100"), "STOP_IMMEDIATELY_TRIGGERABLE"),
+    (prices("90", "101", "89", "100"), "TRAIL_POSITION_CLOSED"),
+])
+def test_t37_delayed_trailing_yields_to_open_gap(
+    dataset: Dataset, policy: Policy, path: Prices, reason: str,
+) -> None:
+    data = change_bar(dataset, 0, prices("100", "104", "99", "103"))
+    data = change_bar(data, 2, path)
+    close = T + HOUR
+    trailing = Intent(close, close + 1000, Action.TRAIL, Side.LONG, D(4))
+    result = replay(Market(data), "fixture", policy, clock(T + 3 * HOUR), plan(enter(), trailing))
+    assert not any(e.kind == "TRAIL_RATCHET" for e in result.events)
+    assert any(e.time == T + 2 * HOUR and e.detail == reason for e in result.events)
+    if reason == "TRAIL_POSITION_CLOSED":
+        stop, = (e for e in result.events if e.kind == "STOP")
+        refused, = (e for e in result.events if e.detail == reason)
+        assert stop.time == refused.time and stop.sequence < refused.sequence
+
+
+def test_t37_delayed_trailing_stays_with_original_position(dataset: Dataset, policy: Policy) -> None:
+    data = change_bar(dataset, 0, prices("100", "104", "99", "103"))
+    close = T + HOUR
+    trailing = Intent(close, close + 1000, Action.TRAIL, Side.LONG, D(4))
+    run = replay(
+        Market(data), "fixture", policy, clock(T + 3 * HOUR),
+        plan(enter(), exit_(close), enter(close), trailing),
+    )
+    assert [e.kind for e in run.events].count("ENTRY_FILL") == 2
+    assert not any(e.kind == "TRAIL_RATCHET" for e in run.events)
+    assert any(e.time == T + 2 * HOUR and e.detail == "TRAIL_POSITION_CLOSED" for e in run.events)
 
 
 @pytest.mark.parametrize("stop_basis", [StopBasis.CONTRACT_PRICE, StopBasis.MARK_PRICE])
@@ -470,7 +552,7 @@ def test_t01_t20_t23_runtime_clock_report_and_config_identity(
         return sim, report
 
     result = run_decisions()
-    assert digest(asdict(result[0])) == "3a4cbe6c11e66912fa1da3c56ce59c10d5fb87f5d8bcaa801907d811297f5b01"
+    assert digest(asdict(result[0])) == "92a6e207f73bff49b5429ee02a5cd3cf504f05e1cfe206fe7b00f2ffa791b87e"
 
     def forbidden(*args: object, **kwargs: object) -> None:
         raise AssertionError("Decision code accessed the wall clock")
@@ -498,7 +580,7 @@ def test_t01_t20_t23_runtime_clock_report_and_config_identity(
     assert any(not d["executable"] for d in decisions)
     assert {d["provenance"] for d in decisions} == {Provenance.RECONSTRUCTED}
     assert {d["candidate"]["side"] for d in decisions} == {Side.SHORT}
-    assert summary["status"] == "ASSESSABLE" and summary["version"] == "m1-feasibility-v2"
+    assert summary["status"] == "ASSESSABLE" and summary["version"] == "m1-feasibility-v3"
     # Every attempt missing a PIT filter is inconclusive; assessable rejections are no-trade.
     blind = feasibility(Market(replace(daily_data, filters=())), "fixture", policy, T, clock(T + DAY))
     assert {d["provenance"] for d in blind["decisions"]} == {Provenance.UNAVAILABLE}
@@ -548,6 +630,65 @@ def test_t01_ingest_integrity_cli_and_immutable_outputs(tmp_path: Path) -> None:
     asset.write_bytes(b"wrong checksum")
     assert main(args) == 1
     assert json.loads(out.read_text(encoding="utf-8"))["dataset_digest"] == loaded.digest
+
+
+def test_t23_empty_attempts_do_not_establish_no_trade(dataset: Dataset, policy: Policy) -> None:
+    start = 17 * DAY
+    report = feasibility(Market(daily(dataset)), "fixture", policy, start, clock(start + DAY))
+    assert report["status"] == "INCONCLUSIVE_NO_ASSESSABLE_ATTEMPTS"
+    assert report["decisions"] == []
+    assert report["universe_exclusions"] == {"INSUFFICIENT_HISTORY": 1}
+    assert all(row["executable_rate"] is None for row in report["scenarios"].values())
+
+
+def test_t23_stale_filters_do_not_establish_no_trade(dataset: Dataset, policy: Policy) -> None:
+    old = replace(filters(), effective=T - 3 * DAY, evidence=evidence(T - 3 * DAY))
+    data = replace(daily(dataset), filters=(old,))
+    report = feasibility(Market(data), "fixture", policy, T, clock(T + DAY))
+    assert report["status"] == "INCONCLUSIVE_CRITICAL_INPUT_UNAVAILABLE"
+    assert report["decisions"]
+    assert {d["reasons"] for d in report["decisions"]} == {("STALE_METADATA",)}
+    assert {d["provenance"] for d in report["decisions"]} == {Provenance.UNAVAILABLE}
+
+
+def test_t18_archive_mark_enrichment_requires_exact_settlement_match(tmp_path: Path) -> None:
+    archive = tmp_path / "funding.zip"
+    time = T + 15
+    with ZipFile(archive, "w") as zipped:
+        zipped.writestr("funding.csv", f"calc_time,funding_interval_hours,last_funding_rate\n"
+                        f"{time},8,0.001\n")
+    row = {"symbol": INST.symbol, "fundingTime": time, "fundingRate": "0.001", "markPrice": "105"}
+    mark = tmp_path / "funding.json"
+    mark.write_text(json.dumps([row]), encoding="utf-8")
+    manifest = {
+        "version": "m1-history-v1", "ingested_at": T + HOUR, "candle_delay_ms": 1000,
+        "funding_delay_ms": 5000,
+        "instruments": [{"symbol": INST.symbol, "onboard": INST.onboard, "multiplier": 1000}],
+        "listings": [{"id": INST.id, "effective": INST.onboard, "status": "TRADING",
+                      "evidence": dict(source="fixture", method="test", as_of=INST.onboard,
+                                       provenance="VERIFIED")}],
+        "assets": [
+            {"id": INST.id, "source": source, "path": file.name, "start": T, "end": T + HOUR,
+             "kind": kind, "sha256": hashlib.sha256(file.read_bytes()).hexdigest()}
+            for file, kind, source in (
+                (archive, "fundingRate", "archive-source"),
+                (mark, "fundingMarks", "rest-source"),
+            )
+        ],
+    }
+    path = tmp_path / "manifest.json"
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    attached, = load_history(path, tmp_path).market.settlements[INST]
+    assert attached.time == time and attached.rate == D("0.001") and attached.interval_ms == 8 * HOUR
+    assert attached.evidence.source == "archive-source"
+    assert attached.mark == D(105) and attached.mark_evidence is not None
+    assert attached.mark_evidence.source == "rest-source" and attached.mark_evidence.as_of == time + 5000
+    for mutation in ({"fundingTime": time + 1}, {"fundingRate": "0.002"}, {"markPrice": None}):
+        mark.write_text(json.dumps([row | mutation]), encoding="utf-8")
+        manifest["assets"][1]["sha256"] = hashlib.sha256(mark.read_bytes()).hexdigest()
+        path.write_text(json.dumps(manifest), encoding="utf-8")
+        with pytest.raises(ValueError, match="does not match an archived instrument"):
+            load_history(path, tmp_path)
 
 
 def test_t02_t42_m0_capture_read_only_and_funding_absence_withdraws_adjustment(tmp_path: Path) -> None:

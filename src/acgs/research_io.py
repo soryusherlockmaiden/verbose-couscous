@@ -98,6 +98,7 @@ def run_research(args: Namespace) -> int:
                 "contract_candles": len(contract_keys), "mark_candles": len(mark_keys),
                 "contract_intervals_without_matching_mark": len(contract_keys - mark_keys),
                 "settlements": len(market.settlements.get(inst, ())),
+                "settlements_with_mark": sum(f.mark is not None for f in market.settlements.get(inst, ())),
                 "listing_observations": len(market.listings[inst]),
                 "filter_observations": len(market.filters.get(inst, ())),
                 "maintenance_observations": len(market.maintenance.get(inst, ())),

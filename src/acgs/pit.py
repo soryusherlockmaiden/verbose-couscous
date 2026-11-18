@@ -119,6 +119,7 @@ class Funding:
     evidence: Evidence
     mark: Decimal | None = None
     interval_ms: int | None = None
+    mark_evidence: Evidence | None = None
 
     def __post_init__(self) -> None:
         if self.time < self.instrument.onboard or self.evidence.as_of < self.time:
@@ -129,6 +130,11 @@ class Funding:
             raise ValueError("Invalid recorded funding rate")
         if self.mark is not None and (not self.mark.is_finite() or self.mark <= ZERO):
             raise ValueError("Invalid funding mark")
+        if self.mark_evidence is not None and (
+            self.mark is None or self.mark_evidence.provenance != Provenance.VERIFIED
+            or self.mark_evidence.as_of < self.time
+        ):
+            raise ValueError("Invalid funding mark evidence")
         if self.interval_ms is not None and self.interval_ms <= 0:
             raise ValueError("Invalid settlement interval field")
 

@@ -16,6 +16,7 @@ import pytest
 SOURCE = Path(__file__).resolve().parents[1] / "src" / "acgs"
 SAFE_IMPORTS = {
     "argparse",
+    "bisect",
     "collections",
     "contextlib",
     "csv",
@@ -61,6 +62,7 @@ CAPABILITY_MODULES = {
 }
 # Decision code must be deterministic: no wall clock, process, system or I/O modules.
 DECISION_SAFE_IMPORTS = {
+    "bisect",
     "collections",
     "dataclasses",
     "datetime",
