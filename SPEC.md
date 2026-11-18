@@ -467,6 +467,8 @@ Research must use chronological development/validation windows, walk-forward tes
 
 **No numeric thresholds are invented in this draft.** They are an explicit M2 prerequisite; post-hoc thresholds are prohibited. A reference-account backtest alone cannot promote a 50 USDT strategy. `INCONCLUSIVE` does not authorize live trading.
 
+[M2 draft research protocol](evidence/m2/protocol.md) and [versioned draft configuration](config/m2.json) track SC-03, SC-04 and SC-05. The operator owns freeze.
+
 ## 12. Verification matrix
 
 | ID | Scenario | Expected result | Earliest gate |
@@ -561,6 +563,8 @@ Emit an event-numbered wallet/equity snapshot after each fill, funding posting o
 - Replay v6 uses the same available opening mark for due settlements at a shared horizon and honors the publication lag of a close fallback. Capture withdrawals preserve prior epoch boundaries and carry no stale filter values. [Verification](evidence/m1/verification.md).
 
 - Replay v8 keeps ambiguous settlement valuations out of trigger evaluation. Capture omissions retain their effective time and wait for supporting epoch evidence before appearing in universe snapshots. [Verification](evidence/m1/verification.md).
+
+- M2 Phase A references its draft research protocol and development/validation data seal. SC-03, SC-04 and SC-05 remain open.
 
 ## 14. Change control and release policy
 
