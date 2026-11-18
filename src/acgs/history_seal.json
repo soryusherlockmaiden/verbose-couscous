@@ -1,0 +1,10 @@
+{
+  "version": "history-seal-v1",
+  "ranges": [
+    {
+      "purpose": "m2-retrospective-reserve",
+      "start": "2025-01-01T00:00:00Z",
+      "end": "2026-01-01T00:00:00Z"
+    }
+  ]
+}

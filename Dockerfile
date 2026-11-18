@@ -12,6 +12,7 @@ COPY config/ ./config/
 # Lint, type check and tests in a container: `docker compose run --rm check`.
 FROM base AS check
 COPY tests/ ./tests/
+COPY evidence/m1/fetch.py ./evidence/m1/fetch.py
 RUN uv sync --locked --no-editable
 CMD ["sh", "-c", "/app/.venv/bin/ruff check . && /app/.venv/bin/mypy && /app/.venv/bin/pytest"]
 

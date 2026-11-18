@@ -1,0 +1,66 @@
+{
+  "version": "m2-v3",
+  "mode": "OFFLINE",
+  "protocol_status": "DRAFT",
+  "m1_semantics": {
+    "version": "m1-semantics-v1",
+    "sha256": "007d9887419bd969899a6db881a097964e8bd372f5cc6d95b848aff5d87735f9"
+  },
+  "access": {
+    "holdout": null,
+    "research_cutoff": null,
+    "approvals": {}
+  },
+  "settled": {
+    "initial_wallet_usdt": "50",
+    "observation_target_usdt": "100",
+    "halt_usdt": "30",
+    "recovery_amount_usdt": "50",
+    "minimum_retained_usdt": "50",
+    "maximum_cycles": 2,
+    "maximum_committed_usdt": "100",
+    "opening_excess_usdt": "0",
+    "external_inflows_usdt": "0",
+    "max_positions": 1,
+    "pyramiding": false,
+    "baseline_reserve_usdt": "0"
+  },
+  "proposed": {
+    "holdout_design": "prospective_after_protocol_freeze",
+    "windows": {
+      "development": {"start": "2023-01-01T00:00:00Z", "end": "2023-12-31T00:00:00Z"},
+      "validation": {"start": "2024-01-01T00:00:00Z", "end": "2024-12-31T00:00:00Z"},
+      "holdout": null
+    },
+    "majors": ["BTCUSDT", "ETHUSDT"],
+    "coverage_probe": ["BTCUSDT", "ETHUSDT", "DGBUSDT"],
+    "intervals": ["15m", "1h"],
+    "adx_period": 14,
+    "adx_threshold": "25",
+    "donchian_period": 20,
+    "ema_period": 200,
+    "volume_period": 20,
+    "volume_multiple": "1.5",
+    "atr_period": 14,
+    "atr_multiple": "2.5",
+    "history_days": 60,
+    "quote_volume_days": 30,
+    "top_liquid": 30,
+    "momentum_days": 14
+  },
+  "open": {
+    "O1_windows_and_pinned_datasets": null,
+    "O2_universe_and_publication": null,
+    "O3_provenance_policy": null,
+    "O4_strategy_and_trigger_semantics": null,
+    "O5_sizing_and_preventive_risk": {
+      "halt_buffer": null,
+      "liquidation_buffer_rate": null,
+      "fee_funding_reserve": null
+    },
+    "O6_numeric_promotion_gates": null,
+    "O7_reserve_and_post_mortem_tolerances": null,
+    "O8_comparators_resampling_and_grid": null,
+    "O9_cycle_estimands_and_cadence_parity": null
+  }
+}

@@ -1,6 +1,7 @@
 """Causal schedule estimates and strict settlement continuity checks."""
 
 from dataclasses import dataclass
+from typing import Protocol
 
 from acgs.pit import Evidence, Funding, Instrument, Market, Provenance, Schedule
 from acgs.sim_config import Policy
@@ -15,7 +16,20 @@ class FundingView:
     publication: Schedule | None = None
 
 
-def inferred_interval(previous: Funding, current: Funding, policy: Policy) -> int | None:
+class FundingInference(Protocol):
+    @property
+    def funding_intervals_ms(self) -> tuple[int, ...]: ...
+
+    @property
+    def funding_jitter_ms(self) -> int: ...
+
+
+def ownership_boundary(time: int, interval: int, window: int) -> int | None:
+    nearest = (time + interval // 2) // interval * interval
+    return nearest if abs(time - nearest) <= window else None
+
+
+def inferred_interval(previous: Funding, current: Funding, policy: FundingInference) -> int | None:
     gap = current.time - previous.time
     if current.interval_ms is not None:
         return current.interval_ms if abs(gap - current.interval_ms) <= policy.funding_jitter_ms else None
@@ -90,7 +104,7 @@ def funding_view(market: Market, instrument: Instrument, time: int, policy: Poli
 
 
 def funding_complete(
-    settlements: tuple[Funding, ...], start: int, end: int, policy: Policy
+    settlements: tuple[Funding, ...], start: int, end: int, policy: FundingInference
 ) -> bool:
     """Check continuity on a half-open window using the supplied observation prefix.
 

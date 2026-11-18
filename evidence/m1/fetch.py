@@ -4,9 +4,9 @@ import argparse
 import hashlib
 import time
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
 
 from acgs.history_io import read_json
+from acgs.history_seal import ARCHIVE_HOST, registered_seal, resolve_asset_path
 from acgs.market_data import MAX_PAYLOAD, fetch_public
 
 
@@ -16,45 +16,43 @@ def main() -> None:
     parser.add_argument("assets", type=Path)
     args = parser.parse_args()
     root = args.assets.resolve()
-    for entry in read_json(args.manifest)["assets"]:
-        url = urlsplit(entry["source"])
-        target = (root / entry["path"]).resolve()
-        archive = (
-            url.netloc == "data.binance.vision" and url.path.startswith("/data/futures/um/monthly/")
-            and url.path.endswith(".zip") and not url.query
-        )
-        query = parse_qs(url.query, strict_parsing=True)
-        settlement_marks = (
-            entry["kind"] == "fundingMarks" and url.netloc == "fapi.binance.com"
-            and url.path == "/fapi/v1/fundingRate"
-            and query.keys() == {"symbol", "startTime", "endTime", "limit"}
-            and query["symbol"] == [entry["id"].split("@", 1)[0]]
-            and all(len(query[key]) == 1 and query[key][0].isdigit()
-                    for key in ("startTime", "endTime", "limit"))
-        )
-        if (
-            not target.is_relative_to(root) or url.scheme != "https" or url.fragment
-            or not (archive or settlement_marks)
-        ):
-            raise SystemExit("Expected a pinned Binance USD-M public source")
+    manifest = read_json(args.manifest)
+    if manifest.get("version") != "m1-history-v1":
+        raise SystemExit("Expected an M1 history manifest")
+    seal = registered_seal()
+    assets = []
+    try:
+        seal.check_manifest(manifest)
+        for entry in manifest["assets"]:
+            url = entry["source"]
+            target = resolve_asset_path(root, entry)
+            if not (
+                entry["kind"] == "fundingMarks"
+                or url.startswith(f"{ARCHIVE_HOST}/data/futures/um/monthly/")
+            ):
+                raise ValueError("Expected a pinned Binance USD-M public source")
+            assets.append((entry, url, target))
+    except (ValueError, KeyError, TypeError, OSError) as error:
+        raise SystemExit(str(error)) from error
+    for entry, url, target in assets:
         if target.exists():
             if hashlib.sha256(target.read_bytes()).hexdigest() != entry["sha256"]:
                 raise SystemExit(f"Existing asset checksum mismatch: {target}")
             continue
-        response = fetch_public(url.geturl())
+        response = fetch_public(url)
         if response.status in {403, 451}:
             # Binance geo-restricts its REST API by location. Never route around it.
             raise SystemExit(
-                f"Public source refused from this location (HTTP {response.status}): {url.geturl()}. "
+                f"Public source refused from this location (HTTP {response.status}): {url}. "
                 "Fetch it from an eligible location and verify the pinned SHA-256."
             )
         if response.status != 200:
-            raise SystemExit(f"Public source unavailable (HTTP {response.status}): {url.geturl()}")
+            raise SystemExit(f"Public source unavailable (HTTP {response.status}): {url}")
         if (
             len(response.payload) > MAX_PAYLOAD
             or hashlib.sha256(response.payload).hexdigest() != entry["sha256"]
         ):
-            raise SystemExit(f"Asset differs from the pinned version: {url.geturl()}")
+            raise SystemExit(f"Asset differs from the pinned version: {url}")
         target.parent.mkdir(parents=True, exist_ok=True)
         with target.open("xb") as stream:
             stream.write(response.payload)

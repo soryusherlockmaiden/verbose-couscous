@@ -226,7 +226,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 |---|---|---|---|---|
 | M0 | PASS | Operator | [M0 verification](evidence/m0/verification.md) | **Accepted by the operator on 2026-11-17 (UTC)** at code commit `e16d08f`: all ROADMAP §3 checks passed ([hosted CI](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44191231342)), including Windows live capture (five `CAPTURED`/`VERIFIED` responses). Merged to `main` through PR #2. |
 | M1 | PASS | Operator | [M1 verification](evidence/m1/verification.md) · [50 USDT report](evidence/m1/feasibility.md) | **Accepted by the operator on 2026-11-18 (UTC)** at code commit `92567ee`: all ROADMAP §4 checks passed ([hosted CI](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44243174445)). SC-01, SC-02 and SC-12 are resolved in SPEC §13.1, and the operator chose adverse-candidate funding ownership. The 2024 feasibility sample is `INCONCLUSIVE` for lack of point-in-time filters. Merged to `main` through PR #4. |
-| M2 | NOT STARTED | TBD | — | Pending |
+| M2 | IN PROGRESS | Operator | [Phase A verification](evidence/m2/verification.md) · [Draft protocol](evidence/m2/protocol.md) | Phase A review pending. Protocol freeze and milestone verdict pending. |
 | M3 | NOT STARTED | TBD | — | Pending |
 | M4 | NOT STARTED | TBD | — | Pending |
 | M5 | OPTIONAL / NOT AUTHORIZED | TBD | — | Pending |
@@ -242,6 +242,8 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 **Roadmap acceptance:** This document plans work; it does not authorize live orders, real transfers, or a production deployment.
 
 ## 13. v0.4 targeted change notes
+
+- M2 Phase A records retrospective development, a prospective holdout after freeze, the sealed 2025 reserve and the shared history access checks. Exact research dates remain open.
 
 M1 tracker update (2026-11-18, Asia/Bangkok) records the M1 implementation and evidence awaiting independent review.
 

@@ -136,6 +136,19 @@ A replay plan contains `candidate_version`, `instrument_id` (e.g. `BTCUSDT@17040
 
 For `TRAIL`, `time` is the source bar's closing boundary and `available` may follow it. A delayed update is eligible at the first modeled open after its inputs are available, which with any positive candle lag is one full bar after the source close. Replay `m1-replay-v8` exposes `trigger_available_at` on each snapshot as UTC epoch milliseconds. Consume a snapshot only at or after that time. A null value means the snapshot is ineligible for trigger evaluation. An intrabar funding snapshot is eligible only once the bar and funding inputs establish that no stop or liquidation happened in that bar. Within the policy's 15 s funding ownership window, a settlement whose holder is ambiguous posts the most adverse candidate funding, flagged `OWNERSHIP_AMBIGUOUS` or `OWNERSHIP_ADJUSTMENT`; the replay does not fail for that ambiguity. A credit whose holder can still change is `CREDIT_WITHHELD` and released at bar end (`CREDIT_RELEASED`), so no snapshot uses later prices. A settlement already due at the replay horizon uses the same opening mark as a longer run. If that print is missing, its same-boundary close fallback carries the close's availability time.
 
+### M2 development data
+
+The [draft research protocol](evidence/m2/protocol.md) and [data audit](evidence/m2/data-audit.md) record the proposed research windows and the operator decisions needed for market data approval. The Phase A entry point serves approved development and validation and keeps holdout sealed.
+
+Generate and audit a synthetic manifest from the repository root.
+
+```text
+uv run --locked python tests/m2_fixture.py data/m2/fixture
+uv run --locked python -m acgs.m2_io --config data/m2/fixture/m2.json --manifest data/m2/fixture/manifest.json --assets data/m2/fixture/assets --purpose development coverage --policy config/m1.json --start 2000-01-01T00:00:00Z --end 2000-01-01T02:00:00Z
+```
+
+For approved market data, supply the approved config, manifest, asset root and purpose to `acgs.m2_io` with the `fetch` command, then run `coverage` on the approved UTC window. Fetch verifies the manifest, full archive dates, sizes and checksums. Draft config `m2-v3` requires `access.holdout` to cover the committed registry and an explicit `access.research_cutoff` to bound approval. The shipped `config/m2.json` leaves market approvals open. [Config and migration](evidence/m2/data-audit.md#candidate-pool-and-scoped-acquisition) · [Verification](evidence/m2/verification.md)
+
 ### Public forward capture
 
 Defaults are in [config/m0.toml](config/m0.toml). M0 supports `OFFLINE` only. A missing mode defaults to `OFFLINE`; an invalid or unsupported mode is refused at startup. Pass `--config` and `--db` before the subcommand when running the Python entry point.

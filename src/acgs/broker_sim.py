@@ -18,7 +18,7 @@ from acgs.eligibility import (
     stop_price,
     survives,
 )
-from acgs.funding import funding_complete
+from acgs.funding import funding_complete, ownership_boundary
 from acgs.pit import (
     ZERO,
     Candle,
@@ -155,8 +155,8 @@ class _Replay:
         self.boundary_funding: dict[int, Funding] = {}
         self.inside_funding: dict[int, list[Funding]] = {}
         for event in self.funding:
-            nearest = (event.time + plan.interval // 2) // plan.interval * plan.interval
-            if abs(event.time - nearest) <= self.window:
+            nearest = ownership_boundary(event.time, plan.interval, self.window)
+            if nearest is not None:
                 if nearest in self.boundary_funding:
                     raise ReplayError(f"Two settlements share the bar boundary {nearest}")
                 self.boundary_funding[nearest] = event
