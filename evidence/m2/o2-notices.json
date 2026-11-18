@@ -1,0 +1,570 @@
+{
+  "version": "m2-o2-notices-v1",
+  "cutoff_exclusive": "2025-01-01T00:00:00Z",
+  "source_inventory": "evidence/m2/o2-discovery.json",
+  "wayback_query_scope": "exact original URL, HTTP 200, capture timestamp at or before 20241231235959",
+  "access_counts": {
+    "web.archive.org": {
+      "cdx_http_requests": 5,
+      "tls_failed_before_http": 1,
+      "capture_http_requests": 0
+    },
+    "www.binance.com": {
+      "in_app_top_level_navigations": 5,
+      "subrequest_count": null
+    }
+  },
+  "notice_time_note": "The publication display timezone is not printed. PDF save instants use the PDFs' CreationDate converted to UTC. The browser and PDF displayed different dates or clock times for some notices.",
+  "notices": [
+    {
+      "original_url": "https://www.binance.com/en/support/announcement/detail/ce74360a3fd444b2b35da7186f8dd0ad",
+      "wayback_status": "NOT_ARCHIVED",
+      "cdx": {
+        "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fwww.binance.com%2Fen%2Fsupport%2Fannouncement%2Fdetail%2Fce74360a3fd444b2b35da7186f8dd0ad&matchType=exact&to=20241231235959&filter=statuscode%3A200&fl=timestamp%2Coriginal%2Cstatuscode&output=json",
+        "requested_at": null,
+        "observed_at": "2026-11-18T22:10:25Z",
+        "http_status": 200,
+        "curl_exit": 0,
+        "error": null
+      },
+      "wayback_capture": null,
+      "in_app_publication_display": "2024-03-25 11:40",
+      "operator_copy": {
+        "original_url": "https://www.binance.com/en/support/announcement/detail/ce74360a3fd444b2b35da7186f8dd0ad",
+        "provenance": "operator-saved browser copy",
+        "saved_at": "2026-11-18T22:18:25Z",
+        "published_display": "2024-03-25 04:40",
+        "sha256": "f05a073db426a71aaae94d96b5f5baa9dc531161db52f1568dae8adc67ddd9e4",
+        "size_bytes": 262273,
+        "raw_path": "data/o2-inventory/notices-operator/DGBUSDT-delisting-2024-03-25.pdf",
+        "facts": [
+          {
+            "symbol": "DGBUSDT",
+            "contract_type": "USD-M USDT perpetual",
+            "kind": "CLOSE_ONLY",
+            "effective_at": "2024-04-01T08:30:00Z",
+            "detail": "Opening new positions was prohibited from the specified time."
+          },
+          {
+            "symbol": "DGBUSDT",
+            "contract_type": "USD-M USDT perpetual",
+            "kind": "SCHEDULED_SETTLEMENT_AND_DELISTING",
+            "scheduled_settlement_at": "2024-04-01T09:00:00Z",
+            "detail": "Delisting follows settlement. The notice gives no separate completion instant."
+          },
+          {
+            "symbol": "DGBUSDT",
+            "contract_type": "USD-M USDT perpetual",
+            "kind": "TIER_UPDATE",
+            "effective_at": "2024-03-25T10:30:00Z",
+            "tiers_after": [
+              {
+                "cap_usdt": "5000",
+                "rate_fraction": "0.02",
+                "deduction_usdt": null,
+                "max_leverage": 11
+              },
+              {
+                "cap_usdt": "25000",
+                "rate_fraction": "0.025",
+                "deduction_usdt": null,
+                "max_leverage": 10
+              },
+              {
+                "cap_usdt": "100000",
+                "rate_fraction": "0.05",
+                "deduction_usdt": null,
+                "max_leverage": 8
+              },
+              {
+                "cap_usdt": "250000",
+                "rate_fraction": "0.1",
+                "deduction_usdt": null,
+                "max_leverage": 5
+              },
+              {
+                "cap_usdt": "1000000",
+                "rate_fraction": "0.125",
+                "deduction_usdt": null,
+                "max_leverage": 2
+              },
+              {
+                "cap_usdt": "1500000",
+                "rate_fraction": "0.5",
+                "deduction_usdt": null,
+                "max_leverage": 1
+              }
+            ],
+            "detail": "The update also applies to positions opened before it."
+          }
+        ],
+        "facts_status": "REVIEWED_TRANSCRIPTION"
+      }
+    },
+    {
+      "original_url": "https://www.binance.com/en/blog/all/421499824684900979",
+      "wayback_status": "NOT_ARCHIVED",
+      "cdx": {
+        "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fwww.binance.com%2Fen%2Fblog%2Fall%2F421499824684900979&matchType=exact&to=20241231235959&filter=statuscode%3A200&fl=timestamp%2Coriginal%2Cstatuscode&output=json",
+        "requested_at": "2026-11-18T22:11:02Z",
+        "observed_at": "2026-11-18T22:11:04Z",
+        "http_status": 200,
+        "curl_exit": 0,
+        "error": null
+      },
+      "wayback_capture": null,
+      "in_app_publication_display": "2020-09-14",
+      "operator_copy": {
+        "original_url": "https://www.binance.com/en/blog/all/421499824684900979",
+        "provenance": "operator-saved browser copy",
+        "saved_at": "2026-11-18T22:18:40Z",
+        "published_display": "2020-09-15",
+        "sha256": "9ed386ef131fe45b96678eb50ff00fa21bdb01a1212049acabddf224c7d5b642",
+        "size_bytes": 2694882,
+        "raw_path": "data/o2-inventory/notices-operator/BTCUSDT-launch-history.pdf",
+        "facts": [
+          {
+            "symbol": "BTCUSDT",
+            "contract_type": "USD-M USDT perpetual",
+            "kind": "RETROSPECTIVE_LAUNCH",
+            "launch_date": "2019-09-09",
+            "launch_time": null
+          }
+        ],
+        "facts_status": "REVIEWED_TRANSCRIPTION"
+      }
+    },
+    {
+      "original_url": "https://www.binance.com/en/blog/all/407077773202501632",
+      "wayback_status": "NOT_ARCHIVED",
+      "cdx": {
+        "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fwww.binance.com%2Fen%2Fblog%2Fall%2F407077773202501632&matchType=exact&to=20241231235959&filter=statuscode%3A200&fl=timestamp%2Coriginal%2Cstatuscode&output=json",
+        "requested_at": "2026-11-18T22:11:04Z",
+        "observed_at": "2026-11-18T22:11:05Z",
+        "http_status": 200,
+        "curl_exit": 0,
+        "error": null
+      },
+      "wayback_capture": null,
+      "in_app_publication_display": "2019-11-28",
+      "operator_copy": {
+        "original_url": "https://www.binance.com/en/blog/all/407077773202501632",
+        "provenance": "operator-saved browser copy",
+        "saved_at": "2026-11-18T22:18:52Z",
+        "published_display": "2019-11-29",
+        "sha256": "381c2b42722f36681015f4c3b1786b5f9bf47d6033ecd2fa7732de076eb0e624",
+        "size_bytes": 810788,
+        "raw_path": "data/o2-inventory/notices-operator/ETHUSDT-launch.pdf",
+        "facts": [
+          {
+            "symbol": "ETHUSDT",
+            "contract_type": "USD-M USDT perpetual",
+            "kind": "LAUNCH_ANNOUNCED",
+            "effective_at": null,
+            "max_leverage": 50,
+            "detail": "The article says trading begins on its publication day. Different dates are displayed by the browser and PDF, and no UTC opening instant is stated."
+          }
+        ],
+        "facts_status": "REVIEWED_TRANSCRIPTION"
+      }
+    },
+    {
+      "original_url": "https://www.binance.com/en/support/announcement/detail/d75c5ca94f704e96a6a4e55ffddfd65d",
+      "wayback_status": "NOT_ARCHIVED",
+      "cdx": {
+        "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fwww.binance.com%2Fen%2Fsupport%2Fannouncement%2Fdetail%2Fd75c5ca94f704e96a6a4e55ffddfd65d&matchType=exact&to=20241231235959&filter=statuscode%3A200&fl=timestamp%2Coriginal%2Cstatuscode&output=json",
+        "requested_at": "2026-11-18T22:11:05Z",
+        "observed_at": "2026-11-18T22:11:07Z",
+        "http_status": 200,
+        "curl_exit": 0,
+        "error": null
+      },
+      "wayback_capture": null,
+      "in_app_publication_display": "2024-01-02 13:50",
+      "operator_copy": {
+        "original_url": "https://www.binance.com/en/support/announcement/detail/d75c5ca94f704e96a6a4e55ffddfd65d",
+        "provenance": "operator-saved browser copy",
+        "saved_at": "2026-11-18T22:19:03Z",
+        "published_display": "2024-01-02 13:50",
+        "sha256": "bfd439bb996afb10d81abaa97f44b52fed702d223c24ca540909e6e121c85647",
+        "size_bytes": 536324,
+        "raw_path": "data/o2-inventory/notices-operator/BTCUSDT-ETHUSDT-tiers-announcement-2024-01-02.pdf",
+        "facts": [
+          {
+            "symbol": "BTCUSDT",
+            "contract_type": "USD-M USDT perpetual",
+            "kind": "TIER_UPDATE",
+            "effective_at": "2023-12-24T09:35:00Z",
+            "existing_positions_affected": false,
+            "tiers_after": [
+              {
+                "cap_usdt": "50000",
+                "rate_fraction": "0.004",
+                "deduction_usdt": null,
+                "max_leverage": 125
+              },
+              {
+                "cap_usdt": "500000",
+                "rate_fraction": "0.005",
+                "deduction_usdt": null,
+                "max_leverage": 100
+              },
+              {
+                "cap_usdt": "10000000",
+                "rate_fraction": "0.01",
+                "deduction_usdt": null,
+                "max_leverage": 50
+              },
+              {
+                "cap_usdt": "80000000",
+                "rate_fraction": "0.025",
+                "deduction_usdt": null,
+                "max_leverage": 20
+              },
+              {
+                "cap_usdt": "150000000",
+                "rate_fraction": "0.05",
+                "deduction_usdt": null,
+                "max_leverage": 10
+              },
+              {
+                "cap_usdt": "300000000",
+                "rate_fraction": "0.1",
+                "deduction_usdt": null,
+                "max_leverage": 5
+              },
+              {
+                "cap_usdt": "450000000",
+                "rate_fraction": "0.125",
+                "deduction_usdt": null,
+                "max_leverage": 4
+              },
+              {
+                "cap_usdt": "600000000",
+                "rate_fraction": "0.15",
+                "deduction_usdt": null,
+                "max_leverage": 3
+              },
+              {
+                "cap_usdt": "800000000",
+                "rate_fraction": "0.25",
+                "deduction_usdt": null,
+                "max_leverage": 2
+              },
+              {
+                "cap_usdt": "1000000000",
+                "rate_fraction": "0.5",
+                "deduction_usdt": null,
+                "max_leverage": 1
+              }
+            ]
+          },
+          {
+            "symbol": "ETHUSDT",
+            "contract_type": "USD-M USDT perpetual",
+            "kind": "TIER_UPDATE",
+            "effective_at": "2023-12-24T09:35:00Z",
+            "existing_positions_affected": false,
+            "tiers_after": [
+              {
+                "cap_usdt": "50000",
+                "rate_fraction": "0.004",
+                "deduction_usdt": null,
+                "max_leverage": 125
+              },
+              {
+                "cap_usdt": "500000",
+                "rate_fraction": "0.005",
+                "deduction_usdt": null,
+                "max_leverage": 100
+              },
+              {
+                "cap_usdt": "1000000",
+                "rate_fraction": "0.0065",
+                "deduction_usdt": null,
+                "max_leverage": 75
+              },
+              {
+                "cap_usdt": "5000000",
+                "rate_fraction": "0.01",
+                "deduction_usdt": null,
+                "max_leverage": 50
+              },
+              {
+                "cap_usdt": "50000000",
+                "rate_fraction": "0.02",
+                "deduction_usdt": null,
+                "max_leverage": 20
+              },
+              {
+                "cap_usdt": "100000000",
+                "rate_fraction": "0.05",
+                "deduction_usdt": null,
+                "max_leverage": 10
+              },
+              {
+                "cap_usdt": "150000000",
+                "rate_fraction": "0.1",
+                "deduction_usdt": null,
+                "max_leverage": 5
+              },
+              {
+                "cap_usdt": "300000000",
+                "rate_fraction": "0.125",
+                "deduction_usdt": null,
+                "max_leverage": 4
+              },
+              {
+                "cap_usdt": "400000000",
+                "rate_fraction": "0.15",
+                "deduction_usdt": null,
+                "max_leverage": 3
+              },
+              {
+                "cap_usdt": "500000000",
+                "rate_fraction": "0.25",
+                "deduction_usdt": null,
+                "max_leverage": 2
+              },
+              {
+                "cap_usdt": "800000000",
+                "rate_fraction": "0.5",
+                "deduction_usdt": null,
+                "max_leverage": 1
+              }
+            ]
+          }
+        ],
+        "facts_status": "REVIEWED_TRANSCRIPTION"
+      }
+    },
+    {
+      "original_url": "https://www.binance.com/en/support/announcement/detail/aa735cd2d8bd4e7bb092179cf086e486",
+      "wayback_status": "NOT_ARCHIVED",
+      "cdx": {
+        "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fwww.binance.com%2Fen%2Fsupport%2Fannouncement%2Fdetail%2Faa735cd2d8bd4e7bb092179cf086e486&matchType=exact&to=20241231235959&filter=statuscode%3A200&fl=timestamp%2Coriginal%2Cstatuscode&output=json",
+        "requested_at": "2026-11-18T22:11:07Z",
+        "observed_at": "2026-11-18T22:11:09Z",
+        "http_status": 200,
+        "curl_exit": 0,
+        "error": null
+      },
+      "wayback_capture": null,
+      "in_app_publication_display": "2024-05-27 06:00",
+      "operator_copy": {
+        "original_url": "https://www.binance.com/en/support/announcement/detail/aa735cd2d8bd4e7bb092179cf086e486",
+        "provenance": "operator-saved browser copy",
+        "saved_at": "2026-11-18T22:19:14Z",
+        "published_display": "2024-05-27 06:00",
+        "sha256": "2636592849c44a794990a70428d217a1c4a60f1c4a00a0ab3a430f8cec753554",
+        "size_bytes": 358596,
+        "raw_path": "data/o2-inventory/notices-operator/BTCUSDT-ETHUSDT-tiers-effective-2024-05-28.pdf",
+        "facts": [
+          {
+            "symbol": "BTCUSDT",
+            "contract_type": "USD-M USDT perpetual",
+            "kind": "TIER_UPDATE",
+            "effective_at": "2024-05-28T10:30:00Z",
+            "existing_positions_affected": false,
+            "tiers_after": [
+              {
+                "cap_usdt": "50000",
+                "rate_fraction": "0.004",
+                "deduction_usdt": null,
+                "max_leverage": 125
+              },
+              {
+                "cap_usdt": "600000",
+                "rate_fraction": "0.005",
+                "deduction_usdt": null,
+                "max_leverage": 100
+              },
+              {
+                "cap_usdt": "3000000",
+                "rate_fraction": "0.0065",
+                "deduction_usdt": null,
+                "max_leverage": 75
+              },
+              {
+                "cap_usdt": "12000000",
+                "rate_fraction": "0.01",
+                "deduction_usdt": null,
+                "max_leverage": 50
+              },
+              {
+                "cap_usdt": "70000000",
+                "rate_fraction": "0.02",
+                "deduction_usdt": null,
+                "max_leverage": 25
+              },
+              {
+                "cap_usdt": "100000000",
+                "rate_fraction": "0.025",
+                "deduction_usdt": null,
+                "max_leverage": 20
+              },
+              {
+                "cap_usdt": "230000000",
+                "rate_fraction": "0.05",
+                "deduction_usdt": null,
+                "max_leverage": 10
+              },
+              {
+                "cap_usdt": "480000000",
+                "rate_fraction": "0.1",
+                "deduction_usdt": null,
+                "max_leverage": 5
+              },
+              {
+                "cap_usdt": "600000000",
+                "rate_fraction": "0.125",
+                "deduction_usdt": null,
+                "max_leverage": 4
+              },
+              {
+                "cap_usdt": "800000000",
+                "rate_fraction": "0.15",
+                "deduction_usdt": null,
+                "max_leverage": 3
+              },
+              {
+                "cap_usdt": "1200000000",
+                "rate_fraction": "0.25",
+                "deduction_usdt": null,
+                "max_leverage": 2
+              },
+              {
+                "cap_usdt": "1800000000",
+                "rate_fraction": "0.5",
+                "deduction_usdt": null,
+                "max_leverage": 1
+              }
+            ],
+            "approximate_update_duration_minutes": 30
+          },
+          {
+            "symbol": "ETHUSDT",
+            "contract_type": "USD-M USDT perpetual",
+            "kind": "TIER_UPDATE",
+            "effective_at": "2024-05-28T10:30:00Z",
+            "existing_positions_affected": false,
+            "tiers_after": [
+              {
+                "cap_usdt": "50000",
+                "rate_fraction": "0.004",
+                "deduction_usdt": null,
+                "max_leverage": 125
+              },
+              {
+                "cap_usdt": "600000",
+                "rate_fraction": "0.005",
+                "deduction_usdt": null,
+                "max_leverage": 100
+              },
+              {
+                "cap_usdt": "3000000",
+                "rate_fraction": "0.0065",
+                "deduction_usdt": null,
+                "max_leverage": 75
+              },
+              {
+                "cap_usdt": "12000000",
+                "rate_fraction": "0.01",
+                "deduction_usdt": null,
+                "max_leverage": 50
+              },
+              {
+                "cap_usdt": "50000000",
+                "rate_fraction": "0.02",
+                "deduction_usdt": null,
+                "max_leverage": 25
+              },
+              {
+                "cap_usdt": "65000000",
+                "rate_fraction": "0.025",
+                "deduction_usdt": null,
+                "max_leverage": 20
+              },
+              {
+                "cap_usdt": "150000000",
+                "rate_fraction": "0.05",
+                "deduction_usdt": null,
+                "max_leverage": 10
+              },
+              {
+                "cap_usdt": "320000000",
+                "rate_fraction": "0.1",
+                "deduction_usdt": null,
+                "max_leverage": 5
+              },
+              {
+                "cap_usdt": "400000000",
+                "rate_fraction": "0.125",
+                "deduction_usdt": null,
+                "max_leverage": 4
+              },
+              {
+                "cap_usdt": "530000000",
+                "rate_fraction": "0.15",
+                "deduction_usdt": null,
+                "max_leverage": 3
+              },
+              {
+                "cap_usdt": "800000000",
+                "rate_fraction": "0.25",
+                "deduction_usdt": null,
+                "max_leverage": 2
+              },
+              {
+                "cap_usdt": "1200000000",
+                "rate_fraction": "0.5",
+                "deduction_usdt": null,
+                "max_leverage": 1
+              }
+            ],
+            "approximate_update_duration_minutes": 30
+          }
+        ],
+        "facts_status": "REVIEWED_TRANSCRIPTION"
+      }
+    }
+  ],
+  "dgbusdt_m1_cross_check": {
+    "m1_reference": "evidence/m1/binance-2024.json",
+    "wayback_comparison": "NO_CAPTURE",
+    "operator_copy_comparison": {
+      "publication": {
+        "m1": "2024-03-25T04:40:00Z",
+        "printed": "2024-03-25 04:40",
+        "status": "DISPLAY_MATCH_TIMEZONE_UNSTATED"
+      },
+      "close_only": {
+        "m1": "2024-04-01T08:30:00Z",
+        "observed": "2024-04-01T08:30:00Z",
+        "status": "MATCH"
+      },
+      "delisting": {
+        "m1": "2024-04-01T09:00:00Z",
+        "scheduled_settlement": "2024-04-01T09:00:00Z",
+        "status": "SETTLEMENT_BOUNDARY_MATCH",
+        "limitation": "The notice states delisting follows settlement and gives no separate completion time."
+      },
+      "tier_effective": {
+        "m1": "2024-03-25T10:30:00Z",
+        "observed": "2024-03-25T10:30:00Z",
+        "status": "MATCH"
+      },
+      "lowest_post_update_tier": {
+        "cap_usdt": "5000",
+        "rate_fraction": "0.02",
+        "max_leverage": 11,
+        "status": "MATCH"
+      },
+      "lowest_tier_deduction": {
+        "m1": "0",
+        "observed": null,
+        "status": "NOT_PUBLISHED_IN_COPY"
+      }
+    }
+  }
+}

@@ -11,4 +11,5 @@
 data
 evidence/**
 !evidence/m1/fetch.py
+!evidence/m2/ingest_notices.py
 *.sqlite3*

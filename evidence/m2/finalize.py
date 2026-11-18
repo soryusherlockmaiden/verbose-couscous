@@ -188,6 +188,7 @@ report = {
     "requests": requests,
     "indexed_discovery_query_count": sum(len(batch) for batch in discovery_log["query_batches"]),
     "indexed_discovery_record": DISCOVERY.relative_to(Path.cwd()).as_posix(),
+    "notice_evidence": "evidence/m2/o2-notices.json",
     "m1_cross_check": {
         "manifest": M1_PATH.as_posix(), "manifest_file_sha256": hashlib.sha256(M1_PATH.read_bytes()).hexdigest(),
         "pinned_assets": len(m1["assets"]), "corresponding_rows": sum(m1_checks.values()),
