@@ -668,10 +668,10 @@ def test_t01_t20_t23_runtime_clock_report_and_config_identity(
         return sim, report
 
     result = run_decisions()
-    assert digest(asdict(result[0])) == "42f111a8cd8e17ecdc56f8dbf4004244cc53e31a24f8ec42b6420bc9f56f5102"
+    assert digest(asdict(result[0])) == "c68da53cc3c03f926d7954cb094c3cf50400d59662ea2ac168c1f6dce34bdf30"
     # The released policy prices the entry at the settlement instant conservatively.
     released = replay(sim_market, "fixture", _policy(SETTINGS), clock(T + 2 * HOUR), run_plan)
-    assert digest(asdict(released)) == "187d3bac1496928cb0bf842983c5287caa1d0eae4f7aade4067462f9a1f13d8f"
+    assert digest(asdict(released)) == "18f604db79aef28f38a2d544316dfd6a9270c2d592e92dd6359651416805f776"
     assert [e.detail for e in released.events if e.kind == "FUNDING"] == [
         f"OWNERSHIP_ADJUSTMENT,SETTLED_AT={T}"
     ]
@@ -1144,3 +1144,32 @@ def test_t21_t23_proxy_mark_without_reconstruction_is_never_executable(dataset: 
     assert all("RECONSTRUCTION_DISALLOWED" in d["assessment_reasons"] for d in rows)
     assert all(row["executable"] == row["assessable"] == 0 for row in report["scenarios"].values())
     assert report["status"] == "INCONCLUSIVE_CRITICAL_INPUT_UNAVAILABLE"
+
+
+@pytest.mark.parametrize("low", ["99", "90"])
+@pytest.mark.parametrize("short_bar", [False, True])
+def test_t21_intrabar_settlement_valuation_waits_for_its_bar(dataset: Dataset, low: str, short_bar: bool) -> None:
+    # Whether the position was still open at the settlement is known only from the
+    # bar's full OHLC, with or without a stop. A 1 h bar has such a settlement when
+    # the record lies outside the 15 s boundary window.
+    if short_bar:
+        policy = shipped(funding_jitter_ms=30_000)
+        settled = funding(T + HOUR + 20_000, "0.0001", hours=1)
+        following: tuple[Funding, ...] = (funding(T + 2 * HOUR + 20_000, "0.0001", hours=1),)
+    else:
+        policy = shipped()
+        settled = replace(funding(T + HOUR + 30 * 60_000, "0.0001", hours=None), interval_ms=90 * 60_000)
+        following = ()
+    settled = replace(settled, mark=D(104))
+    path = prices("100", "105", low, "100")
+    data = replace(change_bar(change_bar(dataset, 1, path), 1, path, mark=True),
+                   settlements=(*dataset.settlements[:4], settled, *following))
+    data = lagged(data)
+    run = replay(Market(data), "fixture", policy, clock(T + 3 * HOUR),
+                 plan(enter(T + HOUR, distance="4", qty="0.5"), enter(T + 2 * HOUR, distance="4", qty="0.5")))
+    posted = next(e for e in run.events if e.kind == "FUNDING")
+    snap = next(s for s in run.snapshots if s.sequence == posted.sequence)
+    assert posted.time == settled.time and snap.position.quantity
+    assert snap.trigger_available_at == T + 2 * HOUR + 1000
+    # The debit is certain whatever the order, so it never blocks the next entry.
+    assert not any(e.detail == "FUNDING_CASH_UNAVAILABLE" for e in run.events)
