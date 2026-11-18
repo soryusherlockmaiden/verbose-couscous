@@ -177,6 +177,7 @@ M1 must implement and test the **simulation accounting contract** before M1 is a
 
 - **M1 owns how events are processed (SC-02):** fill model and fill prices, gap handling, intrabar stop-trigger evaluation and the conservative ambiguity rule, entry and stop in the same bar, funding posting, liquidation versus stop, tied-timestamp priority, and snapshot emission.
 - **M2 owns what the strategy emits and when (SC-04):** decision timestamp, order type and submission bar (e.g., next-bar open), indicator indexing and warm-up, stop-level computation within the bar-close trailing rule (§6), universe-exit handling, and the trigger/halt evaluation cadence (§7.3.1).
+- **Delayed trailing (M2 must account for it):** a trailing update takes effect at the first modeled open at or after its source close and intent are available (SC-02, §13.1). With any positive candle availability lag, that is one full bar after the source close, and the old stop governs the bar in between. Live replacement takes about a second. SC-04 must declare how the strategy's ATR exit relies on this rule, and M2 must report sensitivity, for example against a zero-lag manifest, before the holdout.
 - M1 rules are frozen at M1 acceptance and are **not** changed in response to M2 research results. A necessary change is a new, versioned M1 release made before the M2 holdout; all affected results are rerun and the change is reported.
 
 ## 5. Point-in-time universe and execution feasibility
@@ -555,7 +556,7 @@ Emit an event-numbered wallet/equity snapshot after each fill, funding posting o
 ### v0.5 targeted change notes
 
 - Recorded M1 technical resolutions for SC-01, SC-02 and SC-12 with versioned OFFLINE assumptions and regression evidence.
-- Independent review addressed liquidation clearance, effective listing boundaries, stop filters and feasibility assessment. Follow-up versioned replay availability and trailing, settlement mark evidence and funding ownership, and empty feasibility windows. [Review and verification](evidence/m1/verification.md).
+- Independent review addressed liquidation clearance, effective listing boundaries, stop filters and feasibility assessment. Follow-up versioned replay availability and trailing, settlement mark evidence and empty feasibility windows. Policy `m1-v3` replaces the failing funding ownership guard with a boundary settlement window and an adverse-candidate posting rule. Feasibility schema v4 separates provenance from assessability, and the delayed-trailing rule is noted for M2 (§4.5.1). [Review and verification](evidence/m1/verification.md).
 
 ## 14. Change control and release policy
 

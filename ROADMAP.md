@@ -98,6 +98,7 @@ Verify all applicable items at the start of M5, including re-verification of ite
 **Scope**
 - Volatility Breakout baseline **without pyramiding**: candidate 15m/1h, ADX(14), prior Donchian(20), EMA(200), prior-volume filter, ATR-based exit. Run as a **versioned OFFLINE research candidate**; promotion approval is not required to investigate it.
 - Freeze precise signal timing, indexing, warm-up, stop-level computation and the trigger/halt evaluation cadence in SPEC (SC-04). Simulator fill/stop/funding processing is fixed by M1 (SPEC §4.5.1) and not redefined here.
+- Account for the M1 delayed-trailing rule. With a positive candle lag, a trailing update takes effect one full bar after its source close. Declare the reliance in SC-04 and report sensitivity before the holdout (SPEC §4.5.1). Funding near a bar boundary is priced at the adverse candidate holder (SC-02); report its cost effect.
 - Evaluate Major + Dynamic Top Movers universe against no-trade, seeded random-entry and filter-ablation baselines with calendar-block resampling (SPEC §11); isolate incremental value of ranking and filters.
 - Chronological development/validation, walk-forward, untouched holdout.
 - Cost-aware 50 USDT execution feasibility, regime sensitivity, tail-risk and parameter robustness.
@@ -224,7 +225,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 | Milestone | Status | Owner | Evidence | Decision |
 |---|---|---|---|---|
 | M0 | PASS | Operator | [M0 verification](evidence/m0/verification.md) | **Accepted by the operator on 2026-11-17 (UTC)** at code commit `e16d08f`: all ROADMAP §3 checks passed ([hosted CI](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44191231342)), including Windows live capture (five `CAPTURED`/`VERIFIED` responses). Merged to `main` through PR #2. |
-| M1 | IN REVIEW | Codex | [M1 verification](evidence/m1/verification.md) · [50 USDT report](evidence/m1/feasibility.md) | Follow-up fixes cover R1, R2 and empty feasibility windows. Claude recheck, fresh Codex review and operator acceptance pending. |
+| M1 | IN REVIEW | Codex | [M1 verification](evidence/m1/verification.md) · [50 USDT report](evidence/m1/feasibility.md) | R1, R2 and the follow-up review findings are addressed. The operator chose adverse-candidate funding ownership. Fresh Codex review and operator acceptance pending. |
 | M2 | NOT STARTED | TBD | — | Pending |
 | M3 | NOT STARTED | TBD | — | Pending |
 | M4 | NOT STARTED | TBD | — | Pending |
