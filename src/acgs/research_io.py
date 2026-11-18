@@ -115,6 +115,8 @@ def run_research(args: Namespace) -> int:
                 "spread_observations": len(market.spreads.get(inst, ())),
             }
         result = {"dataset_digest": loaded.digest, "coverage": history}
+        if args.capture_db is not None:
+            result["capture_exclusions"] = loaded.capture_exclusions
     else:
         policy = _policy(args.policy)
         start = _parse_time(args.start)
