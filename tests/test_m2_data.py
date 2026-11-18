@@ -384,7 +384,7 @@ def test_t15_settlement_query_cannot_hide_a_sealed_tail(paths):
     (RESERVE_END, RESERVE_END + DAY),
     (HOLDOUT_START, RESERVE_END - 1),
 ])
-def test_t15_m2_config_cannot_move_or_truncate_the_registered_reserve(paths, capsys, start, end):
+def test_t15_m2_config_cannot_unseal_the_registered_reserve(paths, capsys, start, end):
     config_path, manifest_path, root = paths
     config, manifest = map(read_json, paths[:2])
     config["access"]["holdout"] = {"start": start, "end": end}
@@ -396,11 +396,88 @@ def test_t15_m2_config_cannot_move_or_truncate_the_registered_reserve(paths, cap
     manifest["ingested_at"] = RESERVE_END
     pin(paths, config, manifest)
     with forbid_io(root):
-        with pytest.raises(AccessRefused, match="must cover every registered sealed range"):
+        with pytest.raises(AccessRefused, match="overlaps a registered sealed range"):
             load_research_inputs(config_path, manifest_path, root, "development", Window(START, END))
         for command in ("fetch", "coverage"):
             assert cli(paths, "development", command) == 1
-            assert "must cover every registered sealed range" in capsys.readouterr().err
+            assert "overlaps a registered sealed range" in capsys.readouterr().err
+
+
+def _seal_record(tmp_path, monkeypatch, *ranges):
+    record = tmp_path / "seal.json"
+    write_json(record, {"version": "history-seal-v1", "ranges": [
+        {"start": start, "end": end} for start, end in ranges
+    ]})
+    monkeypatch.setattr("acgs.history_seal.RECORD_PATH", record)
+
+
+def test_t15_m2_approves_data_between_a_registered_range_and_the_holdout(paths, tmp_path, monkeypatch):
+    # A reserve registered before the approved data, as 2025 precedes 2026 forward evidence.
+    config_path, manifest_path, root = paths
+    config = read_json(config_path)
+    onboard = config["access"]["approvals"]["development"]["data_window"]["start"]
+    reserve = (onboard - 3 * DAY, onboard - DAY)
+    _seal_record(tmp_path, monkeypatch, reserve)
+    loaded = load_research_inputs(config_path, manifest_path, root, "development", Window(START, END))
+    assert loaded.market.bars
+    assert cli(paths, "development", "fetch") == 0
+
+    config["access"]["approvals"]["development"]["data_window"]["start"] = reserve[1] - 1
+    write_json(config_path, config)
+    with forbid_io(root), pytest.raises(AccessRefused, match="Approved data window overlaps"):
+        load_research_inputs(config_path, manifest_path, root, "development", Window(START, END))
+
+
+@pytest.mark.parametrize("field", ["listing_effective", "schedule_span", "mark_gap_span", "schedule_next"])
+def test_t15_later_evidence_cannot_describe_a_sealed_period(paths, capsys, field):
+    _, manifest_path, root = paths
+    manifest = read_json(manifest_path)
+    manifest["version"] = "m1-history-v1"
+    manifest.pop("m2_purpose")
+    epoch = manifest["listings"][0]["id"]
+    later = {"source": "synthetic:backfill", "method": "test", "provenance": "VERIFIED",
+             "as_of": RESERVE_END + DAY}
+    if field == "listing_effective":
+        manifest["listings"].append(manifest["listings"][0] | {
+            "status": "DELISTED", "effective": RESERVE_START + 30 * DAY, "evidence": later})
+    elif field == "schedule_span":
+        manifest["schedules"] = [{"id": epoch, "effective": RESERVE_START - DAY,
+                                  "until": RESERVE_START + DAY, "interval_ms": 8 * HOUR,
+                                  "evidence": later}]
+    elif field == "schedule_next":
+        manifest["schedules"] = [{"id": epoch, "effective": RESERVE_START - DAY,
+                                  "next_time": RESERVE_START, "evidence": later}]
+    else:
+        manifest["mark_gaps"] = [{"id": epoch, "start": RESERVE_START - HOUR,
+                                  "end": RESERVE_START + HOUR, "evidence": later}]
+    write_json(manifest_path, manifest)
+    with forbid_io(root):
+        with pytest.raises(AccessRefused, match="sealed range"):
+            load_history(manifest_path, root)
+        assert m1_main(["historical", "--manifest", str(manifest_path), "--assets", str(root)]) == 1
+        assert "sealed range" in capsys.readouterr().err
+
+
+def test_t15_sealed_onboard_identity_stays_admissible(paths):
+    # An epoch listed inside a sealed range can trade later. Its onboard instant is an
+    # identity anchor, while its inline status evidence starts after the range.
+    _, manifest_path, root = paths
+    manifest = read_json(manifest_path)
+    manifest["version"] = "m1-history-v1"
+    manifest.pop("m2_purpose")
+    onboard = RESERVE_START + 100 * DAY
+    epoch = f"LATEUSDT@{onboard}"
+    manifest["instruments"].append({"symbol": "LATEUSDT", "onboard": onboard})
+    manifest["listings"].append({
+        "id": epoch, "effective": RESERVE_END, "status": "TRADING", "quote": "USDT",
+        "contract": "PERPETUAL", "excluded_product": False,
+        "evidence": {"source": "synthetic:anchor", "method": "first_observed",
+                     "provenance": "RECONSTRUCTED", "as_of": RESERVE_END + DAY,
+                     "limitation": "First post-seal observation"},
+    })
+    write_json(manifest_path, manifest)
+    listings = load_history(manifest_path, root).market.listings
+    assert any(inst.id == epoch for inst in listings)
 
 
 def test_t15_frozen_label_cannot_authorize_development(paths, capsys):

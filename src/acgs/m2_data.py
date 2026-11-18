@@ -18,7 +18,7 @@ from acgs.history_io import (
     read_json,
 )
 from acgs.history_seal import ARCHIVE_HOST as ARCHIVE_HOST
-from acgs.history_seal import CANDLES, registered_seal
+from acgs.history_seal import CANDLES, METADATA, registered_seal
 from acgs.history_seal import AccessRefused as AccessRefused
 from acgs.history_seal import Window as Window
 from acgs.history_seal import utc_ms as utc_ms
@@ -36,7 +36,6 @@ TIER_ANNOUNCEMENT = re.compile(
     r"https://(?:www\.)?binance\.com/(?:[a-z]{2}(?:-[A-Z]{2})?/)?"
     r"support/announcement/(?:detail/)?[A-Za-z0-9-]+"
 )
-METADATA = ("listings", "filters", "maintenance", "spreads", "schedules", "mark_gaps")
 
 
 def _dependencies(request: Window, approval: dict[str, Any]) -> dict[str, Window]:
@@ -113,11 +112,13 @@ def _approve(
     if access["holdout"] is None or approval is None:
         raise AccessRefused("Holdout boundary or dataset approval is OPEN")
     holdout = Window.parse(access["holdout"])
-    if not all(holdout.contains(registered) for registered in seal.ranges):
-        raise AccessRefused("Configured holdout must cover every registered sealed range")
     safe = Window.parse(approval["data_window"])
     decisions = Window.parse(approval["decision_window"])
     request = decisions if request is None else request
+    # The registry is the sealing authority; the configured holdout only adds an
+    # ordering guard. Approved data may fall between registered ranges, e.g. a
+    # reserve and a later prospective holdout, but never inside one.
+    seal.require_unsealed(safe, "Approved data window")
     if safe.end > holdout.start:
         raise AccessRefused("Approved data window crosses the holdout seal")
     if request.end > holdout.start:

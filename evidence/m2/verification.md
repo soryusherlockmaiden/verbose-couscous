@@ -184,3 +184,14 @@ gh pr checks 5 --watch --interval 10
 ```
 
 Phase A is reviewable with synthetic evidence. The public hash reruns, exact windows, separate coverage checks and approved market manifests remain pending. SC-03 through SC-05 remain draft and P3-2/P3-3 are due before Phase C.
+
+## Second review follow-up on `cae4dbf`
+
+Independent review found two P3 gaps. Both are fixed with regressions that fail on `cae4dbf`.
+
+| Gap | Fix | Tests |
+|---|---|---|
+| Inline metadata observed after a sealed range could still describe that range, for example a delisting effective in 2025 recorded in 2026. | `HistorySeal.check_manifest` refuses inline metadata whose `effective` or `next_time` falls in a registered range, or whose `start`/`end` or `effective`/`until` span overlaps one. Onboard instants remain identity anchors. | `test_t15_later_evidence_cannot_describe_a_sealed_period` (4 cases, loader and `historical` CLI); `test_t15_sealed_onboard_identity_stays_admissible` |
+| M2 refused any data window after the start of the holdout envelope, so evidence between the 2025 reserve and a later prospective holdout could never be approved. | M2 checks the approved data window against every registered range and keeps the configured holdout as an ordering guard. A config still cannot unseal a registered range. | `test_t15_m2_approves_data_between_a_registered_range_and_the_holdout`; `test_t15_m2_config_cannot_unseal_the_registered_reserve` |
+
+Linux, uv 0.13.7: Ruff passed, mypy passed (26 source files), pytest passed **228** tests. Canonical M1 manifests, policy, raw fixtures and the M1 engine modules are unchanged. The seal preflight passed for the three M1 manifests. The synthetic fixture manifest and coverage hashes are unchanged from the first follow-up. The public M1 hash reruns remain pending operator authorization to re-fetch the pinned 2024 archives.

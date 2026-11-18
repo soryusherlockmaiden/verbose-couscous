@@ -15,6 +15,11 @@ RECORD_PATH = Path(__file__).with_name("history_seal.json")
 VERSION = "history-seal-v1"
 ARCHIVE_HOST = "https://data.binance.vision"
 CANDLES = ("klines", "markPriceKlines")
+METADATA = ("listings", "filters", "maintenance", "spreads", "schedules", "mark_gaps")
+# Instrument onboard instants are identity anchors and stay admissible. Event
+# times and spans in inline metadata describe market state and are sealed.
+EVENT_TIMES = ("effective", "next_time")
+EVENT_SPANS = (("start", "end"), ("effective", "until"))
 ARCHIVE = re.compile(
     r"https://data\.binance\.vision/data/futures/um/(?P<period>monthly|daily)/"
     r"(?P<kind>klines|markPriceKlines|fundingRate)/(?P<symbol>[A-Z0-9]+)/"
@@ -112,9 +117,19 @@ class HistorySeal:
     def check_manifest(self, manifest: Mapping[str, Any]) -> None:
         for entry in manifest["assets"]:
             self.check_asset(entry)
-        for field in ("listings", "filters", "maintenance", "spreads", "schedules", "mark_gaps"):
-            if any(self.seals_time(utc_ms(row["evidence"]["as_of"])) for row in manifest.get(field, [])):
-                raise AccessRefused(f"{field} observations include a registered sealed range")
+        for field in METADATA:
+            for row in manifest.get(field, []):
+                if self.seals_time(utc_ms(row["evidence"]["as_of"])):
+                    raise AccessRefused(f"{field} observations include a registered sealed range")
+                # A later observation can still describe the sealed period, e.g. a
+                # backfilled status change or a gap. Seal the described event time too.
+                if any(self.seals_time(utc_ms(row[key])) for key in EVENT_TIMES if key in row):
+                    raise AccessRefused(f"{field} evidence describes a registered sealed range")
+                for start, end in EVENT_SPANS:
+                    if start in row and end in row:
+                        self.require_unsealed(
+                            Window(utc_ms(row[start]), utc_ms(row[end])), f"{field} evidence span",
+                        )
         if "capture" in manifest:
             cutoff = utc_ms(manifest["capture"]["cutoff"])
             self.require_unsealed(Window(cutoff, cutoff + 1), "Capture cutoff")
