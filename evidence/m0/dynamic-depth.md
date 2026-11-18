@@ -6,7 +6,7 @@
 
 Binance's USD-M exchange information documentation shows a 2,400 request-weight limit per IP per minute and identifies its endpoint as weight 1. The published depth weight at limit 5 is 2, and the mark-price endpoint is weight 10 without a symbol. Funding information has weight 0 and a separate shared limit of 500 calls per five minutes per IP with funding-rate history. We conservatively charge funding information one local unit and keep its daily cadence. The collector reserves every attempted request against 1,200 weight in any rolling minute, including retries and requests interrupted before a response. This is the collector's budget on an IP, with a single collector advised. [Exchange information and limit](https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Exchange-Information) · [General rate-limit rules](https://developers.binance.com/docs/derivatives/usds-margined-futures/general-info) · [Depth](https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Order-Book) · [Mark price](https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Mark-Price) · [Funding information](https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Get-Funding-Rate-Info)
 
-At five-minute intervals there are 288 samples per day per symbol. The recorded five-level depth payload is 563 bytes raw and 177 zlib-compressed. This gives 48.6–64.9 MB raw or 15.3–20.4 MB compressed per day for scenarios of 300–400 symbols, excluding configured extras, SQLite overhead and other endpoints. The actual current symbol count and payload sizes could not be measured from this host.
+At five-minute intervals there are 288 samples per day per symbol. The recorded five-level depth payload is 563 bytes raw and 177 zlib-compressed. This gives 48.6–64.9 MB raw or 15.3–20.4 MB compressed depth per day for 300–400 symbols. [SQLite growth estimate](#sqlite-growth-estimate) includes the other endpoints, slot journal and indexes. The actual current symbol count and payload sizes could not be measured from this host.
 
 ## Acceptance evidence
 
@@ -48,3 +48,34 @@ capture_dir=$(mktemp -d /tmp/acgs-live-depth.XXXXXX)
 At `ea3c509`, a synthetic exchange snapshot captured inside a registered prospective holdout reduced the next slot to the configured symbols. M0 now uses that snapshot only for acquisition in a slot wholly inside the same prospective range. The retrospective reserve remains sealed even when the fixture also registers that period as a prospective holdout. The restriction is checked before selecting the snapshot BLOB. A holdout-derived depth response arriving at or after slot end records a missed sample without a payload.
 
 The recorder's slot plans, targets and coverage are sealed operational metadata for any slot or source snapshot touching a registered range. Keep those journal rows outside research inputs. A query-traced regression verifies that the shared history loader skips prospective payloads and leaves the journal alone. T-15 research entry points use the same receipt and asset checks as before. No market request was needed to reproduce the issue or verify the follow-up. [P2 review](https://github.com/soryusherlockmaiden/verbose-couscous/pull/6#discussion_r4613749166)
+
+The prospective tests reproduced the fallback on the old code. The focused follow-up passed 9 cases, and the full suite passed 264. The explicit capture, M2 data and import-contract run passed 132 cases. Both pairs of smoke digests matched the original records above. Ruff, mypy and Compose config passed. The local Docker socket denied the build again. [PR checks](https://github.com/soryusherlockmaiden/verbose-couscous/pull/6/checks)
+
+```sh
+.venv/bin/python -m pytest -q tests/test_capture.py -k 'prospective or dynamic_fallback'
+uv sync --locked
+uv run --locked ruff check .
+uv run --locked mypy
+uv run --locked pytest -q
+uv run --locked pytest -q tests/test_capture.py tests/test_m2_data.py tests/test_import_contracts.py
+smoke_dir=$(mktemp -d /tmp/acgs-review6-smoke.XXXXXX)
+for run in 1 2; do
+  .venv/bin/python -m acgs --db "$smoke_dir/dynamic.sqlite3" --config config/m0.toml smoke
+  .venv/bin/python -m acgs --db "$smoke_dir/legacy.sqlite3" smoke
+done
+git diff --exit-code ea3c509 -- PRD.md evidence/m1 tests/fixtures src/acgs/history_seal.json src/acgs/history_io.py src/acgs/m2_data.py config/m0.toml
+git diff --check
+docker compose config --quiet
+docker compose build acgs
+```
+
+## SQLite growth estimate
+
+Two new schema-3 databases were populated with one simulated UTC day each. For every slot, the experiment inserted the recorded depth fixture for each symbol, one compressed all-symbol `premiumIndex` sample, and one slot journal row containing the expected and target lists. It also inserted one `exchangeInfo` and one `fundingInfo` snapshot per day. Symbol names and timestamps were synthesized. Five price and rate fields in the premium snapshot used generated decimal strings with seed 2026. The ledger retained the standard checksums, ISO timestamps and indexes, including `capture_depth_slot`. File bytes were measured after commit and close.
+
+| Symbols | Capture rows | Compressed payload bytes | Of which `premiumIndex` bytes | SQLite bytes |
+|---|---:|---:|---:|---:|
+| 300 | 86,690 | 18,806,563 | 3,509,988 | 86,609,920 |
+| 400 | 115,490 | 25,045,069 | 4,649,949 | 115,503,104 |
+
+That is about 87–116 MB/day or 32–42 GB/year. The operating estimate from the original README was about 150 KB raw per live all-symbol premium snapshot. Live compression ratios, symbol counts, retries, journal files, backups and filesystem use can change deployment growth. Measure database growth and free disk during the first days on the host. [P3 review](https://github.com/soryusherlockmaiden/verbose-couscous/pull/6#discussion_r4613750751)

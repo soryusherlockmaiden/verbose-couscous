@@ -182,7 +182,7 @@ HTTP 403/451 latches capture: no further request is sent until the operator has 
 
 The Compose `capture` service uses `restart: unless-stopped`. It starts again after a reboot or a Docker restart once Docker is running, unless you stopped it with `docker compose --profile capture stop capture`. Because a latched service pauses instead of exiting, the restart policy never loops on HTTP 403/451. Rate-limit responses defer further requests. A one-shot `capture` exits 0 only when everything due was captured.
 
-At five-minute intervals, the recorded depth fixture estimates about 15–20 MB/day of compressed depth payload for 300–400 symbols, before SQLite overhead and metadata snapshots. The five-level fixture compresses from 563 to 177 bytes per sample. Market depth payload sizes, actual symbol count and database growth depend on the deployment. Capture uses public market-data GET requests without credentials.
+At five-minute intervals and 300–400 symbols, a one-day fixture load produced about **87–116 MB** of SQLite data, equivalent to about **32–42 GB/year** at that rate. The estimate includes compressed depth, daily metadata, all-symbol `premiumIndex`, the slot journal and SQLite indexes. The depth payload alone was about 15–20 MB/day. The previous M0 estimate for each all-symbol `premiumIndex` snapshot was about 150 KB before compression. Count retries, transaction journals and backups separately. Measure actual database growth during the first days of deployment and monitor free disk, especially on the 60 GB SSD. Capture uses public market-data GET requests without credentials. [Fixture measurements](evidence/m0/dynamic-depth.md#sqlite-growth-estimate)
 
 To scan the full Git history from a checkout with Docker, run the same Gitleaks image as CI:
 
