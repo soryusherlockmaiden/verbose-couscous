@@ -1,0 +1,68 @@
+{
+  "version": "m2-o2-indexed-discovery-v1",
+  "date_utc": "2026-11-18",
+  "provider": "OpenAI web search (web.run search_query)",
+  "cutoff_exclusive": "2025-01-01T00:00:00Z",
+  "query_batches": [
+    [
+      "site:binance.com/en/support/announcement before:2025-01-01 Binance Futures BTCUSDT perpetual launch 2019 contract specifications leverage adjustment BTCUSDT ETHUSDT",
+      "site:binance.com/en/support/announcement before:2025-01-01 ETHUSDT perpetual 2019 launch futures update leverage margin tick size 2023 2024",
+      "site:binance.com/en/support/announcement before:2025-01-01 DGBUSDT USD-M perpetual 2020 launch delist 2024 leverage tick size"
+    ],
+    [
+      "site:binance.com before:2023-01-01 \"DGBUSDT\" \"will launch\" perpetual Binance futures 2020 2021 2022",
+      "site:binance.com/en/support/announcement before:2025-01-01 after:2022-12-31 \"BTCUSDT\" \"tick size\" \"Perpetual\" Binance",
+      "site:binance.com/en/support/announcement before:2025-01-01 after:2022-12-31 \"ETHUSDT\" \"tick size\" futures contract Binance",
+      "site:binance.com before:2025-01-01 \"DGBUSDT\" futures tick size Binance announcement launch listing contract 2020 2021 2022 2023"
+    ],
+    [
+      "\"DGBUSDT\" Binance perpetual launch announcement 2021 2022 \"DigiByte\" before:2025-01-01",
+      "\"DGB/USDT\" perpetual contract Binance Futures launch 2020 2021 2022 2023 DigiByte before:2025-01-01",
+      "site:binance.com/en/support/announcement/detail Binance Futures \"DGBUSDT\" 2023 2024 before:2025-01-01 launch update tick margin"
+    ],
+    [
+      "site:binance.com/en/support/announcement \"Binance Futures\" \"BTCUSDT\" \"2019\" \"launch\" before:2020-01-01",
+      "site:binance.com/en/support/announcement \"Binance Futures\" \"DGBUSDT\" \"Perpetual\" before:2024-03-25",
+      "site:binance.com/en/support/announcement \"BTCUSDT\" \"ETHUSDT\" \"leverage\" \"margin tiers\" Binance Futures 2023 2024 before:2025-01-01",
+      "site:binance.com/en/support/announcement Futures \"ETH/USDT\" Perpetual contract \"launch\" 2019-11-27 before:2020-01-01"
+    ],
+    [
+      "Binance \"BTCUSDT\" \"ETHUSDT\" \"leverage and margin tiers\" 2024 before:2025-01-01 site:binance.com/en/support/announcement/detail",
+      "Binance \"DGBUSDT\" \"Perpetual\" 2023 before:2024-01-01 site:binance.com",
+      "Binance \"BTCUSDT\" \"ETHUSDT\" futures \"tick size\" 2023 or 2024 before:2025-01-01 site:binance.com",
+      "Binance DGBUSDT BTCUSDT ETHUSDT redundant relabel multiplier redenomination futures contract change 2023 2024 before:2025-01-01 site:binance.com/en/support/announcement"
+    ]
+  ],
+  "selection": {
+    "include": "Official Binance publications with a pre-cutoff date indicated by the index or accepted M1 evidence, relevant to the three probe contracts.",
+    "exclude": "Post-cutoff hits, third-party posts, present-day symbol lists, and spot or delivery contracts.",
+    "limitations": "Date operators did not fully constrain indexed results. The selected URLs below are the complete direct GET set. The original result pages and individual rejected hits were not saved. Indexed dates are discovery hints; use the source publication time for evidence."
+  },
+  "selected_candidates": [
+    {
+      "url": "https://www.binance.com/en/support/announcement/detail/ce74360a3fd444b2b35da7186f8dd0ad",
+      "topic": "DGBUSDT delisting and margin-tier notice",
+      "indexed_publication_period": "2024-03-25"
+    },
+    {
+      "url": "https://www.binance.com/en/blog/all/421499824684900979",
+      "topic": "BTCUSDT launch history",
+      "indexed_publication_period": "2020"
+    },
+    {
+      "url": "https://www.binance.com/en/blog/all/407077773202501632",
+      "topic": "ETHUSDT launch history",
+      "indexed_publication_period": "2019-11-28"
+    },
+    {
+      "url": "https://www.binance.com/en/support/announcement/detail/d75c5ca94f704e96a6a4e55ffddfd65d",
+      "topic": "BTCUSDT and ETHUSDT margin-tier lead",
+      "indexed_publication_period": "2024-01-02"
+    },
+    {
+      "url": "https://www.binance.com/en/support/announcement/detail/aa735cd2d8bd4e7bb092179cf086e486",
+      "topic": "margin-tier discovery lead",
+      "indexed_publication_period": "2024-05-28"
+    }
+  ]
+}

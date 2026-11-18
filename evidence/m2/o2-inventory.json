@@ -42,6 +42,7 @@
     }
   },
   "indexed_discovery_query_count": 18,
+  "indexed_discovery_record": "evidence/m2/o2-discovery.json",
   "m1_cross_check": {
     "manifest": "evidence/m1/binance-2024.json",
     "manifest_file_sha256": "afac83dc1dac481f204a2a0f3a5b084fc9c115944770272402d7334ddde2da9b",

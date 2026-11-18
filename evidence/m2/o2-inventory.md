@@ -19,7 +19,7 @@ Seluruh **454** ZIP yang ditemukan mempunyai ukuran dari header dan CHECKSUM den
 
 ## Pengumuman dan celah bukti
 
-Pencarian discovery memakai pembatas tanggal dan kata kunci untuk listing, perubahan status, delisting, perubahan filter/tier, dan pergantian kontrak atau simbol termasuk multiplier. Pencarian listing lama juga mencakup 2019–2022. Hanya lima URL publikasi resmi pra-cutoff yang dipilih untuk pengambilan langsung. Seluruhnya merespons HTTP `202` dengan `Content-Length: 0`. Tidak ada isi halaman yang dapat disimpan atau di-hash. Matriks menandai percobaan sebagai `BLOCKED_EMPTY_HTTP_202` dan mencatat waktu observasi serta hash kosong. Catatan hasil indeks dipakai untuk discovery URL saja. Bukti status dan tier DGBUSDT yang dipertahankan berasal dari manifest M1 yang sudah diterima, dengan sumbernya dicatat terpisah.
+Pencarian discovery memakai pembatas tanggal dan kata kunci untuk listing, perubahan status, delisting, perubahan filter/tier, dan pergantian kontrak atau simbol termasuk multiplier. Pencarian listing lama juga mencakup 2019–2022. Log discovery mencatat penyedia, kelima batch kueri asli, kriteria penyaringan, dan lima URL publikasi resmi yang dipilih. Penyedia juga mengembalikan hasil di luar periode, yang diabaikan. Halaman hasil lengkap dan daftar setiap hasil yang ditolak belum disimpan pada run asli. Seluruh URL terpilih merespons HTTP `202` dengan `Content-Length: 0`. Tidak ada isi halaman yang dapat disimpan atau di-hash. Matriks menandai percobaan sebagai `BLOCKED_EMPTY_HTTP_202` dan mencatat waktu observasi serta hash kosong. Catatan hasil indeks dipakai untuk discovery URL saja. Bukti status dan tier DGBUSDT yang dipertahankan berasal dari manifest M1 yang sudah diterima, dengan sumbernya dicatat terpisah. [Log discovery](o2-discovery.json)
 
 | Jenis bukti | Temuan dan celah |
 |---|---|
@@ -37,12 +37,19 @@ Pencarian discovery memakai pembatas tanggal dan kata kunci untuk listing, perub
 
 Discovery menggunakan 18 kueri indeks bertanggal. Request internal penyedia indeks tidak termasuk hitungan koneksi langsung. Arsip diperiksa dari key simbol × tanggal × seri yang dibentuk langsung. Koneksi langsung tidak mengikuti redirect dan tidak memakai listing direktori, daftar simbol aktif, GET ZIP, maupun permintaan Range. Payload pasar yang diunduh berjumlah **0 byte**.
 
-Di Windows, pengumpulan dan validasi dijalankan dari root checkout dengan perintah berikut. Helper, log request, daftar kandidat dan direktori untuk snapshot mentah berada di `data/o2-inventory/` yang diabaikan Git. Matriks merekam metadata hasil observasi, status, waktu UTC, dan checksum yang diterima.
+Helper pengumpulan dan validator tersedia di Git. Jalankan dari root checkout dengan Python yang memiliki paket `acgs` terpasang. Gunakan direktori baru di bawah `data/` untuk pengumpulan ulang. Log request, byte CHECKSUM dan salinan mentah halaman yang berhasil diambil disimpan di sana. Kolektor menghentikan pengambilan dari host pengumuman pada respons HTTP `202` kosong pertama dalam pengumpulan ulang. Lima percobaan tetap tercatat sebagai bukti run asli.
 
 ```powershell
-.\.venv\Scripts\python.exe data/o2-inventory/collect.py archives
-.\.venv\Scripts\python.exe data/o2-inventory/collect.py notices
-.\.venv\Scripts\python.exe data/o2-inventory/finalize.py
+.\.venv\Scripts\python.exe evidence/m2/collect.py archives --work-dir data/o2-inventory-rerun
+.\.venv\Scripts\python.exe evidence/m2/collect.py notices --work-dir data/o2-inventory-rerun
+.\.venv\Scripts\python.exe evidence/m2/finalize.py --work-dir data/o2-inventory-rerun
+```
+
+Validator bekerja offline dan menulis matriks ke direktori run. Untuk mengaudit run asli, gunakan `--work-dir data/o2-inventory`, yang memuat log dan observasi asli pada checkout pelaksana. Validator mencocokkan request dengan baris matriks, mengecek urutan HEAD sebelum GET CHECKSUM, dan memakai aturan segel untuk memeriksa cakupan bundle. Run asli menyimpan nilai SHA-256 yang dibaca dari CHECKSUM. Pengumpulan ulang juga menyimpan byte CHECKSUM untuk verifikasi ulang. Snapshot pengumuman yang berhasil disimpan perlu ditelaah untuk memastikan waktu publikasi, waktu efektif, dan fakta yang relevan sebelum dipakai sebagai bukti penelitian.
+
+Pemeriksaan repo untuk run asli dijalankan dengan perintah berikut.
+
+```powershell
 .\.venv\Scripts\ruff.exe check .
 .\.venv\Scripts\mypy.exe
 .\.venv\Scripts\python.exe -m pytest -q --basetemp=C:\dev\acgs\data\o2-inventory\pytest
@@ -55,6 +62,8 @@ git diff --check
 ```
 
 Validator memeriksa 504 baris bulanan unik, tujuh key harian di batas DGBUSDT, cakupan bundle melalui aturan segel yang ada, metode request, seluruh kecocokan M1, dan kesetaraan objek `access` terhadap basis `a2c1352`. Ruff, mypy dan pytest lulus secara native di Windows dan di Docker Linux, dengan **290 tes** di masing-masing lingkungan. Kedua image berhasil dibangun. Dua smoke Docker mencatat dan memutar ulang digest yang sama, `35be0f1204fa4a70ff517a6643703bfbc657ee64b8cd0827682a183d3db7bc34`.
+
+Pada follow-up auditabilitas, `mypy src evidence/m2/collect.py evidence/m2/finalize.py` lulus pada 28 berkas. Pemeriksaan dengan koneksi tiruan menguji penolakan GET ZIP, listing, key pasca-cutoff dan URL pengumuman di luar daftar. Pemeriksaan juga menguji penghentian request setelah HTTP `403`, `451`, dan `202` kosong untuk pengumuman. Rerender offline mempertahankan seluruh observasi run asli dan hanya menambahkan referensi ke log discovery.
 
 ## Handoff
 
