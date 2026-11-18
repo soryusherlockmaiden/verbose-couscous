@@ -225,7 +225,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 | Milestone | Status | Owner | Evidence | Decision |
 |---|---|---|---|---|
 | M0 | PASS | Operator | [M0 verification](evidence/m0/verification.md) | **Accepted by the operator on 2026-11-17 (UTC)** at code commit `e16d08f`: all ROADMAP §3 checks passed ([hosted CI](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44191231342)), including Windows live capture (five `CAPTURED`/`VERIFIED` responses). Merged to `main` through PR #2. |
-| M1 | IN REVIEW | Codex | [M1 verification](evidence/m1/verification.md) · [50 USDT report](evidence/m1/feasibility.md) | R1, R2 and the follow-up review findings are addressed. The operator chose adverse-candidate funding ownership. Fresh Codex review and operator acceptance pending. |
+| M1 | PASS | Operator | [M1 verification](evidence/m1/verification.md) · [50 USDT report](evidence/m1/feasibility.md) | **Accepted by the operator on 2026-11-18 (UTC)** at code commit `92567ee`: all ROADMAP §4 checks passed ([hosted CI](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44243174445)). SC-01, SC-02 and SC-12 are resolved in SPEC §13.1, and the operator chose adverse-candidate funding ownership. The 2024 feasibility sample is `INCONCLUSIVE` for lack of point-in-time filters. Merged to `main` through PR #4. |
 | M2 | NOT STARTED | TBD | — | Pending |
 | M3 | NOT STARTED | TBD | — | Pending |
 | M4 | NOT STARTED | TBD | — | Pending |
@@ -234,7 +234,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 ### Immediate next actions
 
 1. **PRD v1.4 is Approved & Locked** as the product baseline; no further PRD approval task remains.
-2. Independently review M1 implementation and verify SC-01, SC-02 and SC-12 before operator acceptance.
+2. **M1 accepted** by the operator on 2026-11-18 (UTC) and merged through PR #4. Start M2 by preregistering SC-03, SC-04 and SC-05, including the delayed-trailing and funding-cost reporting noted in SPEC §4.5.1.
 3. **M0 accepted** by the operator on 2026-11-17 (UTC) and merged through PR #2. Start continuous forward capture on the VPS (`docker compose --profile capture up -d capture`).
 4. Continue forward capture to extend point-in-time evidence for M2 feasibility and cost research.
 5. Pre-register M2 numeric promotion criteria **before** holdout evaluation.
@@ -245,7 +245,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 M1 tracker update (2026-11-18, Asia/Bangkok) records the M1 implementation and evidence awaiting independent review.
 
-Independent review update (2026-11-18 UTC) records review fixes and the follow-up SC-02 and SC-12 verification.
+Independent review update (2026-11-18 UTC) records review fixes and the follow-up SC-02 and SC-12 verification. M1 accepted by the operator on 2026-11-18 (UTC) at code commit `92567ee`; tracker status `PASS`.
 
 - M0 accepted by the operator on 2026-11-17 (UTC) at code commit `e16d08f` and merged through PR #2; tracker status `PASS`.
 - Recorded the independent Windows live capture re-verification at `e16d08f`; M0 technical verification is PASS, with operator acceptance still pending and M1 not started.

@@ -1,5 +1,7 @@
 # M1 verification
 
+Status: **PASS — accepted by the operator on 2026-11-18 (UTC)** at code commit `92567ee9a1907577f77256e3202113d6d35ef5aa`, after the review rounds recorded below. Hosted CI passed on that commit ([PR run 44243174445](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44243174445), [push run 44243170944](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44243170944)). Carried forward to M2: preregister SC-03, SC-04 and SC-05 before the holdout. Account eligibility items remain `UNVERIFIED`, and jurisdiction must be verified before M3.
+
 Branch `codex/m1-market-offline` from `origin/main` at `0903329ead42ed3097a14c4e8ba15c97157c2e5d`. The initial implementation commit is `7d8af7f20773e400362e45e90a974613f64441b4`. Claude recheck of the follow-up changes, fresh Codex review, and operator acceptance are pending. [PR #4](https://github.com/soryusherlockmaiden/verbose-couscous/pull/4) · [50 USDT report](feasibility.md).
 
 ## Initial implementation checks

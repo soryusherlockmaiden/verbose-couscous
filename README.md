@@ -8,7 +8,7 @@ ACGS is a research-first, safety-first experiment with automated trading on **Bi
 
 | Item | State |
 |---|---|
-| Phase | **M1 Market & Offline Execution in review** |
+| Phase | **M1 accepted** (2026-11-18 UTC); M2 Strategy Research not started |
 | `PRD.md` | v1.4, Approved & Locked |
 | `SPEC.md` | v0.5, engineering baseline candidate |
 | `ROADMAP.md` | v0.4, progress and evidence in §12 |
@@ -78,7 +78,7 @@ Test-order acceptance proves only that a request is valid. A protective-order ty
 | Milestone | Goal | Status |
 |---|---|---|
 | M0 Foundation | Offline skeleton, CI, config, account eligibility pre-check, forward data capture | PASS (accepted) |
-| M1 Market & Offline Execution | PIT data, deterministic simulator and equity ledger, 50 USDT feasibility report | In review |
+| M1 Market & Offline Execution | PIT data, deterministic simulator and equity ledger, 50 USDT feasibility report | PASS (accepted) |
 | M2 Strategy Research | Preregistered research decision: `PASS` / `FAIL` / `INCONCLUSIVE` | Not started |
 | M3 Capital & Risk Engine | State machine, risk engine, recovery simulation, fault injection | Not started |
 | M4 Paper Pilot | Mainnet shadow operation with no real orders | Not started |
