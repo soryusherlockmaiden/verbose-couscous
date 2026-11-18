@@ -163,19 +163,20 @@ cmp "$fixture_dir/a/coverage.json" "$fixture_dir/b/coverage.json"
 sha256sum "$fixture_dir/a/manifest.json" "$fixture_dir/a/coverage.json"
 ```
 
-The normal local Compose build hit the managed proxy's PyPI CA error. Both image targets built with the session CA supplied as a BuildKit secret. The check container passed **222** tests. The two local Docker smokes recorded and replayed the same digest, `e2fb3f83500b5aa748b93e0e3151cd9fc1536048d56692da249ed0e877362505`.
+The normal local Compose build hit the managed proxy's PyPI CA error. Both image targets built with the session CA supplied as a BuildKit secret. An intermediate build passed **222** container tests, and its two smokes recorded and replayed digest `e2fb3f83500b5aa748b93e0e3151cd9fc1536048d56692da249ed0e877362505`. The final local rebuilder produced both images but ran out of disk while creating the first smoke container. Hosted CI on `5f68ede` passed both standard Compose builds, both Docker smokes, Docker check with **222** tests, and the Ubuntu and Windows native jobs. [Hosted PR run](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44272128130)
 
 ```sh
 docker compose config --quiet
 docker compose --profile check build acgs check
 sed 's|RUN uv sync|RUN --mount=type=secret,id=proxy_ca,required=true SSL_CERT_FILE=/run/secrets/proxy_ca uv sync|' Dockerfile | docker build --secret id=proxy_ca,src=/etc/ssl/certs/ca-certificates.crt -f - --target runtime -t acgs:m0 .
 sed 's|RUN uv sync|RUN --mount=type=secret,id=proxy_ca,required=true SSL_CERT_FILE=/run/secrets/proxy_ca uv sync|' Dockerfile | docker build --secret id=proxy_ca,src=/etc/ssl/certs/ca-certificates.crt -f - --target check -t acgs:m0-check .
-docker compose -p acgs-m2-seal-final run --rm acgs smoke
-docker compose -p acgs-m2-seal-final run --rm acgs smoke
+docker compose -p acgs-m2-seal run --rm acgs smoke
+docker compose -p acgs-m2-seal run --rm acgs smoke
 docker compose --profile check run --rm check
+docker compose -p acgs-m2-seal-final run --rm acgs smoke
 ```
 
-Pinned Gitleaks and hosted checks used the following commands. The current workflow outcome is attached to [PR #5](https://github.com/soryusherlockmaiden/verbose-couscous/pull/5/checks).
+After removing superseded task build artifacts and the task's rebuildable download cache, the local pinned Gitleaks scan completed. Local and hosted scans at `5f68ede` each reported **75** commits and **zero leaks**. [PR checks](https://github.com/soryusherlockmaiden/verbose-couscous/pull/5/checks)
 
 ```sh
 docker run --rm --env GIT_CONFIG_COUNT=1 --env GIT_CONFIG_KEY_0=safe.directory --env GIT_CONFIG_VALUE_0=/repo --volume "$PWD:/repo:ro" ghcr.io/gitleaks/gitleaks:v8.24.3@sha256:e1b35e12a8c6fa8901f060459cfb6b2fc4c484d3afbe3b029733a3bbfab07055 git --redact --log-opts=--all /repo
