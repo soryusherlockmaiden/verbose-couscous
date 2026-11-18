@@ -1,6 +1,6 @@
 # 50 USDT Execution Feasibility Report
 
-Report schema `m1-feasibility-v3`. This is a development sample for M1. It predates the M2 holdout.
+Report schema `m1-feasibility-v4`. This is a development sample for M1. It predates the M2 holdout.
 
 ## Reproduce
 
@@ -8,16 +8,16 @@ Report schema `m1-feasibility-v3`. This is a development sample for M1. It preda
 uv sync --locked
 uv run --locked python evidence/m1/fetch.py evidence/m1/binance-2024.json data/m1/archive
 uv run --locked python -m acgs historical --manifest evidence/m1/binance-2024.json --assets data/m1/archive
-uv run --locked python -m acgs feasibility --manifest evidence/m1/binance-2024.json --assets data/m1/archive --policy config/m1.json --start 2024-03-01T00:00:00Z --end 2024-04-11T00:00:00Z --out data/m1/feasibility-2024-v3.json
+uv run --locked python -m acgs feasibility --manifest evidence/m1/binance-2024.json --assets data/m1/archive --policy config/m1.json --start 2024-03-01T00:00:00Z --end 2024-04-11T00:00:00Z --out data/m1/feasibility-2024-v4.json
 ```
 
 | Identifier | SHA-256 digest |
 |---|---|
-| [Dataset manifest](binance-2024.json) | `107a5567997638b89fc94f6bddcbf6f670fe5d36957218e5932fb78942d543c0` |
-| [OFFLINE policy](../../config/m1.json) | `4f87c15c216adbe4807f2eb3464f6e251aac25f6e8d5846684f9e4601ae9d9ea` |
-| Canonical feasibility output, excluding final LF | `ee0714a60baf1576f816cffd928e01fc4b94b1c517c7013f006882118d4ad918` |
+| [Dataset manifest](binance-2024.json) | `44d93cb13430d499dd3f8a4e73cb6fd1b4539357705a613fbb6ee90c26b02aa5` |
+| [OFFLINE policy](../../config/m1.json) | `dd0187eb938370e1cb72b6a02d08752da185549fbfb99741bb71acddeec4b76e` |
+| Canonical feasibility output, excluding final LF | `bd9e602c364943b303ec639730ed8783908ff0c67313257e77e3c3c45e854b46` |
 
-The `dataset_digest` and `policy_digest` hash canonical JSON. The v3 output reflects the enriched archive manifest, the `m1-v2` policy and the new status for zero attempts. The historical rejection counts are unchanged.
+The `dataset_digest` and `policy_digest` hash canonical JSON. The manifest uses only `data.binance.vision` archives, which remain reachable where Binance's REST API is geo-restricted. The v4 output adds per-attempt `assessable` flags under the `m1-v3` policy. Rejection counts and status are unchanged. The REST-enriched manifest [binance-2024-marks.json](binance-2024-marks.json) (`107a5567997638b89fc94f6bddcbf6f670fe5d36957218e5932fb78942d543c0`) produces the same report body because feasibility never reads settlement marks.
 
 ## Coverage and provenance
 
@@ -31,7 +31,7 @@ The `dataset_digest` and `policy_digest` hash canonical JSON. The v3 output refl
 - A direct public `markPriceKlines` query for BTCUSDT returned HTTP 200 for the first two daily bars of March 2024. The opening and closing values matched the archive. The research sample needed no mark proxy. Daily OHLC coverage supplies an envelope and cannot establish tick chronology or coverage at 15m/1h. [Binance market-data reference](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data).
 - DGBUSDT close-only at 2024-04-01 08:30 UTC and delisting at 09:00 UTC come from an announcement published on March 25. Boundary tests use fixtures for distinct relisting epochs. The March 25 announcement also supplies a dated first maintenance bracket. No historical brackets were found for the sampled BTC/ETH windows. Binance's bracket endpoint requires account access. [Delisting and tier announcement](https://www.binance.com/en/support/announcement/detail/ce74360a3fd444b2b35da7186f8dd0ad) · [Binance account reference](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/account).
 - Binance `exchangeInfo` exposes current symbol rules. The M0 database yielded contemporaneous BTCUSDT/ETHUSDT filters, depth and next-funding observations on November 17, 2026. Its observations are read-only and become eligible at receipt. The 2024 manifest contains no borrowed filters. Historical spread is also absent, so the declared cost stress is a reconstruction and promotion evidence still needs coverage. [Pinned M0 capture selection](m0-capture.json) · [Binance market-data reference](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data).
-- The three pinned public `fundingRate` responses provide marks for all 999 settlements, including 143 with offsets of 1–15 ms. Each mark matched the archive by epoch, literal timestamp and rate. Inferred intervals and modeled arrival lags remain reconstructions. The settlement mark resolves the valuation input. Position ownership near a settlement is handled separately under SC-02. [Binance funding history](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data#funding-rate-history).
+- Settlement times and rates are recorded primary observations. 143 of the 999 archive settlements carry `calc_time` offsets of 1–15 ms. Under policy `m1-v3` they settle at the bar boundary and are valued at the opening mark print, so replays on bars aligned to funding times need no REST marks. Only a settlement inside a bar needs its recorded mark. The optional marks manifest adds the three pinned public `fundingRate` responses. They must be fetched from a location Binance serves; a geo-restricted host gets HTTP 451. Each mark must match the archive by epoch, literal timestamp and rate. Inferred intervals and modeled arrival lags remain reconstructions. [Binance funding history](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data#funding-rate-history).
 
 ## Sample result
 
