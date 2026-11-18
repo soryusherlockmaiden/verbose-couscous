@@ -56,15 +56,27 @@ def _distribution(values: list[Decimal]) -> dict[str, Decimal] | None:
     return {"min": values[0], "p50": (values[(n - 1) // 2] + values[n // 2]) / 2, "max": values[-1]}
 
 
-def _summary(
-    rows: list[tuple[EligibilityDecision, Provenance]],
-) -> dict[str, Any]:
+# Reasons that leave a critical input present but unusable at the decision time.
+UNUSABLE_INPUT = frozenset({"STALE_METADATA", "UNVERIFIED_CRITICAL_FILTER"})
+
+
+@dataclass(frozen=True)
+class _Attempt:
+    decision: EligibilityDecision
+    provenance: Provenance
+    # Provenance labels the inputs; assessability says whether they could decide.
+    assessable: bool
+
+
+def _summary(attempts: list[_Attempt]) -> dict[str, Any]:
+    rows = [(a.decision, a.provenance) for a in attempts]
     accepted = [d for d, _ in rows if d.executable]
     symbols: dict[str, list[Decimal]] = defaultdict(list)
     for d in accepted:
         symbols[d.candidate.instrument.id].append(d.risk_utilization)
     return {
         "attempted": len(rows),
+        "assessable": sum(a.assessable for a in attempts),
         "executable": len(accepted),
         "executable_rate": Decimal(len(accepted)) / len(rows) if rows else None,
         "provenance": dict(Counter(p for _, p in rows)),
@@ -79,17 +91,17 @@ def _summary(
     }
 
 
-def _status(rows: list[tuple[EligibilityDecision, Provenance]]) -> str:
+def _status(attempts: list[_Attempt]) -> str:
     """No executable order is a no-trade finding only if some attempt was assessable.
 
-    When every attempt lacks a critical input, the window cannot show infeasibility
-    (PRD §6.1, SPEC §4.3): the result is inconclusive, not a no-trade conclusion.
+    When every attempt lacks a usable critical input, the window cannot show
+    infeasibility (PRD §6.1, SPEC §4.3): the result is inconclusive, not no-trade.
     """
-    if not rows:
+    if not attempts:
         return "INCONCLUSIVE_NO_ASSESSABLE_ATTEMPTS"
-    if any(decision.executable for decision, _ in rows):
+    if any(a.decision.executable for a in attempts):
         return "ASSESSABLE"
-    if all(provenance == Provenance.UNAVAILABLE for _, provenance in rows):
+    if not any(a.assessable for a in attempts):
         return "INCONCLUSIVE_CRITICAL_INPUT_UNAVAILABLE"
     return "NO_TRADE_IN_DECLARED_WINDOW"
 
@@ -128,9 +140,9 @@ def _feasibility(
     }
     snapshots = []
     decisions = []
-    results: dict[str, list[tuple[EligibilityDecision, Provenance]]] = defaultdict(list)
+    results: dict[str, list[_Attempt]] = defaultdict(list)
     exclusions: Counter[str] = Counter()
-    slices: dict[tuple[str, str, str], list[tuple[EligibilityDecision, Provenance]]] = defaultdict(list)
+    slices: dict[tuple[str, str, str], list[_Attempt]] = defaultdict(list)
     for day in range(start, end, DAY):
         time = day + 60_000
         universe = snapshot(market, FixedClock(EPOCH + timedelta(milliseconds=time)), policy)
@@ -171,21 +183,24 @@ def _feasibility(
                     Decimal(30) if case.phase == "IGNITION" else None,
                 ), config)
                 provenance = decision.provenance
-                if {"STALE_METADATA", "UNVERIFIED_CRITICAL_FILTER"}.intersection(decision.reasons):
-                    provenance = Provenance.UNAVAILABLE
-                elif provenance == Provenance.VERIFIED and (
+                if provenance == Provenance.VERIFIED and (
                     proxy or any(e.provenance != Provenance.VERIFIED for e in rank.evidence)
                 ):
                     provenance = Provenance.RECONSTRUCTED
-                results[case.id].append((decision, provenance))
-                slices[case.id, inst.id, regime].append((decision, provenance))
+                attempt = _Attempt(
+                    decision, provenance,
+                    provenance != Provenance.UNAVAILABLE and not UNUSABLE_INPUT.intersection(decision.reasons),
+                )
+                results[case.id].append(attempt)
+                slices[case.id, inst.id, regime].append(attempt)
                 decisions.append({
                     "scenario": case.id, "regime": regime, "provenance": provenance,
+                    "assessable": attempt.assessable,
                     "mark_source": "CANDLE_CLOSE_PROXY" if proxy else "MARK_KLINE_CLOSE",
                     "atr": atr, "executable": decision.executable, **asdict(decision),
                 })
     return {
-        "version": "m1-feasibility-v3", "dataset_digest": dataset_digest,
+        "version": "m1-feasibility-v4", "dataset_digest": dataset_digest,
         "policy_digest": policy.digest, "start": start, "end_exclusive": end,
         "status": _status([row for items in results.values() for row in items]),
         "universe_exclusions": dict(exclusions), "universe_snapshots": snapshots,

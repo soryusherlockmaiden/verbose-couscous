@@ -658,10 +658,12 @@ def test_t01_t20_t23_runtime_clock_report_and_config_identity(
     assert any(not d["executable"] for d in decisions)
     assert {d["provenance"] for d in decisions} == {Provenance.RECONSTRUCTED}
     assert {d["candidate"]["side"] for d in decisions} == {Side.SHORT}
-    assert summary["status"] == "ASSESSABLE" and summary["version"] == "m1-feasibility-v3"
+    assert summary["status"] == "ASSESSABLE" and summary["version"] == "m1-feasibility-v4"
     # Every attempt missing a PIT filter is inconclusive; assessable rejections are no-trade.
     blind = feasibility(Market(replace(daily_data, filters=())), "fixture", policy, T, clock(T + DAY))
     assert {d["provenance"] for d in blind["decisions"]} == {Provenance.UNAVAILABLE}
+    assert {d["assessable"] for d in blind["decisions"]} == {False}
+    assert {d["assessable"] for d in decisions} == {True}
     assert blind["status"] == "INCONCLUSIVE_CRITICAL_INPUT_UNAVAILABLE"
     strict = Market(replace(market_data, filters=(replace(filters(), effective=T, evidence=evidence(T),
                                                           min_notional=D(100_000)),)))
@@ -726,7 +728,10 @@ def test_t23_stale_filters_do_not_establish_no_trade(dataset: Dataset, policy: P
     assert report["status"] == "INCONCLUSIVE_CRITICAL_INPUT_UNAVAILABLE"
     assert report["decisions"]
     assert {d["reasons"] for d in report["decisions"]} == {("STALE_METADATA",)}
-    assert {d["provenance"] for d in report["decisions"]} == {Provenance.UNAVAILABLE}
+    # The stale filter is still verified evidence; it just cannot decide this attempt.
+    assert {d["provenance"] for d in report["decisions"]} == {Provenance.VERIFIED}
+    assert {d["assessable"] for d in report["decisions"]} == {False}
+    assert all(row["assessable"] == 0 for row in report["scenarios"].values())
 
 
 def test_t18_archive_mark_enrichment_requires_exact_settlement_match(tmp_path: Path) -> None:

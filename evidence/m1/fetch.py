@@ -42,13 +42,19 @@ def main() -> None:
                 raise SystemExit(f"Existing asset checksum mismatch: {target}")
             continue
         response = fetch_public(url.geturl())
+        if response.status in {403, 451}:
+            # Binance geo-restricts its REST API by location. Never route around it.
+            raise SystemExit(
+                f"Public source refused from this location (HTTP {response.status}): {url.geturl()}. "
+                "Fetch it from an eligible location and verify the pinned SHA-256."
+            )
         if response.status != 200:
-            raise SystemExit(f"Public archive unavailable (HTTP {response.status}): {url.geturl()}")
+            raise SystemExit(f"Public source unavailable (HTTP {response.status}): {url.geturl()}")
         if (
             len(response.payload) > MAX_PAYLOAD
             or hashlib.sha256(response.payload).hexdigest() != entry["sha256"]
         ):
-            raise SystemExit(f"Archive differs from the pinned version: {url.geturl()}")
+            raise SystemExit(f"Asset differs from the pinned version: {url.geturl()}")
         target.parent.mkdir(parents=True, exist_ok=True)
         with target.open("xb") as stream:
             stream.write(response.payload)
