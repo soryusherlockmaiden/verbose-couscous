@@ -206,3 +206,28 @@ Operator review found a P2 regression and a P3 inconsistency in the second follo
 | P3: a pre-seal `premiumIndex` forecast whose next funding time is the first sealed instant loaded through the M0 capture path but was refused inline. | One rule for both paths: evidence observed at or after a range begins cannot describe an event time or span inside it. Earlier forecasts stay admissible. | `test_t15_pre_seal_forecast_is_admissible_on_both_input_paths` (inline and capture); `test_t15_later_evidence_cannot_describe_a_sealed_period` still refuses backfills |
 
 Linux, uv 0.13.7: Ruff passed, mypy passed (26 source files), pytest passed **234** tests. The seal preflight passed for the three M1 manifests.
+
+## M1 public hash reproduction
+
+The operator authorized a one-time re-fetch of the pinned 2024 M1 inputs, which lie outside the registered seal. `evidence/m1/fetch.py` downloaded the 33 archives of `binance-2024.json` from `data.binance.vision`, and every checksum matched. The commands are those in [M1 verification](../m1/verification.md) with new `--out` names. The values below are the digests printed by the CLI (`output=…`), not raw file hashes.
+
+| Output | `3c1fb1c`, two runs | Accepted M1 record |
+|---|---|---|
+| historical | `920427b48e7823562fb039a9abe314f1d69711c277c6e9919a945e0a046d9798` | same |
+| main feasibility | `b4858aa261a01fcb747a2fcc5c05e7c671325e1a56d59dd2355abe9426ba8bcb` | same, `INCONCLUSIVE_CRITICAL_INPUT_UNAVAILABLE` |
+| empty window | `6f1ab1e5d222f1b1c38e44f3fe3fb7afa8cc1e4d39aaf734ba9d2efb7225f838` | same |
+| public replay | `67da3e706e6594137fb4e3bd19db5ba2363dc18e1954a73219035cf271372929` | same |
+
+The output files are byte-identical across both runs at `3c1fb1c`, a run at `8a6bcd2`, and the same commands on `main` (`7c47fe3`). The extended seal therefore changes no M1 output.
+
+On `8a6bcd2`, the operator fetched `binance-2024-marks.json`, including its three pinned `fapi.binance.com` funding responses, from an eligible location. `historical` reported dataset `107a5567997638b89fc94f6bddcbf6f670fe5d36957218e5932fb78942d543c0` and marks on every settlement (BTCUSDT 363, ETHUSDT 363, DGBUSDT 273). Its feasibility report matched the public report apart from `dataset_digest`, as recorded in [M1 feasibility](../m1/feasibility.md). The seal metadata preflight for this manifest also passes at `3c1fb1c`.
+
+```sh
+uv run --locked python evidence/m1/fetch.py evidence/m1/binance-2024.json data/m1/archive
+uv run --locked python -m acgs historical --manifest evidence/m1/binance-2024.json --assets data/m1/archive --out data/m1/historical-check.json
+uv run --locked python -m acgs feasibility --manifest evidence/m1/binance-2024.json --assets data/m1/archive --policy config/m1.json --start 2024-03-01T00:00:00Z --end 2024-04-11T00:00:00Z --out data/m1/feasibility-check.json
+uv run --locked python -m acgs feasibility --manifest evidence/m1/binance-2024.json --assets data/m1/archive --policy config/m1.json --start 2024-01-02T00:00:00Z --end 2024-01-03T00:00:00Z --out data/m1/feasibility-empty-check.json
+uv run --locked python -m acgs replay --manifest evidence/m1/binance-2024.json --assets data/m1/archive --policy config/m1.json --start 2024-03-01T00:00:00Z --end 2024-03-04T00:00:00Z --plan evidence/m1/replay-plan.json --out data/m1/replay-check.json
+```
+
+The earlier pending status for the public hash reruns is closed. Exact windows, the separate coverage checks, approved market manifests and SC-03 through SC-05 remain open, and P3-2/P3-3 are due before Phase C.
