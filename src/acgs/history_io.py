@@ -240,9 +240,9 @@ def _capture_observations(
     try:
         connection.execute("BEGIN")
         schema = connection.execute("PRAGMA user_version").fetchone()[0]
-        if schema not in (1, 2):
+        if schema not in (1, 2, 3):
             raise ValueError("Unsupported M0 capture schema")
-        compression = "payload_encoding" if schema == 2 else "NULL"
+        compression = "payload_encoding" if schema >= 2 else "NULL"
         rows = connection.execute(
             """SELECT id, source_url, received_at, sha256
                FROM capture_attempts WHERE status = 'CAPTURED' AND provenance = 'VERIFIED'
