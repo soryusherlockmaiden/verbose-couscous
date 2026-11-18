@@ -226,7 +226,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 |---|---|---|---|---|
 | M0 | PASS | Operator | [M0 verification](evidence/m0/verification.md) | **Accepted by the operator on 2026-11-17 (UTC)** at code commit `e16d08f`: all ROADMAP §3 checks passed ([hosted CI](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44191231342)), including Windows live capture (five `CAPTURED`/`VERIFIED` responses). Merged to `main` through PR #2. |
 | M1 | PASS | Operator | [M1 verification](evidence/m1/verification.md) · [50 USDT report](evidence/m1/feasibility.md) | **Accepted by the operator on 2026-11-18 (UTC)** at code commit `92567ee`: all ROADMAP §4 checks passed ([hosted CI](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44243174445)). SC-01, SC-02 and SC-12 are resolved in SPEC §13.1, and the operator chose adverse-candidate funding ownership. The 2024 feasibility sample is `INCONCLUSIVE` for lack of point-in-time filters. Merged to `main` through PR #4. |
-| M2 | IN PROGRESS | Operator | [Phase A verification](evidence/m2/verification.md) · [Draft protocol](evidence/m2/protocol.md) | Phase A review pending. Protocol freeze and milestone verdict pending. |
+| M2 | IN PROGRESS | Operator | [Phase A verification](evidence/m2/verification.md) · [Draft protocol](evidence/m2/protocol.md) | **Phase A accepted by the operator on 2026-11-18 (UTC)** at code commit `496a933`: data audit, shared `history-seal-v1` seal with the sealed 2025 reserve, `m2-v3` draft config and draft SC-03/SC-04/SC-05 ([hosted CI](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44291555402)). Merged to `main` through PR #5. Protocol freeze, holdout and the M2 verdict remain pending. |
 | M3 | NOT STARTED | TBD | — | Pending |
 | M4 | NOT STARTED | TBD | — | Pending |
 | M5 | OPTIONAL / NOT AUTHORIZED | TBD | — | Pending |
@@ -234,15 +234,17 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 ### Immediate next actions
 
 1. **PRD v1.4 is Approved & Locked** as the product baseline; no further PRD approval task remains.
-2. **M1 accepted** by the operator on 2026-11-18 (UTC) and merged through PR #4. Start M2 by preregistering SC-03, SC-04 and SC-05, including the delayed-trailing and funding-cost reporting noted in SPEC §4.5.1.
-3. **M0 accepted** by the operator on 2026-11-17 (UTC) and merged through PR #2. Start continuous forward capture on the VPS (`docker compose --profile capture up -d capture`).
-4. Continue forward capture to extend point-in-time evidence for M2 feasibility and cost research.
-5. Pre-register M2 numeric promotion criteria **before** holdout evaluation.
+2. **M1 accepted** by the operator on 2026-11-18 (UTC) and merged through PR #4.
+3. **M2 Phase A accepted** by the operator on 2026-11-18 (UTC) and merged through PR #5. Before Phase B: extend forward capture depth sampling from the fixed symbol list to every trading USDT perpetual (a versioned M0 tooling change), run capture continuously, and decide the exact O1 dates and O2–O4. Then continue SC-03, SC-04 and SC-05, including the delayed-trailing and funding-cost reporting noted in SPEC §4.5.1. P3-2 and P3-3 are due before Phase C.
+4. **M0 accepted** by the operator on 2026-11-17 (UTC) and merged through PR #2. Start continuous forward capture on the VPS (`docker compose --profile capture up -d capture`).
+5. Continue forward capture to extend point-in-time evidence for M2 feasibility and cost research.
+6. Pre-register M2 numeric promotion criteria **before** holdout evaluation.
 
 **Roadmap acceptance:** This document plans work; it does not authorize live orders, real transfers, or a production deployment.
 
 ## 13. v0.4 targeted change notes
 
+- M2 Phase A accepted by the operator on 2026-11-18 (UTC) at code commit `496a933` and merged through PR #5; M2 remains `IN PROGRESS`.
 - M2 Phase A records retrospective development, a prospective holdout after freeze, the sealed 2025 reserve and the shared history access checks. Exact research dates remain open.
 
 M1 tracker update (2026-11-18, Asia/Bangkok) records the M1 implementation and evidence awaiting independent review.
