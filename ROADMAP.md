@@ -243,7 +243,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 ## 13. v0.4 targeted change notes
 
-- M2 Phase A tracks the draft protocol, data audit and holdout seal as review evidence.
+- M2 Phase A records retrospective development, a prospective holdout after freeze, the sealed 2025 reserve and the shared history access checks. Exact research dates remain open.
 
 M1 tracker update (2026-11-18, Asia/Bangkok) records the M1 implementation and evidence awaiting independent review.
 
