@@ -283,10 +283,9 @@ def _capture_observations(
                                                  "Latest exchangeInfo lacks a required filter"),
                         )
                     filters.append(snapshot)
-                # The capture observes the symbol's absence at receipt. That fact
-                # overrides any status effective before receipt: the one known at
-                # receipt and any tradable one learned later. Epochs and statuses that
-                # start after receipt are untouched.
+                # Absence is observed for the symbol at receipt. An epoch whose
+                # identity is learned later can inherit that effective boundary only
+                # when the backfilled status becomes observable.
                 for epoch in sorted(known.keys() | prior.keys()):
                     if current.get(epoch.symbol) == epoch:
                         continue
@@ -295,17 +294,25 @@ def _capture_observations(
                         earlier.append(known[epoch])
                     known_then = max((row for row in earlier if row.evidence.as_of <= time),
                                      key=lambda row: (row.effective, row.evidence.as_of), default=None)
-                    learned_later = any(row.tradable and row.evidence.as_of > time for row in earlier)
-                    if not learned_later and (known_then is None or not known_then.tradable):
-                        continue
+                    associated_at = time
+                    if known_then is None or not known_then.tradable:
+                        first_backfill = min((
+                            row.evidence.as_of for row in earlier
+                            if row.tradable and row.effective < time < row.evidence.as_of
+                            and (known_then is None or row.effective >= known_then.effective)
+                        ), default=None)
+                        if first_backfill is None:
+                            continue
+                        associated_at = first_backfill
                     withdrawal = Listing(
                         epoch, time,
-                        Evidence(url, "exchangeInfo_absence:" + sha, Provenance.UNAVAILABLE, time,
+                        Evidence(url, "exchangeInfo_absence:" + sha, Provenance.UNAVAILABLE, associated_at,
                                  "Listing epoch missing from the latest exchangeInfo"),
                         "ABSENT_FROM_EXCHANGE_INFO",
                     )
                     listings.append(withdrawal)
-                    known[epoch] = withdrawal
+                    if associated_at == time:
+                        known[epoch] = withdrawal
             elif endpoint in {"premiumIndex", "fundingInfo"}:
                 present = set()
                 for item in body:

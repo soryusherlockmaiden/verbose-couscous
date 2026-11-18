@@ -34,7 +34,7 @@ from acgs.pit import (
 from acgs.sim_config import Policy, StopBasis, digest, instant_ms
 from acgs.sim_ledger import AccountSnapshot, Event, Journal, MarkSource
 
-REPLAY_VERSION = "m1-replay-v7"
+REPLAY_VERSION = "m1-replay-v8"
 
 
 class ReplayError(ValueError):
@@ -299,6 +299,7 @@ class _Replay:
                 j.record(end, "REJECTED", detail="NO_POSITION")
             return
         mark, source_open, source_close = marks
+        close_available = self.close_available_at(trade, source_close)
         filters, tiers = inputs
         pos = j.position
         if pos.quantity and not funding_complete(self.funding, start, start + 1, self.p):
@@ -339,27 +340,30 @@ class _Replay:
             worst_mark = mark.low if long else mark.high
             worst_stop = stop_path.low if long else stop_path.high
             adverse_trade = trade.prices.low if long else trade.prices.high
-            close_known = self.close_available_at(trade, source_close)
+            first_settlement_snapshot = len(j.snapshots)
             for f in self.inside_funding.get(start, ()):
                 if f.mark is None:
                     raise ReplayError(f"Intrabar funding has no settlement mark at {f.time}")
                 # OHLC cannot order the settlement against a protective exit in this bar.
                 # Charge adverse funding now; withhold a credit until the bar resolves.
                 # Adverse funding reduces margin before the protection check.
-                # Only the bar's full OHLC shows the position was still open at the
-                # settlement, so its valuation is eligible no earlier than that OHLC.
-                # The cash itself is certain either way and is observed at once.
+                # Only the completed bar can rule out an earlier exit. Keep the
+                # conservative cash posting separate from valuation eligibility.
                 self.post_settlement(f, f.time, f.mark, MarkSource.FUNDING_RECORD,
-                                     self.candidates(f), resolvable=True, available_at=f.time,
-                                     valuation_at=close_known)
+                                     self.candidates(f), resolvable=True, available_at=None)
+            settlement_snapshots = range(first_settlement_snapshot, len(j.snapshots))
             # OHLC supplies a bound, not an intrabar timestamp. Record the outcome
             # at interval end, before close/trailing and the next bar's open.
-            self.protect(
+            exited = self.protect(
                 end, adverse_trade, worst_mark, worst_stop, mark.close, source_close,
                 filters, tiers, intrabar=True, contract_stop=self.p.stop_basis == StopBasis.CONTRACT_PRICE,
                 cost_time=start,
             )
-        close_available = self.close_available_at(trade, source_close)
+            if not exited:
+                # Publish only valuations for a position that survived the bar.
+                ready_at = max(close_available, self.cash_available_at)
+                for index in settlement_snapshots:
+                    j.snapshots[index] = replace(j.snapshots[index], trigger_available_at=ready_at)
         self.resolve_ownership(end, mark.close, source_close, close_available)
         seq = j.record(end, "BAR_CLOSE")
         self.snapshot(seq, end, mark.close, source_close, close_available)
@@ -447,8 +451,7 @@ class _Replay:
 
     def post_settlement(
         self, event: Funding, time: int, price: Decimal, source: MarkSource,
-        candidates: set[Decimal], *, resolvable: bool, available_at: int,
-        valuation_at: int | None = None,
+        candidates: set[Decimal], *, resolvable: bool, available_at: int | None,
     ) -> None:
         """Post the most adverse funding among the possible holders; flag any ambiguity.
 
@@ -465,7 +468,7 @@ class _Replay:
         if cash < worst:
             detail.append("CREDIT_WITHHELD")
         seq = self.journal.settle(time, price, cash, holder, ",".join(detail))
-        self.funding_observed(event, seq, time, price, source, available_at, valuation_at=valuation_at)
+        self.funding_observed(event, seq, time, price, source, available_at)
         if resolvable:
             self.ownership.append(_Ownership(event, price, cash, worst, holder))
 
@@ -485,9 +488,9 @@ class _Replay:
 
     def funding_observed(
         self, event: Funding, seq: int, time: int, price: Decimal, source: MarkSource,
-        available_at: int | None, *, valuation_at: int | None = None,
+        available_at: int | None,
     ) -> None:
-        """Observe posted cash; `valuation_at` can further delay only this snapshot."""
+        """Observe posted cash even when the associated valuation is audit-only."""
         mark_as_of = event.mark_evidence.as_of if event.mark_evidence is not None else event.time
         # Cash is observable no earlier than its posting: sizing and every later
         # snapshot that carries it wait for the same instant (a released credit
@@ -496,10 +499,7 @@ class _Replay:
             self.cash_available_at, event.evidence.as_of, mark_as_of,
             time if available_at is None else available_at,
         )
-        self.snapshot(
-            seq, time, price, source,
-            None if available_at is None else max(self.cash_available_at, valuation_at or time),
-        )
+        self.snapshot(seq, time, price, source, None if available_at is None else self.cash_available_at)
 
     def exposure_changed(
         self, earliest: int, latest: int, before: Decimal, time: int, mark: Decimal,

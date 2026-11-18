@@ -335,7 +335,8 @@ def test_t18_published_funding_never_depends_on_later_prices(dataset: Dataset, w
         posted = next(e for e in run.events if e.kind == "FUNDING")
         snap = next(s for s in run.snapshots if s.sequence == posted.sequence)
         assert posted.time == inside.time and posted.postings[0].cash == ZERO
-        published.append((snap.equity, snap.cycle_equity, snap.trigger_available_at))
+        published.append((snap.equity, snap.cycle_equity, snap.observable_by(T + 2 * HOUR - 1)))
+        assert not snap.observable_by(inside.time)
         released = [e for e in run.events if "CREDIT_RELEASED" in e.detail]
         # Without a stop the credit is released at bar end, observable only with its OHLC.
         if low == "99":
@@ -668,10 +669,10 @@ def test_t01_t20_t23_runtime_clock_report_and_config_identity(
         return sim, report
 
     result = run_decisions()
-    assert digest(asdict(result[0])) == "c68da53cc3c03f926d7954cb094c3cf50400d59662ea2ac168c1f6dce34bdf30"
+    assert digest(asdict(result[0])) == "5b48562772fa9164fbc3ddd209e052cd88ea995ae5c2121512161adb5aa3ed30"
     # The released policy prices the entry at the settlement instant conservatively.
     released = replay(sim_market, "fixture", _policy(SETTINGS), clock(T + 2 * HOUR), run_plan)
-    assert digest(asdict(released)) == "18f604db79aef28f38a2d544316dfd6a9270c2d592e92dd6359651416805f776"
+    assert digest(asdict(released)) == "5f96eccf5c5c571e88f94377237b4c586c56717c7a02ed4e0ca69d50bf2d8290"
     assert [e.detail for e in released.events if e.kind == "FUNDING"] == [
         f"OWNERSHIP_ADJUSTMENT,SETTLED_AT={T}"
     ]
@@ -1149,9 +1150,7 @@ def test_t21_t23_proxy_mark_without_reconstruction_is_never_executable(dataset: 
 @pytest.mark.parametrize("low", ["99", "90"])
 @pytest.mark.parametrize("short_bar", [False, True])
 def test_t21_intrabar_settlement_valuation_waits_for_its_bar(dataset: Dataset, low: str, short_bar: bool) -> None:
-    # Whether the position was still open at the settlement is known only from the
-    # bar's full OHLC, with or without a stop. A 1 h bar has such a settlement when
-    # the record lies outside the 15 s boundary window.
+    # Full OHLC can rule out an exit, but cannot order an exit against settlement.
     if short_bar:
         policy = shipped(funding_jitter_ms=30_000)
         settled = funding(T + HOUR + 20_000, "0.0001", hours=1)
@@ -1170,37 +1169,101 @@ def test_t21_intrabar_settlement_valuation_waits_for_its_bar(dataset: Dataset, l
     posted = next(e for e in run.events if e.kind == "FUNDING")
     snap = next(s for s in run.snapshots if s.sequence == posted.sequence)
     assert posted.time == settled.time and snap.position.quantity
-    assert snap.trigger_available_at == T + 2 * HOUR + 1000
+    assert not snap.observable_by(T + 2 * HOUR)
+    assert snap.trigger_available_at == (T + 2 * HOUR + 1000 if low == "99" else None)
     # The debit is certain whatever the order, so it never blocks the next entry.
     assert not any(e.detail == "FUNDING_CASH_UNAVAILABLE" for e in run.events)
 
 
+@pytest.mark.parametrize(("trade_low", "mark_low", "exit_kind"), [
+    ("90", "99", "STOP"),
+    ("99", "76", "LIQUIDATION"),
+])
+def test_t21_ambiguous_settlement_cannot_trigger_recovery(
+    dataset: Dataset, trade_low: str, mark_low: str, exit_kind: str,
+) -> None:
+    settlements = tuple(
+        replace(funding(T + offset * HOUR + 20_000, "0.0001"), mark=D(104))
+        for offset in (-24, -16, -8, 0, 8)
+    )
+    trade = change_bar(dataset, 0, prices("100", "105", trade_low, "100"))
+    data = change_bar(trade, 0, prices("100", "105", mark_low, "100"), mark=True)
+    market = Market(lagged(replace(data, settlements=settlements)))
+    run = replay(market, "fixture", shipped(), clock(T + HOUR),
+                 replace(plan(enter()), equity=D(97)))
+    funding_event, = (e for e in run.events if e.kind == "FUNDING")
+    snap, = (s for s in run.snapshots if s.sequence == funding_event.sequence)
+
+    assert funding_event.postings[0].cash == D("-0.01040")
+    assert snap.cycle_equity > D(100) and snap.trigger_available_at is None
+    assert any(e.kind == exit_kind for e in run.events)
+    assert all(s.cycle_equity < D(100) for s in run.snapshots if s.observable_by(T + HOUR + 1000))
+
+
+def test_t21_intrabar_valuation_waits_for_funding_that_can_affect_protection(dataset: Dataset) -> None:
+    path = prices("100", "105", "99", "100")
+    candles = tuple(bar(T, path, mark=mark, size=DAY, delay=1000) for mark in (False, True))
+    settlements = tuple(
+        funding(T + offset * HOUR, "0.0001", delay=9 * HOUR if offset == 16 else 0)
+        for offset in (-24, -16, -8, 0, 8, 16, 24)
+    )
+    market = Market(replace(dataset, candles=candles, settlements=settlements))
+    run = replay(market, "fixture", shipped(), clock(T + DAY), replace(plan(enter()), interval=DAY))
+    sequences = {e.sequence for e in run.events if e.kind == "FUNDING" and T < e.time < T + DAY}
+    valuations = [s for s in run.snapshots if s.sequence in sequences]
+
+    assert len(valuations) == 2
+    assert all(s.trigger_available_at == T + 25 * HOUR for s in valuations)
+
+
 def test_t02_capture_absence_overrides_earlier_status_learned_later(tmp_path: Path) -> None:
     fixture = json.loads((Path(__file__).parent / "fixtures" / "exchangeInfo.json").read_text(encoding="utf-8"))
-    btc = Instrument("BTCUSDT", 1_567_965_300_000)
+    row = next(r for r in fixture["symbols"] if r["symbol"] == "BTCUSDT")
+    btc = Instrument("BTCUSDT", row["onboardDate"])
     receipt, learned = 1_794_873_600_000, 1_794_960_000_000
     late = Listing(btc, btc.onboard, evidence(learned), "TRADING")
     relisted = Instrument("BTCUSDT", receipt + DAY)
     future = Listing(relisted, relisted.onboard, evidence(receipt), "TRADING")
     path = tmp_path / "capture.sqlite3"
-    with open_ledger(path) as conn, conn:
-        payload = json.dumps({**fixture, "symbols": []}).encode()
-        conn.execute(
-            """INSERT INTO capture_attempts
-                (source_url, slot, requested_at, received_at, status, http_status,
-                 payload, sha256, provenance)
-                VALUES (?, '0', ?, ?, 'CAPTURED', 200, ?, ?, 'VERIFIED')""",
-            ("https://fapi.binance.com/fapi/v1/exchangeInfo", "2026-11-17T00:00:00+00:00",
-             "2026-11-17T00:00:00+00:00", payload, hashlib.sha256(payload).hexdigest()),
-        )
+    save_exchange_info(path, receipt, {
+        **fixture, "symbols": [{**row, "symbol": "ETHUSDT", "baseAsset": "ETH"}],
+    })
     listings, *_ = _capture_observations(path, {"BTCUSDT"}, 1_900_000_000_000, (late, future))
     absent, = listings
     assert absent.instrument == btc and absent.effective == receipt
     market = Market(Dataset((late, future, *listings), ()))
+    baseline = Market(Dataset((future,), ()))
+    # Adding the future notice cannot introduce its epoch into the earlier universe.
+    assert snapshot(market, clock(learned - 1), shipped()) == snapshot(baseline, clock(learned - 1), shipped())
+    assert absent.evidence.as_of == learned
     # The later-learned TRADING row is known from `learned`, yet the absence still wins.
     assert as_of(market.listings[btc], learned + 1).status == "ABSENT_FROM_EXCHANGE_INFO"
     # An epoch that starts after the capture is not withdrawn by it.
     assert as_of(market.listings[relisted], relisted.onboard + 1).tradable
+
+
+def test_t02_pending_absence_does_not_replace_a_known_capture_status(tmp_path: Path) -> None:
+    fixture = json.loads((Path(__file__).parent / "fixtures" / "exchangeInfo.json").read_text(encoding="utf-8"))
+    row = next(r for r in fixture["symbols"] if r["symbol"] == "BTCUSDT")
+    btc = Instrument("BTCUSDT", row["onboardDate"])
+    receipt = 1_794_873_600_000
+    learned = receipt + DAY
+    older = Listing(btc, receipt - 2 * HOUR, evidence(receipt - 2 * HOUR), "TRADING")
+    late = Listing(btc, receipt + HOUR // 2, evidence(learned), "TRADING")
+    db = tmp_path / "capture.sqlite3"
+    save_exchange_info(db, receipt - HOUR, {**fixture, "symbols": [{**row, "status": "CLOSE_ONLY"}]})
+    absent = {**fixture, "symbols": [{**row, "symbol": "ETHUSDT", "baseAsset": "ETH"}]}
+    save_exchange_info(db, receipt + HOUR, absent)
+    save_exchange_info(db, receipt + 2 * HOUR, absent)
+
+    def universe(*prior: Listing) -> Market:
+        listings, *_ = _capture_observations(db, {"BTCUSDT"}, receipt + 2 * HOUR, prior)
+        return Market(Dataset((*prior, *listings), ()))
+
+    before_notice = clock(learned - 1)
+    complete = universe(older, late)
+    assert snapshot(complete, before_notice, shipped()) == snapshot(universe(older), before_notice, shipped())
+    assert as_of(complete.listings[btc], learned).status == "ABSENT_FROM_EXCHANGE_INFO"
 
 
 def test_t01_historical_coverage_separates_filter_snapshots_from_withdrawals(tmp_path: Path) -> None:
