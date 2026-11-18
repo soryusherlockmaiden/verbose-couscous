@@ -603,8 +603,12 @@ def test_t01_offline_inputs_require_exact_decimal_text(tmp_path: Path) -> None:
         path.write_text(json.dumps({**raw, key: value}), encoding="utf-8")
         with pytest.raises(ValueError):
             _policy(path)
-    sample = json.loads((SETTINGS.parents[1] / "evidence" / "m1" / "replay-plan.json")
-                        .read_text(encoding="utf-8"))
+    sample = {
+        "candidate_version": "decimal-text-v1", "instrument_id": INST.id, "interval_ms": HOUR,
+        "equity": "50", "risk_pct": "0.10", "leverage": 10,
+        "intents": [{"time": "1970-03-22T00:00:00Z", "available": "1970-03-21T23:59:59Z",
+                     "action": "ENTER", "side": "LONG", "distance": "2"}],
+    }
     assert _plan(sample, INST, T).risk_pct == D("0.10")
     intent = sample["intents"][0]
     for change in ({"risk_pct": 0.1}, {"equity": 50.0}, {"leverage": True},
