@@ -665,10 +665,10 @@ def test_t01_t20_t23_runtime_clock_report_and_config_identity(
         return sim, report
 
     result = run_decisions()
-    assert digest(asdict(result[0])) == "a8ee66c886d07ea0d4fbd681bf9f581c8546cda23a0fc7377581253c4a07fc0a"
+    assert digest(asdict(result[0])) == "d0238f5d5bfe512fe86eee83e77efea04a77627ce5734d18a11b37ccaa47c56f"
     # The released policy prices the entry at the settlement instant conservatively.
     released = replay(sim_market, "fixture", _policy(SETTINGS), clock(T + 2 * HOUR), run_plan)
-    assert digest(asdict(released)) == "94617d2e7daf509dd50d40ebdef89e995fbc6b68fd56b7ea61c262b06de83b1d"
+    assert digest(asdict(released)) == "e8a7c103fad0f8e1109f9cd7840fdd05509525b465d70e10f1d5827cfe3619f3"
     assert [e.detail for e in released.events if e.kind == "FUNDING"] == [
         f"OWNERSHIP_ADJUSTMENT,SETTLED_AT={T}"
     ]
@@ -949,3 +949,37 @@ def test_t03_reconstructed_spread_is_refused_when_reconstruction_is_disallowed(
     report = feasibility(Market(data), "fixture", strict, T, clock(T + DAY))
     assert report["decisions"] and not any(d["executable"] or d["assessable"] for d in report["decisions"])
     assert report["status"] == "INCONCLUSIVE_CRITICAL_INPUT_UNAVAILABLE"
+
+
+def lagged(dataset: Dataset) -> Dataset:
+    """Every candle closes 1,000 ms before it is published, as in the pinned archives."""
+    return replace(dataset, candles=tuple(replace(b, available=b.end + 1000) for b in dataset.candles))
+
+
+def test_t18_released_credit_cannot_size_or_show_before_its_bar_is_published(dataset: Dataset) -> None:
+    inside = replace(funding(T + HOUR + 30 * 60_000, "-0.001", hours=None), interval_ms=90 * 60_000)
+    data = replace(lagged(dataset), settlements=(*dataset.settlements[:4], inside))
+    run = replay(Market(data), "fixture", shipped(), clock(T + 3 * HOUR),
+                 plan(enter(T + HOUR, qty="0.5"), enter(T + 2 * HOUR, qty="0.5")))
+    release, = (e for e in run.events if "CREDIT_RELEASED" in e.detail)
+    assert release.time == T + 2 * HOUR
+    # The second entry would size on the released credit before it is observable.
+    assert any(e.time == T + 2 * HOUR and e.detail == "FUNDING_CASH_UNAVAILABLE" for e in run.events)
+    later = [s for s in run.snapshots if s.sequence >= release.sequence and s.trigger_available_at is not None]
+    assert later and all(s.trigger_available_at >= T + 2 * HOUR + 1000 for s in later)
+
+
+def test_t01_longer_horizon_publishes_the_same_values_at_a_shared_timestamp(dataset: Dataset) -> None:
+    before = funding(T + 2 * HOUR - 1, "-0.001", hours=2)
+    data = replace(lagged(dataset), settlements=(*dataset.settlements[:4], before))
+
+    def published(hours: int) -> list[tuple[object, ...]]:
+        run = replay(Market(data), "fixture", shipped(), clock(T + hours * HOUR), plan(enter(T + HOUR)))
+        return [(s.wallet, s.cycle_equity, s.trigger_available_at)
+                for s in run.snapshots if s.timestamp <= T + 2 * HOUR]
+
+    short, long = published(2), published(3)
+    assert short == long
+    end = replay(Market(data), "fixture", shipped(), clock(T + 2 * HOUR), plan(enter(T + HOUR)))
+    withheld, = (e for e in end.events if e.kind == "FUNDING")
+    assert withheld.postings[0].cash == ZERO and "CREDIT_WITHHELD" in withheld.detail

@@ -34,7 +34,7 @@ from acgs.pit import (
 from acgs.sim_config import Policy, StopBasis, digest, instant_ms
 from acgs.sim_ledger import AccountSnapshot, Event, Journal, MarkSource
 
-REPLAY_VERSION = "m1-replay-v4"
+REPLAY_VERSION = "m1-replay-v5"
 
 
 class ReplayError(ValueError):
@@ -188,8 +188,10 @@ class _Replay:
             self.bar(start)
         horizon = self.boundary_funding.get(self.end)
         if horizon is not None and horizon.time < self.end:
-            # A settlement just before the horizon still belongs to this replay.
-            self.boundary_settlement(self.end, None, record_flat=False, resolvable=False)
+            # A settlement just before the horizon still belongs to this replay. Its
+            # holder window outlives the replay, so a credit stays withheld: a longer
+            # horizon must publish the same values at this timestamp.
+            self.boundary_settlement(self.end, None, record_flat=False, resolvable=True)
         self.ownership.clear()
         try:
             self.journal.verify(self.p.accounting_tolerance)
@@ -468,11 +470,14 @@ class _Replay:
         available_at: int | None,
     ) -> None:
         mark_as_of = event.mark_evidence.as_of if event.mark_evidence is not None else event.time
-        self.cash_available_at = max(self.cash_available_at, event.evidence.as_of, mark_as_of)
-        self.snapshot(
-            seq, time, price, source,
-            None if available_at is None else max(time, available_at, self.cash_available_at),
+        # Cash is observable no earlier than its posting: sizing and every later
+        # snapshot that carries it wait for the same instant (a released credit
+        # waits for the bar's OHLC that resolved it).
+        self.cash_available_at = max(
+            self.cash_available_at, event.evidence.as_of, mark_as_of,
+            time if available_at is None else available_at,
         )
+        self.snapshot(seq, time, price, source, None if available_at is None else self.cash_available_at)
 
     def exposure_changed(
         self, earliest: int, latest: int, before: Decimal, time: int, mark: Decimal,
