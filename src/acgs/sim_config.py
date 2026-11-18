@@ -60,7 +60,7 @@ class Policy:
             self.funding_reserve_horizon_ms,
         )
         if (
-            self.version != "m1-v2"
+            self.version != "m1-v3"
             or min(counts) <= 0 or self.history_days <= self.momentum_days
             or self.history_days < max(15, self.volume_days)
             or not 28 <= self.decimal_precision <= 50

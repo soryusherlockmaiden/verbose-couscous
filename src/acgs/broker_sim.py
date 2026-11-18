@@ -1,6 +1,5 @@
 """Deterministic, isolated single-instrument replay; no exchange capability."""
 
-from bisect import bisect_left
 from dataclasses import asdict, dataclass, replace
 from decimal import Decimal, localcontext
 from enum import StrEnum
@@ -35,7 +34,7 @@ from acgs.pit import (
 from acgs.sim_config import Policy, StopBasis, digest, instant_ms
 from acgs.sim_ledger import AccountSnapshot, Event, Journal, MarkSource
 
-REPLAY_VERSION = "m1-replay-v2"
+REPLAY_VERSION = "m1-replay-v3"
 
 
 class ReplayError(ValueError):
@@ -89,6 +88,25 @@ class DeferredTrail:
     position_epoch: int
 
 
+@dataclass(frozen=True)
+class _Exposure:
+    """A modeled fill: the instants it could have executed and the position around it."""
+
+    earliest: int
+    latest: int
+    before: Decimal
+    after: Decimal
+
+
+@dataclass
+class _Ownership:
+    """A boundary settlement whose holder can still change within the current bar."""
+
+    event: Funding
+    price: Decimal
+    posted: Decimal
+
+
 def replay(
     market: Market, dataset_digest: str, policy: Policy, clock: Clock, plan: ReplayPlan
 ) -> Replay:
@@ -123,7 +141,25 @@ class _Replay:
         self.liquidated = False
         self.decisions: list[EligibilityDecision] = []
         self.funding = market.settlements.get(self.inst, ())
-        self.funding_keys = {funding.time: funding for funding in self.funding}
+        # Settlements within the ownership window of a bar boundary settle at that boundary.
+        # The holder is ambiguous across any fill in the window; the adverse candidate posts.
+        self.window = policy.funding_ownership_window_ms
+        if 2 * self.window >= plan.interval:
+            raise ReplayError("Funding ownership window must be shorter than half a bar")
+        self.boundary_funding: dict[int, Funding] = {}
+        self.inside_funding: dict[int, list[Funding]] = {}
+        for event in self.funding:
+            nearest = (event.time + plan.interval // 2) // plan.interval * plan.interval
+            if abs(event.time - nearest) <= self.window:
+                if nearest in self.boundary_funding:
+                    raise ReplayError(f"Two settlements share the bar boundary {nearest}")
+                self.boundary_funding[nearest] = event
+            else:
+                bar_start = event.time // plan.interval * plan.interval
+                self.inside_funding.setdefault(bar_start, []).append(event)
+        self.exposures: list[_Exposure] = []
+        self.ownership: list[_Ownership] = []
+        self.last_close: tuple[int, Decimal, MarkSource] | None = None
         self.intents: dict[tuple[int, Action], Intent] = {}
         for intent in plan.intents:
             key = intent.time, intent.action
@@ -144,7 +180,11 @@ class _Replay:
     def run(self) -> Replay:
         for start in range(self.plan.start, self.end, self.plan.interval):
             self.bar(start)
-        self.verify_funding_ownership()
+        horizon = self.boundary_funding.get(self.end)
+        if horizon is not None and horizon.time < self.end:
+            # A settlement just before the horizon still belongs to this replay.
+            self.boundary_settlement(self.end, None, record_flat=False)
+        self.ownership.clear()
         try:
             self.journal.verify(self.p.accounting_tolerance)
         except ValueError as error:
@@ -153,23 +193,6 @@ class _Replay:
             REPLAY_VERSION, self.run_id, self.dataset_digest, self.p.digest, tuple(self.decisions),
             tuple(self.journal.events), tuple(self.journal.snapshots),
         )
-
-    def verify_funding_ownership(self) -> None:
-        window = self.p.funding_ownership_window_ms
-        if not window:
-            return
-        # Audit the resulting fills. Future settlement records must never affect
-        # candidate decisions, but can show an ambiguity in the completed replay.
-        settlements = [f.time for f in self.funding if f.rate]
-        for event in self.journal.events:
-            if event.kind not in {"ENTRY_FILL", "PARTIAL_FILL", "EXIT_FILL", "STOP", "LIQUIDATION"}:
-                continue
-            index = bisect_left(settlements, event.time - window)
-            if index < len(settlements) and settlements[index] <= event.time + window:
-                raise ReplayError(
-                    f"Ambiguous funding ownership: {event.kind} at {event.time} "
-                    f"within {window} ms of settlement {settlements[index]}"
-                )
 
     def snapshot(
         self, seq: int, time: int, mark: Decimal | None, source: MarkSource,
@@ -219,7 +242,6 @@ class _Replay:
         end = start + self.plan.interval
         j = self.journal
         trade = self.market.bar(self.inst, start, self.plan.interval)
-        due = tuple(f for f in self.funding if start <= f.time < end)
         entry = self.intents.get((start, Action.ENTER))
         exit_ = self.intents.get((start, Action.EXIT))
         trail = self.intents.get((end, Action.TRAIL))
@@ -227,6 +249,8 @@ class _Replay:
         if trade is None or trade.evidence.provenance == Provenance.UNAVAILABLE:
             if j.position.quantity or entry is not None or exit_ is not None:
                 raise ReplayError(f"Contract candle unavailable at {start}")
+            self.boundary_settlement(start, None, record_flat=False)
+            self.ownership.clear()
             for _ in deferred:
                 j.record(start, "REJECTED", detail="NO_POSITION")
             self.snapshot(j.record(end, "NO_DATA"), end, None, MarkSource.MARK_UNAVAILABLE, None)
@@ -238,6 +262,9 @@ class _Replay:
         if marks is None or inputs is None:
             if j.position.quantity:
                 raise ReplayError(f"Mark, listing or maintenance data unavailable for open position at {start}")
+            open_mark = None if marks is None else (marks[0].opening, marks[1])
+            self.boundary_settlement(start, open_mark, record_flat=False)
+            self.ownership.clear()
             if entry is not None and marks is not None:
                 self.reject_inputs(entry, trade.prices.opening, marks[0].opening)
             elif entry is not None:
@@ -247,9 +274,11 @@ class _Replay:
             seq = j.record(end, "BAR_CLOSE")
             if marks is None:
                 self.snapshot(seq, end, None, MarkSource.MARK_UNAVAILABLE, None)
+                self.last_close = None
             else:
                 prices, _, source = marks
                 self.snapshot(seq, end, prices.close, source, self.close_available_at(trade, source))
+                self.last_close = end, prices.close, source
             if trail is not None:
                 j.record(end, "REJECTED", detail="NO_POSITION")
             return
@@ -258,9 +287,7 @@ class _Replay:
         pos = j.position
         if pos.quantity and not funding_complete(self.funding, start, start + 1, self.p):
             raise ReplayError(f"Funding settlement continuity unavailable at {start}")
-        at_open = self.funding_keys.get(start)
-        if at_open is not None:
-            self.post_funding(at_open, mark.opening, source_open)
+        self.boundary_settlement(start, (mark.opening, source_open), record_flat=True)
 
         stop_path = mark if self.p.stop_basis == StopBasis.MARK_PRICE else trade.prices
         open_protection = self.protect(
@@ -295,16 +322,15 @@ class _Replay:
             worst_mark = mark.low if long else mark.high
             worst_stop = stop_path.low if long else stop_path.high
             adverse_trade = trade.prices.low if long else trade.prices.high
-            may_liquidate, may_stop = self.protection(worst_mark, worst_stop, tiers)
-            inside = tuple(f for f in due if f.time > start)
-            if inside and (may_liquidate or may_stop):
-                raise ReplayError(f"Ambiguous intrabar protection/funding chronology at {start}")
-            for f in inside:
+            for f in self.inside_funding.get(start, ()):
                 if f.mark is None:
                     raise ReplayError(f"Intrabar funding has no settlement mark at {f.time}")
-                self.post_funding(f, f.mark, MarkSource.FUNDING_RECORD)
-                if any(self.protection(worst_mark, worst_stop, tiers)):
-                    raise ReplayError(f"Ambiguous intrabar funding-assisted protection at {f.time}")
+                # OHLC cannot order the settlement against a possible protective exit, so
+                # a flat holder is a candidate too. Adverse funding still reduces margin
+                # before the protection check, which can only make that check stricter.
+                exit_possible = any(self.protection(worst_mark, worst_stop, tiers))
+                self.post_settlement(f, f.time, f.mark, MarkSource.FUNDING_RECORD,
+                                     self.candidates(f) | ({ZERO} if exit_possible else set()))
             # OHLC supplies a bound, not an intrabar timestamp. Record the outcome
             # at interval end, before close/trailing and the next bar's open.
             self.protect(
@@ -312,9 +338,11 @@ class _Replay:
                 filters, tiers, intrabar=True, contract_stop=self.p.stop_basis == StopBasis.CONTRACT_PRICE,
                 cost_time=start,
             )
+        self.ownership.clear()
         seq = j.record(end, "BAR_CLOSE")
         close_available = self.close_available_at(trade, source_close)
         self.snapshot(seq, end, mark.close, source_close, close_available)
+        self.last_close = end, mark.close, source_close
         if trail is not None and j.position.quantity:
             available = max(close_available, trail.available)
             if available <= end:
@@ -350,18 +378,91 @@ class _Replay:
             or any(not x.tradable and start < x.effective <= end for x in history)
         )
 
-    def post_funding(self, event: Funding, mark: Decimal, source: MarkSource) -> None:
-        if self.journal.position.quantity:
-            price = event.mark if event.mark is not None else mark
-            seq = self.journal.settle(event.time, price, event.rate)
-            mark_as_of = event.mark_evidence.as_of if event.mark_evidence is not None else event.time
-            self.cash_available_at = max(self.cash_available_at, event.evidence.as_of, mark_as_of)
-            self.snapshot(
-                seq, event.time, price, MarkSource.FUNDING_RECORD if event.mark else source,
-                self.cash_available_at,
-            )
+    def candidates(self, event: Funding) -> set[Decimal]:
+        """Positions that may have been held at a settlement, given the fills so far.
+
+        A zero window keeps the frozen exact-time priority: no fill is ambiguous.
+        """
+        held = {self.journal.position.quantity}
+        if not self.window:
+            return held
+        for fill in reversed(self.exposures):
+            if fill.latest < event.time - self.window:
+                break
+            if fill.earliest <= event.time + self.window:
+                held |= {fill.before, fill.after}
+        return held
+
+    def boundary_settlement(
+        self, boundary: int, opening: tuple[Decimal, MarkSource] | None, *, record_flat: bool,
+    ) -> None:
+        event = self.boundary_funding.get(boundary)
+        if event is None:
+            return
+        candidates = self.candidates(event)
+        if event.mark is not None:
+            price, source = event.mark, MarkSource.FUNDING_RECORD
+        elif opening is not None:
+            price, source = opening
+        elif self.last_close is not None and self.last_close[0] == boundary:
+            _, price, source = self.last_close
+        elif candidates == {ZERO}:
+            return
         else:
-            self.journal.record(event.time, "FUNDING_FLAT")
+            raise ReplayError(f"Boundary funding at {event.time} has no valuation mark")
+        if candidates == {ZERO}:
+            if record_flat:
+                snapped = f"SETTLED_AT={event.time}" if event.time != boundary else ""
+                self.journal.record(boundary, "FUNDING_FLAT", detail=snapped)
+            posted = ZERO
+        else:
+            posted = self.post_settlement(event, boundary, price, source, candidates)
+        if self.window:
+            self.ownership.append(_Ownership(event, price, posted))
+
+    def post_settlement(
+        self, event: Funding, time: int, price: Decimal, source: MarkSource,
+        candidates: set[Decimal],
+    ) -> Decimal:
+        """Post the most adverse funding among the possible holders; flag any ambiguity."""
+        current = self.journal.position.quantity
+        holder = min(candidates, key=lambda q: (-q * price * event.rate, q != current, q))
+        cash = -holder * price * event.rate
+        detail = [f"SETTLED_AT={event.time}"] if event.time != time else []
+        if len(candidates) > 1:
+            detail.append("OWNERSHIP_AMBIGUOUS")
+        seq = self.journal.settle(time, price, cash, holder, ",".join(detail))
+        self.funding_observed(event, seq, time, price, source)
+        return cash
+
+    def funding_observed(
+        self, event: Funding, seq: int, time: int, price: Decimal, source: MarkSource,
+        *, observable: bool = True,
+    ) -> None:
+        mark_as_of = event.mark_evidence.as_of if event.mark_evidence is not None else event.time
+        self.cash_available_at = max(self.cash_available_at, event.evidence.as_of, mark_as_of)
+        self.snapshot(seq, time, price, source, max(time, self.cash_available_at) if observable else None)
+
+    def exposure_changed(
+        self, earliest: int, latest: int, before: Decimal, time: int, mark: Decimal,
+        source: MarkSource, *, observable: bool = True,
+    ) -> None:
+        """Record a fill and charge any settlement whose holder it makes ambiguous."""
+        after = self.journal.position.quantity
+        self.exposures.append(_Exposure(earliest, latest, before, after))
+        for pending in self.ownership:
+            event = pending.event
+            if latest < event.time - self.window or earliest > event.time + self.window:
+                continue
+            holder = min((before, after), key=lambda q: -q * pending.price * event.rate)
+            worst = -holder * pending.price * event.rate
+            if worst < pending.posted:
+                seq = self.journal.settle(
+                    time, pending.price, worst - pending.posted, holder,
+                    f"OWNERSHIP_ADJUSTMENT,SETTLED_AT={event.time}",
+                )
+                pending.posted = worst
+                self.funding_observed(event, seq, time, mark, source, observable=observable)
 
     def reject_inputs(self, intent: Intent, price: Decimal, mark: Decimal) -> None:
         """Persist the taxonomy reasons for an entry refused on point-in-time inputs (§5.1)."""
@@ -453,6 +554,7 @@ class _Replay:
             margin=decision.margin, reserve=decision.reserve, stop=stop,
         )
         self.snapshot(seq, intent.time, mark, source, intent.time)
+        self.exposure_changed(intent.time, intent.time, pos.quantity, intent.time, mark, source)
         if kind == "PARTIAL_FILL":
             j.record(intent.time, "CANCELED", detail="UNFILLED_REMAINDER")
 
@@ -477,6 +579,7 @@ class _Replay:
         fill = slipped(price, side, self.slippage(intent.time, stress=False), filters.tick)
         seq = j.fill(intent.time, "EXIT_FILL", qty * side, fill, self.p.taker_fee)
         self.snapshot(seq, intent.time, mark, source, intent.time)
+        self.exposure_changed(intent.time, intent.time, pos.quantity, intent.time, mark, source)
 
     def protection(self, mark: Decimal, trigger: Decimal, tiers: Maintenance) -> tuple[bool, bool]:
         pos = self.journal.position
@@ -508,6 +611,10 @@ class _Replay:
         )
         self.liquidated |= liquidate
         self.snapshot(seq, time, snapshot_mark, source, None if intrabar else time)
+        # An intrabar exit may have executed at any instant of its bar.
+        earliest = cost_time if intrabar and cost_time is not None else time
+        self.exposure_changed(earliest, time, pos.quantity, time, snapshot_mark, source,
+                              observable=not intrabar)
         return True
 
     def trail(

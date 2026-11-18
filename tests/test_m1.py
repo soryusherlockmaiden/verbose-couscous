@@ -85,8 +85,8 @@ def filters() -> Filters:
 
 @pytest.fixture
 def policy() -> Policy:
-    # The existing event-order fixtures deliberately exercise the exact clock
-    # sensitivity. Separate fixtures below exercise the conservative default.
+    # Exact-clock fixtures: a zero window keeps the frozen tie priority, so event-order
+    # tests isolate it. `shipped()` and the released-policy digest cover the 15 s window.
     return replace(_policy(SETTINGS), funding_ownership_window_ms=0)
 
 
@@ -234,7 +234,7 @@ def test_t17_reconciliation_rederives_snapshots_from_immutable_postings() -> Non
         unrecorded.verify(tolerance)
 
 
-def test_t18_near_open_holder_and_t19_unresolved_intrabar_funding_stop(
+def test_t18_near_open_holder_and_t19_intrabar_funding_beside_possible_stop(
     dataset: Dataset, policy: Policy,
 ) -> None:
     f = funding(T + HOUR - 1, hours=1)
@@ -249,23 +249,94 @@ def test_t18_near_open_holder_and_t19_unresolved_intrabar_funding_stop(
     config = replace(policy, funding_jitter_ms=5)
     market = Market(data)
     result = replay(market, "fixture", config, clock(T + 2 * HOUR), plan(enter(T + HOUR)))
-    assert [e.time for e in result.events if e.kind == "FUNDING"] == [late.time]
-    data = change_bar(data, 1, prices("100", "101", "92", "95"))
-    with pytest.raises(ReplayError, match="Ambiguous intrabar"):
-        replay(Market(data), "fixture", config, clock(T + 2 * HOUR), plan(enter(T + HOUR)))
+    assert [(e.time, e.detail) for e in result.events if e.kind == "FUNDING"] == [(late.time, "")]
+    # OHLC cannot order the settlement against the possible stop: the flat holder is a
+    # candidate, so adverse funding is charged and favorable funding is omitted.
+    stopped = change_bar(data, 1, prices("100", "101", "92", "95"))
+    for rate, cash in (("0.001", D("-0.1000")), ("-0.001", ZERO)):
+        settled = replace(stopped, settlements=(*dataset.settlements, replace(late, rate=D(rate))))
+        run = replay(Market(settled), "fixture", config, clock(T + 2 * HOUR), plan(enter(T + HOUR)))
+        charge, = (e for e in run.events if e.kind == "FUNDING")
+        assert charge.detail == "OWNERSHIP_AMBIGUOUS" and charge.postings[0].cash == cash
+        assert [e.kind for e in run.events if e.sequence > charge.sequence][:1] == ["STOP"]
+        assert run.snapshots[-1].funding == cash
+
+
+def shipped(**changes: object) -> Policy:
+    """The released policy, with its 15 s funding ownership window."""
+    return replace(_policy(SETTINGS), **changes)
 
 
 @pytest.mark.parametrize("offset", [-1, 0, 1, 15_000])
 @pytest.mark.parametrize("opening", [True, False])
-def test_t18_conservative_policy_refuses_near_boundary_ownership_change(
-    dataset: Dataset, offset: int, opening: bool,
+@pytest.mark.parametrize("rate", ["0.001", "-0.001"])
+def test_t18_ownership_window_charges_adverse_and_omits_favorable_funding(
+    dataset: Dataset, offset: int, opening: bool, rate: str,
 ) -> None:
-    policy = replace(_policy(SETTINGS), funding_jitter_ms=20_000)
-    settlement = funding(T + 2 * HOUR + offset, hours=2)
+    policy = shipped(funding_jitter_ms=20_000)
+    assert policy.funding_ownership_window_ms == 15_000
+    settlement = funding(T + 2 * HOUR + offset, rate, hours=2)
     market = Market(replace(dataset, settlements=(*dataset.settlements, settlement)))
     intents = (enter(T + 2 * HOUR),) if opening else (enter(T + HOUR), exit_(T + 2 * HOUR))
-    with pytest.raises(ReplayError, match="Ambiguous funding ownership"):
-        replay(market, "fixture", policy, clock(T + 3 * HOUR), plan(*intents))
+    run = replay(market, "fixture", policy, clock(T + 3 * HOUR), plan(*intents))
+    charges = [e for e in run.events if e.kind in {"FUNDING", "FUNDING_FLAT"} and e.time == T + 2 * HOUR]
+    # Either holder is possible around the boundary, so the adverse one pays and a
+    # favorable credit never reaches the account. The replay itself does not fail.
+    adverse = rate == "0.001"
+    assert run.snapshots[-1].funding == (D("-0.1000") if adverse else ZERO)
+    adjusted = [e for e in charges if e.detail.startswith("OWNERSHIP_ADJUSTMENT")]
+    assert bool(adjusted) == (opening == adverse)
+    assert all(e.detail.endswith(f"SETTLED_AT={settlement.time}") for e in adjusted)
+    posted, = (e for e in charges if e not in adjusted)
+    assert (posted.detail == f"SETTLED_AT={settlement.time}") == bool(offset)
+
+
+@pytest.mark.parametrize("rate", ["0.001", "-0.001"])
+@pytest.mark.parametrize("stopped_bar", [1, 2])
+def test_t18_intrabar_stop_beside_boundary_settlement_is_conservative(
+    dataset: Dataset, rate: str, stopped_bar: int,
+) -> None:
+    # The stop may execute anywhere in its bar, so within 15 s of a settlement at
+    # either bar boundary. That ambiguity is priced, not turned into a failed replay.
+    data = change_bar(change_bar(dataset, stopped_bar, prices("100", "101", "90", "92")),
+                      stopped_bar, prices("100", "101", "90", "92"), mark=True)
+    data = replace(data, settlements=(*data.settlements, funding(T + 2 * HOUR, rate, hours=2)))
+    run = replay(Market(data), "fixture", shipped(), clock(T + 3 * HOUR), plan(enter(T + HOUR)))
+    stop, = (e for e in run.events if e.kind == "STOP")
+    assert stop.time == T + (stopped_bar + 1) * HOUR
+    charges = [e for e in run.events if e.kind == "FUNDING"]
+    assert all("SETTLED_AT" not in e.detail for e in charges if "ADJUSTMENT" not in e.detail)
+    # A stop before the boundary makes the flat account a candidate at posting time; a
+    # stop after it reverses only a credit. An adverse charge already posted stands.
+    flagged = any("OWNERSHIP" in e.detail for e in charges)
+    assert flagged == (stopped_bar == 1 or rate == "-0.001")
+    assert run.snapshots[-1].funding == (D("-0.1000") if rate == "0.001" else ZERO)
+    with pytest.raises(ReplayError, match="half a bar"):
+        replay(Market(data), "fixture", shipped(), clock(T + 3 * HOUR),
+               replace(plan(enter(T + HOUR)), interval=30_000))
+
+
+def test_t18_offset_archive_settlement_uses_boundary_mark_without_rest_mark(dataset: Dataset) -> None:
+    # Archive rows carry no settlement mark. A 15 ms calc_time offset is a boundary
+    # settlement, valued at the opening mark print, not an intrabar event to fail on.
+    offset = replace(funding(T + 2 * HOUR + 15, hours=2), mark=None)
+    data = replace(dataset, settlements=(*dataset.settlements, offset))
+    run = replay(Market(data), "fixture", shipped(), clock(T + 3 * HOUR), plan(enter(T + HOUR)))
+    charge, = (e for e in run.events if e.kind == "FUNDING")
+    assert charge.time == T + 2 * HOUR and charge.detail == f"SETTLED_AT={offset.time}"
+    assert charge.postings[0].cash == -charge.quantity * D(100) * offset.rate
+    snap, = (s for s in run.snapshots if s.sequence == charge.sequence)
+    assert snap.mark_source == MarkSource.MARK_KLINE_OPEN
+    with pytest.raises(ReplayError, match="no settlement mark"):
+        replay(Market(data), "fixture", shipped(funding_ownership_window_ms=0), clock(T + 3 * HOUR),
+               plan(enter(T + HOUR)))
+    # A settlement 1 ms before the horizon still belongs to the replay.
+    horizon = replace(funding(T + 2 * HOUR - 1, hours=2), mark=None)
+    near_end = replace(dataset, settlements=(*dataset.settlements, horizon))
+    tail = replay(Market(near_end), "fixture", shipped(), clock(T + 2 * HOUR), plan(enter(T + HOUR)))
+    last, = (e for e in tail.events if e.kind == "FUNDING")
+    assert last.time == T + 2 * HOUR and last.detail == f"SETTLED_AT={horizon.time}"
+    assert tail.snapshots[-1].mark_source == MarkSource.MARK_KLINE_CLOSE
 
 
 def test_t18_offset_with_primary_mark_posts_once_for_unchanged_holder(dataset: Dataset) -> None:
@@ -275,7 +346,8 @@ def test_t18_offset_with_primary_mark_posts_once_for_unchanged_holder(dataset: D
     data = replace(dataset, settlements=(*dataset.settlements, record))
     run = replay(Market(data), "fixture", policy, clock(T + 3 * HOUR), plan(enter(T + HOUR)))
     event, = (e for e in run.events if e.kind == "FUNDING")
-    assert event.time == record.time and event.postings[0].cash == D("-0.105")
+    assert event.time == T + 2 * HOUR and event.detail == f"SETTLED_AT={record.time}"
+    assert event.postings[0].cash == D("-0.105")
     snap, = (s for s in run.snapshots if s.sequence == event.sequence)
     assert snap.mark_source == MarkSource.FUNDING_RECORD and snap.mark == D(105)
     assert not snap.observable_by(record.time + 5999) and snap.observable_by(record.time + 6000)
@@ -552,7 +624,13 @@ def test_t01_t20_t23_runtime_clock_report_and_config_identity(
         return sim, report
 
     result = run_decisions()
-    assert digest(asdict(result[0])) == "92a6e207f73bff49b5429ee02a5cd3cf504f05e1cfe206fe7b00f2ffa791b87e"
+    assert digest(asdict(result[0])) == "454318887ef980774004534408c92664a4460c70af50470a375591a7c317c031"
+    # The released policy prices the entry at the settlement instant conservatively.
+    released = replay(sim_market, "fixture", _policy(SETTINGS), clock(T + 2 * HOUR), run_plan)
+    assert digest(asdict(released)) == "906243fbcc69c608272b08c49293655f2e997a47aea75c2fb99e1edc9dd1f159"
+    assert [e.detail for e in released.events if e.kind == "FUNDING"] == [
+        f"OWNERSHIP_ADJUSTMENT,SETTLED_AT={T}"
+    ]
 
     def forbidden(*args: object, **kwargs: object) -> None:
         raise AssertionError("Decision code accessed the wall clock")

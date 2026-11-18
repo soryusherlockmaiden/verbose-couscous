@@ -1,5 +1,5 @@
 {
-  "version": "m1-v2",
+  "version": "m1-v3",
   "stop_basis": "CONTRACT_PRICE",
   "allow_documented_mark_proxy": false,
   "allow_reconstructed": true,

@@ -136,15 +136,17 @@ class Journal:
                 postings = (*postings, Posting("LIQUIDATION_CLEARANCE", -(realized - fee + forfeit)))
         return self.record(time, kind, delta, price, postings, detail)
 
-    def settle(self, time: int, price: Decimal, rate: Decimal) -> int:
-        cash = -self.position.quantity * price * rate
+    def settle(
+        self, time: int, price: Decimal, cash: Decimal, holder: Decimal, detail: str = "",
+    ) -> int:
+        """Post one funding cash flow; `holder` is the quantity it was charged for."""
         # Charge adverse funding against isolated margin as well as posting the cash.
         # The smaller margin is a protection-model input and is never a second debit.
-        if cash < ZERO:
+        if cash < ZERO and self.position.quantity:
             self.position = replace(self.position, margin=max(ZERO, self.position.margin + cash))
         elif self.position.quantity:
             self.credits += cash
-        return self.record(time, "FUNDING", self.position.quantity, price, (Posting("FUNDING", cash),))
+        return self.record(time, "FUNDING", holder, price, (Posting("FUNDING", cash),), detail)
 
     @property
     def collateral(self) -> Decimal:
