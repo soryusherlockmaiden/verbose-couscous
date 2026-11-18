@@ -983,3 +983,42 @@ def test_t01_longer_horizon_publishes_the_same_values_at_a_shared_timestamp(data
     end = replay(Market(data), "fixture", shipped(), clock(T + 2 * HOUR), plan(enter(T + HOUR)))
     withheld, = (e for e in end.events if e.kind == "FUNDING")
     assert withheld.postings[0].cash == ZERO and "CREDIT_WITHHELD" in withheld.detail
+
+
+def test_t02_first_capture_withdraws_manifest_filters_and_listings(tmp_path: Path) -> None:
+    fixture = json.loads((Path(__file__).parent / "fixtures" / "exchangeInfo.json").read_text(encoding="utf-8"))
+    btc = Instrument("BTCUSDT", 1_567_965_300_000)
+    manifest_listing = Listing(btc, btc.onboard, evidence(btc.onboard), "TRADING")
+    lot = Lot(D("0.001"), D(1000), D("0.001"))
+    manifest_filter = Filters(btc, 1_794_800_000_000, evidence(1_794_800_000_000), lot, lot, D("0.1"),
+                              D(50), D("556.8"), D(4_529_764), D("0.97"), D("1.03"))
+    policy = _policy(SETTINGS)
+    receipt = 1_794_873_600_000
+    no_minimum = json.loads(json.dumps(fixture))
+    for item in no_minimum["symbols"]:
+        item["filters"] = [f for f in item["filters"] if f["filterType"] != "MIN_NOTIONAL"]
+    delisted = {**fixture, "symbols": []}
+    for name, body in (("no_minimum", no_minimum), ("delisted", delisted)):
+        path = tmp_path / f"{name}.sqlite3"
+        with open_ledger(path) as conn, conn:
+            payload = json.dumps(body).encode()
+            conn.execute(
+                """INSERT INTO capture_attempts
+                    (source_url, slot, requested_at, received_at, status, http_status,
+                     payload, sha256, provenance)
+                    VALUES (?, '0', ?, ?, 'CAPTURED', 200, ?, ?, 'VERIFIED')""",
+                ("https://fapi.binance.com/fapi/v1/exchangeInfo", "2026-11-17T00:00:00+00:00",
+                 "2026-11-17T00:00:00+00:00", payload, hashlib.sha256(payload).hexdigest()),
+            )
+        listings, captured, *_ = _capture_observations(
+            path, {"BTCUSDT"}, 1_900_000_000_000, (manifest_listing,), (manifest_filter,),
+        )
+        market = Market(Dataset((manifest_listing, *listings), (), filters=(manifest_filter, *captured)))
+        candidate = Candidate(btc, receipt + 1, Side.LONG, D(90000), D(90000), D(1000), D(50), D(50),
+                              D("0.10"), 10)
+        before = evaluate(market, replace(candidate, time=receipt - 1), policy)
+        after = evaluate(market, candidate, policy)
+        assert "MISSING_PIT_FILTER" not in before.reasons
+        assert "UNVERIFIED_CRITICAL_FILTER" not in before.reasons
+        expected = "UNVERIFIED_CRITICAL_FILTER" if name == "no_minimum" else "MISSING_PIT_FILTER"
+        assert expected in after.reasons

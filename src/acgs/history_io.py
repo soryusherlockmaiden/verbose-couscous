@@ -214,7 +214,9 @@ def _filters(
 
 def _capture_observations(
     path: Path, wanted: set[str], cutoff: int,
+    prior_listings: tuple[Listing, ...] = (), prior_filters: tuple[Filters, ...] = (),
 ) -> tuple[list[Listing], list[Filters], list[Schedule], list[Spread], list[str]]:
+    """Import M0 captures. `prior_*` are manifest observations a capture can supersede."""
     listings: list[Listing] = []
     filters: list[Filters] = []
     schedules: list[Schedule] = []
@@ -224,6 +226,10 @@ def _capture_observations(
     # Every capture is a complete snapshot: what it omits is withdrawn from its receipt.
     known: dict[str, Instrument] = {}
     latest_filters: dict[str, Filters] = {}
+    prior: dict[str, list[Listing]] = {}
+    for row in prior_listings:
+        if not wanted or row.instrument.symbol in wanted:
+            prior.setdefault(row.instrument.symbol, []).append(row)
     connection = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
     try:
         schema = connection.execute("PRAGMA user_version").fetchone()[0]
@@ -271,21 +277,33 @@ def _capture_observations(
                     if snapshot is not None:
                         filters.append(snapshot)
                         latest_filters[symbol] = snapshot
-                    elif symbol in latest_filters:
-                        # Keep the shape, never the authority, of the previous filters.
+                        continue
+                    # Keep the shape, never the authority, of any filters still in force,
+                    # whether a previous capture or the manifest supplied them.
+                    shape = latest_filters.get(symbol)
+                    if shape is None or shape.instrument != inst:
+                        shape = next((f for f in reversed(prior_filters)
+                                      if f.instrument == inst and f.effective <= time), None)
+                    if shape is not None:
                         filters.append(replace(
-                            latest_filters[symbol], instrument=inst, effective=time,
+                            shape, instrument=inst, effective=time,
                             evidence=Evidence(url, "exchangeInfo_filter_absence:" + sha,
                                               Provenance.UNAVAILABLE, time,
                                               "Latest exchangeInfo lacks a required filter"),
                         ))
-                for symbol in known.keys() - current.keys():
-                    listings.append(Listing(
-                        known[symbol], time,
-                        Evidence(url, "exchangeInfo_absence:" + sha, Provenance.UNAVAILABLE, time,
-                                 "Symbol missing from the latest exchangeInfo"),
-                        "ABSENT_FROM_EXCHANGE_INFO",
-                    ))
+                # An epoch in force from a capture or the manifest that this capture does
+                # not list (absent symbol or a different listing epoch) is withdrawn.
+                in_force = set(known.values()) | {
+                    row.instrument for rows in prior.values() for row in rows if row.effective <= time
+                }
+                for epoch in sorted(in_force):
+                    if current.get(epoch.symbol) != epoch:
+                        listings.append(Listing(
+                            epoch, time,
+                            Evidence(url, "exchangeInfo_absence:" + sha, Provenance.UNAVAILABLE, time,
+                                     "Listing epoch missing from the latest exchangeInfo"),
+                            "ABSENT_FROM_EXCHANGE_INFO",
+                        ))
                 known.update(current)
             elif endpoint in {"premiumIndex", "fundingInfo"}:
                 present = set()
@@ -420,6 +438,7 @@ def load_history(path: Path, root: Path, capture_db: Path | None = None) -> Load
         capture = manifest["capture"]
         captured_listings, captured_filters, captured_schedules, captured_spreads, hashes = _capture_observations(
             capture_db, set(capture["symbols"]), _time(capture["cutoff"]),
+            tuple(listings), tuple(sorted(filters, key=lambda f: (f.effective, f.evidence.as_of))),
         )
         if digest(hashes) != capture["digest"]:
             raise ValueError("Capture selection differs from the pinned manifest")
