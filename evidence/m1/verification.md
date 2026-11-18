@@ -128,3 +128,15 @@ The commands above, with `-v6`/`-v7` output names, gave identical outputs on two
 - public replay `154ee562aea635e9574b320ce354ed11c74607827d5e5ba80ed0b2e95e4da141` (run digest `009f03dfcac8b86fddc0ae45df927b494ff55f7552c16e424481196ea0b8aaec`).
 
 Pinned Gitleaks scanned 57 commits with no leaks.
+
+## Fourth follow-up (review of `925a3f6`)
+
+| Contract | Regression coverage |
+|---|---|
+| SC-02 / T-01, T-18 | A due settlement at the replay horizon uses the same opening mark as an extended replay. The shared snapshot matches through a mark gap from 100 to 104, for both funding signs and with or without a recorded settlement mark. If the dataset ends at that boundary, a close fallback observes the declared 1,000 ms lag. |
+| SC-01 / T-35 | Importing captures of a relisted symbol preserves the attested boundary of the previous epoch. A late delisting observation can coexist with an absence recorded when the capture was received. |
+| SC-01 / T-02 | Incomplete filters withdraw earlier filters without copying their values. An older filter backfilled later remains superseded, and changing its tick size leaves the rejected entry's recorded price unchanged. |
+
+`uv run --locked ruff check .`, `uv run --locked mypy` and `uv run --locked pytest` passed on Linux with 186 tests. Docker Compose built the runtime and check targets, passed the same 186 tests, and recorded and replayed smoke digest `e2fb3f83500b5aa748b93e0e3151cd9fc1536048d56692da249ed0e877362505`. The local Docker build used the sandbox proxy CA as a build secret and standard checkout permissions on the public configuration. Pinned Gitleaks found no leaks in the source commit and its ancestry.
+
+The public replay command above uses a new output filename for `m1-replay-v6`. Two native runs and one Docker run produced identical bytes. The canonical replay hash is `066e3a87f233d75a2c04c8eff501dcb3eaef903e1fec695d1a9ebf52bc1b9949` (run digest `7449cec2c6e942dc1c0d9a9af2cc75e1963f57c26ec7600469153aedb43bc664`). Historical, main feasibility and empty-window hashes match the third follow-up. The main feasibility sample remains `INCONCLUSIVE_CRITICAL_INPUT_UNAVAILABLE`.
