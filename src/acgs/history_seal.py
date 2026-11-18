@@ -18,7 +18,7 @@ CANDLES = ("klines", "markPriceKlines")
 ARCHIVE = re.compile(
     r"https://data\.binance\.vision/data/futures/um/(?P<period>monthly|daily)/"
     r"(?P<kind>klines|markPriceKlines|fundingRate)/(?P<symbol>[A-Z0-9]+)/"
-    r"(?:(?P<interval>[1-9][0-9]*[mhdwM])/(?P=symbol)-(?P=interval)|(?P=symbol))"
+    r"(?:(?P<interval>[1-9][0-9]*[mhdwM])/(?P=symbol)-(?P=interval)|(?P=symbol)-fundingRate)"
     r"-(?P<date>[0-9]{4}-[0-9]{2}(?:-[0-9]{2})?)\.zip"
 )
 

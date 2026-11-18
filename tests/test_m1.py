@@ -791,7 +791,7 @@ def test_t18_archive_mark_enrichment_requires_exact_settlement_match(tmp_path: P
     mark = tmp_path / "funding.json"
     mark.write_text(json.dumps([row]), encoding="utf-8")
     funding_source = ("https://data.binance.vision/data/futures/um/daily/"
-                      f"fundingRate/{INST.symbol}/{INST.symbol}-1970-03-22.zip")
+                      f"fundingRate/{INST.symbol}/{INST.symbol}-fundingRate-1970-03-22.zip")
     mark_source = ("https://fapi.binance.com/fapi/v1/fundingRate?"
                    f"symbol={INST.symbol}&startTime={T}&endTime={T + HOUR - 1}&limit=1000")
     manifest = {

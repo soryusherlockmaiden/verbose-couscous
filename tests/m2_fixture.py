@@ -24,7 +24,7 @@ def write_json(path, value):
 
 
 def archive(root, kind, interval, label, start, end, rows, *, period="daily"):
-    name = f"{SYMBOL}-{interval}" if interval else SYMBOL
+    name = f"{SYMBOL}-{interval}" if interval else f"{SYMBOL}-fundingRate"
     directory = f"{SYMBOL}/{interval}" if interval else SYMBOL
     path = f"data/futures/um/{period}/{kind}/{directory}/{name}-{label}.zip"
     payload = BytesIO()
