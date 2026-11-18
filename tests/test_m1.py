@@ -428,6 +428,9 @@ def test_t19_t21_gap_and_missing_mark_or_candle_fail_closed(dataset: Dataset, po
                     clock(T + 2 * HOUR), plan(enter()))
     assert any(s.mark_source == MarkSource.CANDLE_OPEN_PROXY for s in result.snapshots)
     assert result.snapshots[-1].mark_source == MarkSource.CANDLE_CLOSE_PROXY
+    strict = replace(policy, allow_documented_mark_proxy=True, allow_reconstructed=False)
+    with pytest.raises(ReplayError, match="unavailable"):
+        replay(source, "fixture", strict, clock(T + 2 * HOUR), plan(enter()))
 
 
 def test_t37_trailing_stop_only_at_completed_available_close_and_only_ratchets(
@@ -699,7 +702,7 @@ def test_t01_t20_t23_runtime_clock_report_and_config_identity(
     assert any(not d["executable"] for d in decisions)
     assert {d["provenance"] for d in decisions} == {Provenance.RECONSTRUCTED}
     assert {d["candidate"]["side"] for d in decisions} == {Side.SHORT}
-    assert summary["status"] == "ASSESSABLE" and summary["version"] == "m1-feasibility-v5"
+    assert summary["status"] == "ASSESSABLE" and summary["version"] == "m1-feasibility-v6"
     # Every attempt missing a PIT filter is inconclusive; assessable rejections are no-trade.
     blind = feasibility(Market(replace(daily_data, filters=())), "fixture", policy, T, clock(T + DAY))
     assert {d["provenance"] for d in blind["decisions"]} == {Provenance.UNAVAILABLE}
@@ -1022,3 +1025,23 @@ def test_t02_first_capture_withdraws_manifest_filters_and_listings(tmp_path: Pat
         assert "UNVERIFIED_CRITICAL_FILTER" not in before.reasons
         expected = "UNVERIFIED_CRITICAL_FILTER" if name == "no_minimum" else "MISSING_PIT_FILTER"
         assert expected in after.reasons
+
+
+def test_t21_t23_proxy_mark_without_reconstruction_is_never_executable(dataset: Dataset, policy: Policy) -> None:
+    data = daily(dataset)
+    candles = tuple(c for c in data.candles if not c.is_mark)
+    gap = MarkGap(INST, 16 * DAY, T, evidence(16 * DAY, Provenance.UNAVAILABLE))
+    data = replace(data, candles=candles, mark_gaps=(gap,), filters=(
+        replace(filters(), effective=T, evidence=evidence(T), min_notional=D(50)),
+    ))
+    proxied = replace(policy, allow_documented_mark_proxy=True)
+    allowed = feasibility(Market(data), "fixture", proxied, T, clock(T + DAY))
+    assert allowed["status"] == "ASSESSABLE"
+    strict = replace(proxied, allow_reconstructed=False)
+    report = feasibility(Market(replace(data, spreads=dataset.spreads)), "fixture", strict, T, clock(T + DAY))
+    rows = report["decisions"]
+    assert rows and all(d["mark_source"] == "CANDLE_CLOSE_PROXY" for d in rows)
+    assert not any(d["executable"] or d["assessable"] for d in rows)
+    assert all("RECONSTRUCTION_DISALLOWED" in d["assessment_reasons"] for d in rows)
+    assert all(row["executable"] == row["assessable"] == 0 for row in report["scenarios"].values())
+    assert report["status"] == "INCONCLUSIVE_CRITICAL_INPUT_UNAVAILABLE"

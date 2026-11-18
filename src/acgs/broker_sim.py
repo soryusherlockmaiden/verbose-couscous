@@ -231,7 +231,8 @@ class _Replay:
         mark = self.market.bar(self.inst, bar.start, self.plan.interval, mark=True)
         if mark is not None and mark.evidence.provenance == Provenance.VERIFIED:
             return mark.prices, MarkSource.MARK_KLINE_OPEN, MarkSource.MARK_KLINE_CLOSE
-        if self.p.allow_documented_mark_proxy and any(
+        # A proxy is a reconstruction: it needs both opt-ins.
+        if self.p.allow_documented_mark_proxy and self.p.allow_reconstructed and any(
             gap.start <= bar.start and bar.end <= gap.end and gap.evidence.as_of <= bar.start
             for gap in self.market.mark_gaps.get(self.inst, ())
         ):

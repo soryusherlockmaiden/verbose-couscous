@@ -68,11 +68,17 @@ class _Attempt:
     provenance: Provenance
     # Provenance labels the inputs; assessability says whether they could decide.
     assessable: bool
+    assessment: tuple[str, ...] = ()
+
+    @property
+    def executable(self) -> bool:
+        """The one feasibility verdict used by rows, aggregates and the report status."""
+        return self.assessable and self.decision.executable
 
 
 def _summary(attempts: list[_Attempt]) -> dict[str, Any]:
     rows = [(a.decision, a.provenance) for a in attempts]
-    accepted = [d for d, _ in rows if d.executable]
+    accepted = [a.decision for a in attempts if a.executable]
     symbols: dict[str, list[Decimal]] = defaultdict(list)
     for d in accepted:
         symbols[d.candidate.instrument.id].append(d.risk_utilization)
@@ -82,7 +88,7 @@ def _summary(attempts: list[_Attempt]) -> dict[str, Any]:
         "executable": len(accepted),
         "executable_rate": Decimal(len(accepted)) / len(rows) if rows else None,
         "provenance": dict(Counter(p for _, p in rows)),
-        "executable_provenance": dict(Counter(p for d, p in rows if d.executable)),
+        "executable_provenance": dict(Counter(a.provenance for a in attempts if a.executable)),
         "binding": dict(Counter(d.binding for d, _ in rows if d.binding is not None)),
         "executable_binding": dict(Counter(d.binding for d in accepted if d.binding is not None)),
         "rejection_reasons": dict(Counter(reason for d, _ in rows for reason in d.reasons)),
@@ -101,7 +107,7 @@ def _status(attempts: list[_Attempt]) -> str:
     """
     if not attempts:
         return "INCONCLUSIVE_NO_ASSESSABLE_ATTEMPTS"
-    if any(a.decision.executable for a in attempts):
+    if any(a.executable for a in attempts):
         return "ASSESSABLE"
     if not any(a.assessable for a in attempts):
         return "INCONCLUSIVE_CRITICAL_INPUT_UNAVAILABLE"
@@ -189,21 +195,23 @@ def _feasibility(
                     proxy or any(e.provenance != Provenance.VERIFIED for e in rank.evidence)
                 ):
                     provenance = Provenance.RECONSTRUCTED
-                attempt = _Attempt(decision, provenance, (
-                    provenance != Provenance.UNAVAILABLE
-                    and (config.allow_reconstructed or provenance != Provenance.RECONSTRUCTED)
-                    and not UNUSABLE_INPUT.intersection(decision.reasons)
+                assessment = tuple(sorted(
+                    ({"CRITICAL_INPUT_UNAVAILABLE"} if provenance == Provenance.UNAVAILABLE else set())
+                    | ({"RECONSTRUCTION_DISALLOWED"} if provenance == Provenance.RECONSTRUCTED
+                       and not config.allow_reconstructed else set())
+                    | UNUSABLE_INPUT.intersection(decision.reasons)
                 ))
+                attempt = _Attempt(decision, provenance, not assessment, assessment)
                 results[case.id].append(attempt)
                 slices[case.id, inst.id, regime].append(attempt)
                 decisions.append({
                     "scenario": case.id, "regime": regime, "provenance": provenance,
-                    "assessable": attempt.assessable,
+                    "assessable": attempt.assessable, "assessment_reasons": attempt.assessment,
                     "mark_source": "CANDLE_CLOSE_PROXY" if proxy else "MARK_KLINE_CLOSE",
-                    "atr": atr, "executable": decision.executable, **asdict(decision),
+                    "atr": atr, **asdict(decision), "executable": attempt.executable,
                 })
     return {
-        "version": "m1-feasibility-v5", "dataset_digest": dataset_digest,
+        "version": "m1-feasibility-v6", "dataset_digest": dataset_digest,
         "policy_digest": policy.digest, "start": start, "end_exclusive": end,
         "status": _status([row for items in results.values() for row in items]),
         "universe_exclusions": dict(exclusions), "universe_snapshots": snapshots,
