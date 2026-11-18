@@ -283,17 +283,20 @@ def _capture_observations(
                                                  "Latest exchangeInfo lacks a required filter"),
                         )
                     filters.append(snapshot)
+                # The capture observes the symbol's absence at receipt. That fact
+                # overrides any status effective before receipt: the one known at
+                # receipt and any tradable one learned later. Epochs and statuses that
+                # start after receipt are untouched.
                 for epoch in sorted(known.keys() | prior.keys()):
                     if current.get(epoch.symbol) == epoch:
                         continue
-                    observations = [
-                        row for row in prior.get(epoch, [])
-                        if row.effective <= time and row.evidence.as_of <= time
-                    ]
+                    earlier = [row for row in prior.get(epoch, []) if row.effective <= time]
                     if epoch in known:
-                        observations.append(known[epoch])
-                    latest = max(observations, key=lambda row: (row.effective, row.evidence.as_of), default=None)
-                    if latest is None or not latest.tradable:
+                        earlier.append(known[epoch])
+                    known_then = max((row for row in earlier if row.evidence.as_of <= time),
+                                     key=lambda row: (row.effective, row.evidence.as_of), default=None)
+                    learned_later = any(row.tradable and row.evidence.as_of > time for row in earlier)
+                    if not learned_later and (known_then is None or not known_then.tradable):
                         continue
                     withdrawal = Listing(
                         epoch, time,

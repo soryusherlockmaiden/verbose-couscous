@@ -1173,3 +1173,31 @@ def test_t21_intrabar_settlement_valuation_waits_for_its_bar(dataset: Dataset, l
     assert snap.trigger_available_at == T + 2 * HOUR + 1000
     # The debit is certain whatever the order, so it never blocks the next entry.
     assert not any(e.detail == "FUNDING_CASH_UNAVAILABLE" for e in run.events)
+
+
+def test_t02_capture_absence_overrides_earlier_status_learned_later(tmp_path: Path) -> None:
+    fixture = json.loads((Path(__file__).parent / "fixtures" / "exchangeInfo.json").read_text(encoding="utf-8"))
+    btc = Instrument("BTCUSDT", 1_567_965_300_000)
+    receipt, learned = 1_794_873_600_000, 1_794_960_000_000
+    late = Listing(btc, btc.onboard, evidence(learned), "TRADING")
+    relisted = Instrument("BTCUSDT", receipt + DAY)
+    future = Listing(relisted, relisted.onboard, evidence(receipt), "TRADING")
+    path = tmp_path / "capture.sqlite3"
+    with open_ledger(path) as conn, conn:
+        payload = json.dumps({**fixture, "symbols": []}).encode()
+        conn.execute(
+            """INSERT INTO capture_attempts
+                (source_url, slot, requested_at, received_at, status, http_status,
+                 payload, sha256, provenance)
+                VALUES (?, '0', ?, ?, 'CAPTURED', 200, ?, ?, 'VERIFIED')""",
+            ("https://fapi.binance.com/fapi/v1/exchangeInfo", "2026-11-17T00:00:00+00:00",
+             "2026-11-17T00:00:00+00:00", payload, hashlib.sha256(payload).hexdigest()),
+        )
+    listings, *_ = _capture_observations(path, {"BTCUSDT"}, 1_900_000_000_000, (late, future))
+    absent, = listings
+    assert absent.instrument == btc and absent.effective == receipt
+    market = Market(Dataset((late, future, *listings), ()))
+    # The later-learned TRADING row is known from `learned`, yet the absence still wins.
+    assert as_of(market.listings[btc], learned + 1).status == "ABSENT_FROM_EXCHANGE_INFO"
+    # An epoch that starts after the capture is not withdrawn by it.
+    assert as_of(market.listings[relisted], relisted.onboard + 1).tradable
