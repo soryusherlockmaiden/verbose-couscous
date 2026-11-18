@@ -699,7 +699,7 @@ def test_t01_t20_t23_runtime_clock_report_and_config_identity(
     assert any(not d["executable"] for d in decisions)
     assert {d["provenance"] for d in decisions} == {Provenance.RECONSTRUCTED}
     assert {d["candidate"]["side"] for d in decisions} == {Side.SHORT}
-    assert summary["status"] == "ASSESSABLE" and summary["version"] == "m1-feasibility-v4"
+    assert summary["status"] == "ASSESSABLE" and summary["version"] == "m1-feasibility-v5"
     # Every attempt missing a PIT filter is inconclusive; assessable rejections are no-trade.
     blind = feasibility(Market(replace(daily_data, filters=())), "fixture", policy, T, clock(T + DAY))
     assert {d["provenance"] for d in blind["decisions"]} == {Provenance.UNAVAILABLE}
@@ -921,3 +921,31 @@ def test_t02_latest_exchange_info_withdraws_missing_filters_and_symbols(tmp_path
     absent = as_of(market.listings[inst], third + 1)
     assert absent.status == "ABSENT_FROM_EXCHANGE_INFO" and not absent.tradable
     assert "MISSING_PIT_FILTER" in reasons(third + 1)
+
+
+def test_t41_liquidation_step_down_also_covers_the_mark(dataset: Dataset, policy: Policy) -> None:
+    # The maintenance boundary at the mark lands exactly on 0.85 units (step 0.05).
+    lot = Lot(D("0.05"), D(100), D("0.05"))
+    tiers = (Tier(D(45), D("0.005"), ZERO, 20), Tier(D(5000), D("0.09"), D("3.825"), 20))
+    market = Market(replace(
+        dataset, filters=(replace(filters(), lot=lot, market_lot=lot),),
+        maintenance=(Maintenance(INST, T - DAY, evidence(), tiers),),
+    ))
+    decision = evaluate(market, order(mark=D(95), stop_distance=D("0.5"), leverage=10, risk_pct=D(1)), policy)
+    assert dict(decision.caps)["LIQUIDATION"] == D("0.85")
+    assert decision.executable and decision.binding == "LIQUIDATION" and decision.quantity == D("0.80")
+
+
+def test_t03_reconstructed_spread_is_refused_when_reconstruction_is_disallowed(
+    dataset: Dataset, policy: Policy,
+) -> None:
+    strict = replace(policy, allow_reconstructed=False)
+    rebuilt = Spread(INST, evidence(provenance=Provenance.RECONSTRUCTED), D(2))
+    decision = evaluate(Market(replace(dataset, spreads=(rebuilt,))), order(), strict)
+    assert not decision.executable and "SPREAD_COST_UNCERTAIN" in decision.reasons
+    assert evaluate(Market(replace(dataset, spreads=(rebuilt,))), order(), policy).executable
+    data = replace(daily(dataset), spreads=(replace(rebuilt, evidence=evidence(T, Provenance.RECONSTRUCTED)),),
+                   filters=(replace(filters(), effective=T, evidence=evidence(T), min_notional=D(50)),))
+    report = feasibility(Market(data), "fixture", strict, T, clock(T + DAY))
+    assert report["decisions"] and not any(d["executable"] or d["assessable"] for d in report["decisions"])
+    assert report["status"] == "INCONCLUSIVE_CRITICAL_INPUT_UNAVAILABLE"

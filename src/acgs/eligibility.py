@@ -190,7 +190,9 @@ def _evaluate(market: Market, o: Candidate, p: Policy) -> EligibilityDecision:
         or (view.evidence.provenance == Provenance.RECONSTRUCTED and not p.allow_reconstructed)
     ):
         reasons.append("FEE_FUNDING_RESERVE")
-    if spread_evidence is None or spread_evidence.provenance == Provenance.UNAVAILABLE:
+    if spread_evidence is None or spread_evidence.provenance == Provenance.UNAVAILABLE or (
+        spread_evidence.provenance == Provenance.RECONSTRUCTED and not p.allow_reconstructed
+    ):
         reasons.append("SPREAD_COST_UNCERTAIN")
     if maintenance is None:
         reasons.append("LIQUIDATION_BUFFER")
@@ -243,9 +245,11 @@ def _evaluate(market: Market, o: Candidate, p: Policy) -> EligibilityDecision:
     binding, requested = min(caps, key=lambda item: item[1])
     step = order_step(filters)
     qty = quantize_down(requested, step)
-    # A strict maintenance boundary can land precisely on a quantity step.
-    if qty and qty == liq_cap and not survives(
-        maintenance, qty * o.side, o.entry, qty * o.entry / o.leverage, boundary, p.liquidation_fee,
+    # A strict maintenance boundary can land precisely on a quantity step, at the
+    # stressed stop or at the current mark. Step down once instead of rejecting.
+    if qty and qty == liq_cap and not all(
+        survives(maintenance, qty * o.side, o.entry, qty * o.entry / o.leverage, price, p.liquidation_fee)
+        for price in (boundary, o.mark)
     ):
         qty -= step
     notional = qty * o.entry

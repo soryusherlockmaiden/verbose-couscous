@@ -57,7 +57,9 @@ def _distribution(values: list[Decimal]) -> dict[str, Decimal] | None:
 
 
 # Reasons that leave a critical input present but unusable at the decision time.
-UNUSABLE_INPUT = frozenset({"STALE_METADATA", "UNVERIFIED_CRITICAL_FILTER"})
+UNUSABLE_INPUT = frozenset({
+    "STALE_METADATA", "UNVERIFIED_CRITICAL_FILTER", "SPREAD_COST_UNCERTAIN",
+})
 
 
 @dataclass(frozen=True)
@@ -187,10 +189,11 @@ def _feasibility(
                     proxy or any(e.provenance != Provenance.VERIFIED for e in rank.evidence)
                 ):
                     provenance = Provenance.RECONSTRUCTED
-                attempt = _Attempt(
-                    decision, provenance,
-                    provenance != Provenance.UNAVAILABLE and not UNUSABLE_INPUT.intersection(decision.reasons),
-                )
+                attempt = _Attempt(decision, provenance, (
+                    provenance != Provenance.UNAVAILABLE
+                    and (config.allow_reconstructed or provenance != Provenance.RECONSTRUCTED)
+                    and not UNUSABLE_INPUT.intersection(decision.reasons)
+                ))
                 results[case.id].append(attempt)
                 slices[case.id, inst.id, regime].append(attempt)
                 decisions.append({
@@ -200,7 +203,7 @@ def _feasibility(
                     "atr": atr, "executable": decision.executable, **asdict(decision),
                 })
     return {
-        "version": "m1-feasibility-v4", "dataset_digest": dataset_digest,
+        "version": "m1-feasibility-v5", "dataset_digest": dataset_digest,
         "policy_digest": policy.digest, "start": start, "end_exclusive": end,
         "status": _status([row for items in results.values() for row in items]),
         "universe_exclusions": dict(exclusions), "universe_snapshots": snapshots,
