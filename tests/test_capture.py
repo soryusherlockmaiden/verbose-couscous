@@ -5,7 +5,7 @@ from collections import deque
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 import pytest
 
@@ -24,6 +24,7 @@ from acgs.config_io import load_config
 from acgs.history_io import _capture_observations
 from acgs.ledger import open_ledger
 from acgs.market_data import PublicResponse
+from acgs.sim_config import digest as history_digest
 from acgs.sim_config import instant_ms
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
@@ -773,3 +774,181 @@ def test_dynamic_stop_and_report_expired_gap(tmp_path: Path, http: int, expected
         ).fetchall()
         assert json.loads(previous[0])["missed"] == {"AAAUSDT": expected, "ZZZUSDT": "UNATTEMPTED"}
         assert current[1] == utc_iso(start + timedelta(minutes=5))
+
+
+def save_receipt(conn, endpoint, at, body):
+    raw = json.dumps(body).encode()
+    stamp = utc_iso(at)
+    url = "https://fapi.binance.com/fapi/v1/" + endpoint
+    sha = hashlib.sha256(raw).hexdigest()
+    conn.execute(
+        """INSERT INTO capture_attempts (source_url, slot, requested_at, received_at, status, http_status,
+           payload, sha256, provenance) VALUES (?, ?, ?, ?, 'CAPTURED', 200, ?, ?, 'VERIFIED')""",
+        (url, stamp, stamp, stamp, raw, sha),
+    )
+    return history_digest((url, stamp, sha))
+
+
+def test_hardening_historical_reports_exclusions_without_losing_supported_books(tmp_path):
+    db = tmp_path / "capture.db"
+    symbols = [f"S{i:03d}USDT" for i in range(521)] + ["币安人生USDT"]
+    template = symbol_row("S000USDT")
+    books = [
+        (symbols[0], [[90, 1], [100, 1]], [[120, 1], [100, 1]]),
+        (symbols[1], [[1, 1]], [[100, 1]]),
+        (symbols[2], [], [[10, 1]]),
+        (symbols[3], [[11, 1]], [[10, 1]]),
+        (symbols[-1], [[10, 1]], [[11, 1]]),
+    ]
+    with open_ledger(db) as conn, conn:
+        hashes = [save_receipt(conn, "exchangeInfo", NOW, {
+            "symbols": [template | {"symbol": s} for s in symbols],
+        })]
+        for i, (symbol, bids, asks) in enumerate(books, 1):
+            hashes.append(save_receipt(conn, "depth?" + urlencode({"symbol": symbol, "limit": 5}),
+                                       NOW + timedelta(seconds=i), {
+                                           "bids": [[str(p), str(q)] for p, q in bids],
+                                           "asks": [[str(p), str(q)] for p, q in asks],
+                                       }))
+    cutoff = instant_ms(NOW + timedelta(minutes=1))
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "version": "m1-history-v1", "assets": [], "instruments": [], "listings": [],
+        "ingested_at": cutoff, "candle_delay_ms": 0, "funding_delay_ms": 0,
+        "capture": {"cutoff": cutoff, "digest": history_digest(hashes), "symbols": []},
+    }), encoding="utf-8")
+    before = db.read_bytes()
+    report = tmp_path / "report.json"
+    assert main(["historical", "--manifest", str(manifest), "--assets", str(tmp_path),
+                 "--capture-db", str(db), "--out", str(report)]) == 0
+    data = json.loads(report.read_bytes())
+    assert len(data["coverage"]) == 521
+    assert data["capture_exclusions"] == {
+        symbols[1]: {"SPREAD_OUT_OF_BOUNDS": 1}, symbols[2]: {"EMPTY_BOOK": 1},
+        symbols[3]: {"CROSSED_BOOK": 1}, symbols[-1]: {"UNSUPPORTED_SYMBOL": 2},
+    }
+    _, _, _, spreads, selected = _capture_observations(db, set(), cutoff)
+    assert [s.bps for s in spreads] == [0]
+    assert selected == hashes and db.read_bytes() == before
+
+
+@pytest.mark.parametrize("sealed", [True, False])
+def test_hardening_t35_epoch_attribution_resumes_only_after_fresh_snapshot(tmp_path, monkeypatch, sealed):
+    from acgs.history_seal import HistorySeal, Window
+
+    old = NOW + timedelta(days=7)
+    onboard = old + timedelta(hours=1)
+    end = onboard + timedelta(days=1 if sealed else 2)
+    seal = HistorySeal((Window(instant_ms(onboard), instant_ms(end)),) if sealed else ())
+    monkeypatch.setattr("acgs.history_io.registered_seal", lambda: seal)
+    db = tmp_path / "epochs.db"
+    symbol = "BTCUSDT"
+    depth = "depth?symbol=BTCUSDT&limit=5"
+    book = {"bids": [["1", "1"]], "asks": [["2", "1"]]}
+    new_info = {"symbols": [symbol_row(symbol) | {"onboardDate": instant_ms(onboard)}]}
+    with open_ledger(db) as conn, conn:
+        hashes = [save_receipt(conn, "exchangeInfo", old, {"symbols": [symbol_row(symbol)]})]
+        if sealed:
+            save_receipt(conn, "exchangeInfo", onboard, new_info)
+        for endpoint, body in [(depth, book), ("premiumIndex", [{"symbol": symbol, "nextFundingTime": instant_ms(end) + 99}]),
+                               ("fundingInfo", [{"symbol": symbol, "fundingIntervalHours": 8,
+                                                 "adjustedFundingRateCap": "0.01", "adjustedFundingRateFloor": "-0.01"}])]:
+            hashes.append(save_receipt(conn, endpoint, end, body))
+        hashes.append(save_receipt(conn, "exchangeInfo", end + timedelta(seconds=1), new_info))
+        hashes.append(save_receipt(conn, depth, end + timedelta(seconds=2), book))
+    cutoff = instant_ms(end + timedelta(seconds=3))
+    _, _, schedules, spreads, selected = _capture_observations(db, {symbol}, cutoff)
+    assert not schedules
+    assert [s.instrument.onboard for s in spreads] == [instant_ms(onboard)]
+    exclusions = {}
+    _capture_observations(db, {symbol}, cutoff, exclusions=exclusions)
+    assert exclusions == {symbol: {"SEALED_EXCHANGE_INFO_GAP" if sealed else "STALE_EXCHANGE_INFO": 3}}
+    assert selected == hashes
+    old_onboard = symbol_row(symbol)["onboardDate"]
+    epoch_id = f"{symbol}@{old_onboard}"
+    delist = instant_ms(old + timedelta(minutes=30))
+    manifest = tmp_path / "relist.json"
+    manifest.write_text(json.dumps({
+        "version": "m1-history-v1", "ingested_at": cutoff, "assets": [],
+        "instruments": [{"symbol": symbol, "onboard": old_onboard}],
+        "listings": [{"id": epoch_id, "effective": delist, "status": "DELISTED",
+                      "evidence": {"source": "fixture", "as_of": delist, "method": "fixture", "provenance": "VERIFIED"}}],
+        "candle_delay_ms": 0, "funding_delay_ms": 0,
+        "capture": {"symbols": [symbol], "cutoff": cutoff, "digest": history_digest(hashes)},
+    }), encoding="utf-8")
+    report = tmp_path / "history.json"
+    assert main(["historical", "--manifest", str(manifest), "--assets", str(tmp_path), "--capture-db", str(db),
+                 "--out", str(report)]) == 0
+    history = json.loads(report.read_bytes())
+    assert history["capture_exclusions"] == exclusions
+    assert history["coverage"][epoch_id]["spread_observations"] == 0
+    assert history["coverage"][f"{symbol}@{instant_ms(onboard)}"]["spread_observations"] == 1
+
+
+@pytest.mark.parametrize("watch", [False, True])
+def test_hardening_late_final_http_200_is_visible_at_cli(tmp_path, monkeypatch, capsys, watch):
+    db = tmp_path / "late.db"
+    seed_snapshot(db, fixture_exchange(symbol_row("ZZZUSDT")), NOW)
+    clock = AdvancingClock(NOW + timedelta(minutes=5))
+    def fetch(url):
+        if depth_symbol(url) == "ZZZUSDT":
+            clock.instant = NOW + timedelta(minutes=10)
+        return fixture_response(url)
+
+    def pace(seconds):
+        if seconds == 30:
+            raise KeyboardInterrupt
+        clock.advance(seconds)
+
+    monkeypatch.setattr("acgs.__main__.SystemClock", lambda: clock)
+    monkeypatch.setattr("acgs.__main__.fetch_public", fetch)
+    monkeypatch.setattr("acgs.__main__.time.sleep", pace)
+    monkeypatch.setattr("acgs.__main__.load_config", lambda _: Config(capture=DYNAMIC))
+    cmd = ["--db", str(db), "capture"]
+    assert main([*cmd, "--watch"] if watch else cmd) == (130 if watch else 1)
+    output = capsys.readouterr().out
+    assert "Capture CAPTURED=4" in output
+    assert "state=closed expected=1 on_time=0 late=1 missed=0 fallback=none" in output
+
+
+def test_hardening_rotates_under_latency_and_persists_sorted_targets(tmp_path):
+    db = tmp_path / "slow.db"
+    symbols = tuple(f"S{i}USDT" for i in range(6))
+    seed_snapshot(db, fixture_exchange(*(symbol_row(s) for s in symbols)), NOW)
+    config = replace(DYNAMIC, symbols=symbols)
+    misses = []
+    for i in range(1, 5):
+        clock = AdvancingClock(NOW + timedelta(minutes=5 * i))
+        def slow(url):
+            if depth_symbol(url):
+                clock.advance(85)
+            return fixture_response(url)
+
+        with open_ledger(db) as conn:
+            capture_due(conn, config, clock, slow, clock.advance)
+            targets, coverage = conn.execute(
+                "SELECT targets, coverage FROM capture_depth_cycles ORDER BY slot DESC LIMIT 1"
+            ).fetchone()
+        assert json.loads(targets) == list(symbols)
+        missed = set(json.loads(coverage)["missed"])
+        assert len(missed) == 3
+        assert not misses or not misses[-1] & missed
+        misses.append(missed)
+    assert set.union(*misses) == set(symbols)
+
+
+def test_hardening_source_cooldown_crosses_midnight(tmp_path):
+    path = tmp_path / "retry.db"
+    end = NOW + timedelta(days=1)
+    clock = AdvancingClock(end - timedelta(seconds=5))
+    calls = []
+    def fetch(url):
+        if url.endswith("exchangeInfo"):
+            calls.append(clock.now())
+            return PublicResponse(503) if len(calls) == 1 else fixture_response(url)
+        return fixture_response(url)
+    for offset in (-5, 0, 55, 56):
+        clock.instant = end + timedelta(seconds=offset)
+        with open_ledger(path) as conn:
+            capture_due(conn, CaptureConfig(), clock, fetch, no_wait)
+    assert calls == [end - timedelta(seconds=5), end + timedelta(seconds=55)]

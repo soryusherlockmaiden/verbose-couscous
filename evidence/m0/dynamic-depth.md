@@ -109,3 +109,37 @@ git diff --check
 docker compose config --quiet
 docker compose build acgs
 ```
+
+## Capture-depth-v2
+
+Base `c0957fe`, implementation `7c347a3` and `c4cf6fa`. Tests used synthetic capture receipts, two independent M2 fixture directories, and the locally available checksum-pinned 2024 M1 assets. There were no Binance requests. The registry, M1 manifests, canonical fixtures, policy and replay semantics retain their accepted pins.
+
+| Criterion | Evidence |
+|---|---|
+| SC-01, T-35, capture exclusions | A 522-name snapshot imports 521 supported epochs. The unsupported name is counted twice (metadata and its book). Unordered levels produce a zero spread at a locked best price. Empty, crossed and extreme books have separate exclusions. The database bytes and selection hash stay identical. After a seal or long gap, all three dependent endpoint types lose the prior identity. A fresh snapshot restores attribution for the new epoch. |
+| ROADMAP §3, operational coverage | A final late HTTP 200 produces exit 1 and a closed-slot summary. Watch mode logs the same result. At 85 seconds per depth GET, three of six expected symbols miss each five-minute slot. Over four slots the missed sets alternate, with zero consecutive misses for any symbol. Source cooldown survives a UTC midnight and restart. |
+| T-15, T-18 | Both REST kinds reject a filename for the wrong range before a payload open. The three accepted M1 sidecars load through their legacy pins. The synthetic T-18 file uses a range-bearing name and retains the original settlement-matching assertions. Malformed registry fixtures stop capture before GET. |
+| M2 Phase A output | Independent Windows fixture audits each produced manifest SHA-256 `35c72ed42f63a396605e7bbfb8b042694c59f086058af7d4cd0add0dc9ac9f00` and coverage file SHA-256 `b2782e2f034d982ea08a3216c5747688c1cc2190de3cec20a734d4e854842de5`. |
+| T-13/T-16, tests and packaging | Windows and Linux Docker each passed all 290 tests, Ruff and strict mypy (26 files). The explicit import-contract run passed 46. Each config reproduced its previously recorded smoke digest twice. Both Docker targets built and the runtime smoke recorded and replayed in a dedicated volume. Pinned Gitleaks found zero leaks in all 91 commits through the code changes. |
+
+Running the 19 new regression cases against the exported base source yielded 16 failures and three existing refusal behaviors. All 19 passed on the branch. The canonical historical, feasibility, empty-window and replay output digests reproduced as `920427b4…`, `b4858aa2…`, `6f1ab1e5…` and `67da3e70…` respectively. A raw Git blob comparison against main matched all 19 files under `evidence/m1`, `tests/fixtures`, `config`, the seal JSON, `pit.py`, `broker_sim.py`, `funding.py` and `sim_config.py`.
+
+Local verification used Python 3.12.13, an isolated output directory (`$audit`) and the following commands. The four public M1 runs use the accepted dates and flags from [M1 verification](../m1/verification.md).
+
+```powershell
+uv sync --locked
+.\.venv\Scripts\ruff.exe check .
+.\.venv\Scripts\mypy.exe
+.\.venv\Scripts\python.exe -m pytest -q --basetemp="$audit/final-full"
+.\.venv\Scripts\python.exe -m pytest -q tests/test_import_contracts.py --basetemp="$audit/imports"
+.\.venv\Scripts\python.exe -m pytest -q -k hardening --basetemp="$audit/green"
+foreach ($run in 1,2) { .\.venv\Scripts\python.exe -m acgs --db "$audit/dynamic.sqlite3" --config config/m0.toml smoke }
+foreach ($run in 1,2) { .\.venv\Scripts\python.exe -m acgs --db "$audit/legacy.sqlite3" smoke }
+docker compose config --quiet
+docker compose -p acgs-hardening-check --profile check build acgs check
+docker compose -p acgs-hardening-check --profile check run --rm check
+foreach ($run in 1,2) { docker compose -p acgs-hardening-check run --rm acgs smoke }
+docker run --rm --env GIT_CONFIG_COUNT=1 --env GIT_CONFIG_KEY_0=safe.directory --env GIT_CONFIG_VALUE_0=/repo --mount "type=bind,source=C:\dev\acgs,target=/repo,readonly" ghcr.io/gitleaks/gitleaks:v8.24.3@sha256:e1b35e12a8c6fa8901f060459cfb6b2fc4c484d3afbe3b029733a3bbfab07055 git --redact --log-opts=--all /repo
+```
+
+The deployment host still needs its own one-cycle smoke and growth measurement. The post-stop sizing contract stays in SC-02. Funding candidates outside 1h/2h/4h/8h, horizon-dependent trailing diagnostics, the M2 data-window lower bound and full-archive decompression cost remain outside this change.

@@ -2,10 +2,12 @@ import hashlib
 import json
 import sqlite3
 import zlib
+from bisect import bisect_left
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from math import ceil
+from typing import TypedDict
 from urllib.parse import urlencode
 
 from acgs.clock import Clock, utc_iso
@@ -94,6 +96,7 @@ class _DepthCycle:
     targets: tuple[str, ...]
     closed: bool = False
     uses_holdout_snapshot: bool = False
+    request_offset: int = 0
 
 
 def _eligible_symbols(raw: bytes) -> tuple[str, ...]:
@@ -148,7 +151,14 @@ def _depth_selection(
         return "INVALID_EXCHANGE_INFO", None, stamp, sha
 
 
-def _close_cycle(connection: sqlite3.Connection, cycle: _DepthCycle, *, expired: bool) -> None:
+class _Coverage(TypedDict):
+    expected: int | None
+    captured: int | None
+    missed: dict[str, str] | None
+    configured_only: dict[str, str]
+
+
+def _coverage(connection: sqlite3.Connection, cycle: _DepthCycle) -> _Coverage:
     attempts = {
         url: (status, stamp) for url, status, stamp in connection.execute(
             """SELECT source_url, status, received_at FROM capture_attempts
@@ -162,10 +172,8 @@ def _close_cycle(connection: sqlite3.Connection, cycle: _DepthCycle, *, expired:
     for symbol in cycle.targets:
         status, stamp = attempts.get(_depth_url(symbol), ("UNATTEMPTED", ""))
         statuses[symbol] = "RECEIVED_AFTER_SLOT" if status == "CAPTURED" and stamp >= ends_at else status
-    if not expired and any(status != "CAPTURED" for status in statuses.values()):
-        return
     expected = None if cycle.expected is None else {symbol: statuses[symbol] for symbol in cycle.expected}
-    coverage = {
+    return {
         "expected": None if expected is None else len(expected),
         "captured": None if expected is None else sum(status == "CAPTURED" for status in expected.values()),
         "missed": None if expected is None else {
@@ -175,34 +183,66 @@ def _close_cycle(connection: sqlite3.Connection, cycle: _DepthCycle, *, expired:
             symbol: status for symbol, status in statuses.items() if expected is None or symbol not in expected
         },
     }
+
+
+def _close_cycle(connection: sqlite3.Connection, cycle: _DepthCycle, *, expired: bool) -> None:
+    coverage = _coverage(connection, cycle)
+    if not expired and (coverage["missed"] or any(v != "CAPTURED" for v in coverage["configured_only"].values())):
+        return
     connection.execute(
         "UPDATE capture_depth_cycles SET coverage = ? WHERE slot = ?",
         (json.dumps(coverage, sort_keys=True), cycle.slot),
     )
 
 
+def slot_summary(connection: sqlite3.Connection, slot: str) -> tuple[str, bool]:
+    end, expected, targets, saved, selection = connection.execute(
+        "SELECT ends_at, expected_symbols, targets, coverage, selection FROM capture_depth_cycles WHERE slot = ?",
+        (slot,),
+    ).fetchone()
+    closed = saved is not None
+    coverage: _Coverage = json.loads(saved) if closed else _coverage(connection, _DepthCycle(
+        slot, datetime.fromisoformat(end), None if expected is None else tuple(json.loads(expected)),
+        tuple(json.loads(targets)),
+    ))
+    missing = coverage["missed"] or {}
+    late = sum(status == "RECEIVED_AFTER_SLOT" for status in missing.values())
+    fallback = expected is None
+    counts = "expected=unknown on_time=unknown late=unknown missed=unknown" if fallback else (
+        f"expected={coverage['expected']} on_time={coverage['captured']} late={late} "
+        f"missed={len(missing) - late if closed else 0}"
+    )
+    if not closed and not fallback:
+        counts += f" pending={len(missing) - late}"
+    message = (f"Capture slot={slot} state={'closed' if closed else 'open'} {counts} "
+               f"fallback={selection if fallback else 'none'}")
+    return message, fallback or (closed and bool(missing))
+
+
 def _depth_cycle(
-    connection: sqlite3.Connection, config: CaptureConfig, now: datetime, seal: HistorySeal,
+    connection: sqlite3.Connection, config: CaptureConfig, now: datetime, seal: HistorySeal, slots: list[str],
 ) -> tuple[_DepthCycle, str | None]:
     utc_iso(now)
     latest = connection.execute(
-        """SELECT slot, ends_at, expected_symbols, targets, coverage, selection
+        """SELECT slot, ends_at, expected_symbols, targets, coverage, selection, request_offset
            FROM capture_depth_cycles ORDER BY slot DESC LIMIT 1"""
     ).fetchone()
     slot = _slot(now, config.interval_seconds)
     start = datetime.fromisoformat(slot)
     gap_from = None
+    previous = None
     with connection:
         if latest is not None:
-            old_slot, end, expected, targets, coverage, prior_selection = latest
+            old_slot, end, expected, targets, coverage, prior_selection, offset = latest
             previous = _DepthCycle(
                 old_slot, datetime.fromisoformat(end), None if expected is None else tuple(json.loads(expected)),
-                tuple(json.loads(targets)), coverage is not None, prior_selection == PROSPECTIVE_SELECTION,
+                tuple(json.loads(targets)), coverage is not None, prior_selection == PROSPECTIVE_SELECTION, offset,
             )
             if now < previous.ends_at:
                 return previous, None
             if not previous.closed:
                 _close_cycle(connection, previous, expired=True)
+                slots.append(previous.slot)
             if previous.ends_at < start:
                 gap_from = end
         ends_at = start + timedelta(seconds=config.interval_seconds)
@@ -210,13 +250,28 @@ def _depth_cycle(
             connection, seal, start, ends_at, config.exchange_info_max_age_seconds,
         )
         targets = tuple(sorted(set(config.symbols).union(selected or ())))
-        cycle = _DepthCycle(slot, ends_at, selected, targets, uses_holdout_snapshot=selection == PROSPECTIVE_SELECTION)
+        offset = 0
+        if previous is not None and targets and previous.targets:
+            # Advance by the number served on time. Under sustained latency this
+            # starts with the late or unattempted tail. Preserve the cursor across
+            # listing changes using the next surviving name in sorted order.
+            prior_coverage = json.loads(connection.execute(
+                "SELECT coverage FROM capture_depth_cycles WHERE slot = ?", (previous.slot,),
+            ).fetchone()[0])
+            successes = (prior_coverage["captured"] or 0) + sum(
+                value == "CAPTURED" for value in prior_coverage["configured_only"].values()
+            )
+            size = len(previous.targets)
+            cursor = previous.targets[(previous.request_offset + (successes % size or 1)) % size]
+            offset = bisect_left(targets, cursor) % len(targets)
+        cycle = _DepthCycle(slot, ends_at, selected, targets,
+                            uses_holdout_snapshot=selection == PROSPECTIVE_SELECTION, request_offset=offset)
         connection.execute(
             """INSERT INTO capture_depth_cycles
                (slot, ends_at, gap_from, exchange_info_received_at, exchange_info_sha256,
-                selection, expected_symbols, targets) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                selection, expected_symbols, targets, request_offset) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (slot, utc_iso(cycle.ends_at), gap_from, receipt, sha, selection,
-             None if selected is None else json.dumps(selected), json.dumps(targets)),
+             None if selected is None else json.dumps(selected), json.dumps(targets), offset),
         )
     return cycle, None if selected is not None else selection
 
@@ -266,6 +321,7 @@ def capture_due(
     clock: Clock,
     fetch: Callable[[str], PublicResponse],
     pace: Callable[[float], None],
+    *, report_slots: list[str] | None = None,
 ) -> list[str]:
     seal = registered_seal()
     if restriction_open(connection):
@@ -275,10 +331,13 @@ def capture_due(
     symbols = config.symbols
     if config.depth_targets == DepthTargets.TRADING_USDT_PERPETUALS:
         now = clock.now()
-        cycle, fallback = _depth_cycle(connection, config, now, seal)
+        slots = [] if report_slots is None else report_slots
+        cycle, fallback = _depth_cycle(connection, config, now, seal, slots)
+        slots.append(cycle.slot)
         if now < datetime.fromisoformat(cycle.slot):
             return ["DEFERRED_CLOCK_BEFORE_CAPTURE_SLOT"]
-        symbols = cycle.targets if not cycle.closed else ()
+        offset = cycle.request_offset
+        symbols = () if cycle.closed else cycle.targets[offset:] + cycle.targets[:offset]
         if fallback is not None:
             outcomes.append(f"DEPTH_FALLBACK_{fallback}")
     for endpoint, url, period in _targets(config, symbols):
@@ -293,17 +352,16 @@ def capture_due(
             break
         slot = cycle.slot if cycle is not None and period != DAILY else _slot(start, period)
         previous = connection.execute(
-            """SELECT status, retry_at FROM capture_attempts
-               WHERE source_url = ? AND slot = ?
-               ORDER BY (status = 'CAPTURED') DESC, id DESC LIMIT 1""",
+            """SELECT 1 FROM capture_attempts WHERE source_url = ? AND slot = ? AND status = 'CAPTURED'""",
             (url, slot),
         ).fetchone()
         if previous is not None:
-            if previous[0] == "CAPTURED":
-                continue
-            if previous[1] and previous[1] > started:
-                outcomes.append("DEFERRED_RETRY")
-                continue
+            continue
+        if connection.execute(
+            "SELECT 1 FROM capture_attempts WHERE source_url = ? AND retry_at > ? LIMIT 1", (url, started),
+        ).fetchone():
+            outcomes.append("DEFERRED_RETRY")
+            continue
 
         if cycle is not None:
             deadline = cycle.ends_at

@@ -9,7 +9,13 @@ from decimal import DecimalException
 from pathlib import Path
 from zipfile import BadZipFile
 
-from acgs.capture import BLOCKED, RESTRICTED, capture_due, clear_access_restriction
+from acgs.capture import (
+    BLOCKED,
+    RESTRICTED,
+    capture_due,
+    clear_access_restriction,
+    slot_summary,
+)
 from acgs.clock import FixedClock
 from acgs.config import ConfigError
 from acgs.config_io import load_config
@@ -63,6 +69,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return 0
             latched = False
             while True:
+                slots: list[str] = []
                 outcomes = Counter(
                     capture_due(
                         connection,
@@ -70,8 +77,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                         SystemClock(),
                         fetch_public,
                         time.sleep,
+                        report_slots=slots,
                     )
                 )
+                degraded = False
+                for slot in slots:
+                    line, incomplete = slot_summary(connection, slot)
+                    print(line, flush=True)
+                    degraded |= incomplete
                 restricted = bool(outcomes.keys() & {RESTRICTED, BLOCKED})
                 # While latched, each poll only re-reads the latch; log the state once.
                 if outcomes and not (restricted and latched):
@@ -95,7 +108,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     print("Capture access restriction cleared; resuming.", flush=True)
                     latched = False
                 if not args.watch:
-                    return int(any(key != "CAPTURED" for key in outcomes))
+                    return int(degraded or any(key != "CAPTURED" for key in outcomes))
                 time.sleep(30)
     except AccessRefused as error:
         print(f"Capture refused: {error}", file=sys.stderr)

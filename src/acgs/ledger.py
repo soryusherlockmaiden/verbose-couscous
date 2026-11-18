@@ -61,6 +61,11 @@ MIGRATIONS: tuple[tuple[str, ...], ...] = (
         """CREATE INDEX capture_info_receipts ON capture_attempts (source_url, received_at, id)
            WHERE status = 'CAPTURED'""",
     ),
+    (
+        "ALTER TABLE capture_depth_cycles ADD COLUMN request_offset INTEGER NOT NULL DEFAULT 0",
+        """CREATE INDEX capture_source_retry ON capture_attempts (source_url, retry_at)
+           WHERE retry_at IS NOT NULL""",
+    ),
 )
 SCHEMA_VERSION = len(MIGRATIONS)
 

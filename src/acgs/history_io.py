@@ -6,15 +6,17 @@ import io
 import json
 import re
 import sqlite3
-from dataclasses import dataclass, replace
-from datetime import datetime
-from decimal import Decimal
+from collections import Counter
+from dataclasses import dataclass, field, replace
+from datetime import datetime, timedelta
+from decimal import Decimal, DecimalException
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 from zipfile import ZipFile
 
 from acgs.capture import stored_payload
+from acgs.config import EXCHANGE_INFO_MAX_AGE_SECONDS
 from acgs.history_seal import HistorySeal, Window, registered_seal, resolve_asset_path
 from acgs.market_data import BASE_URL
 from acgs.pit import (
@@ -48,6 +50,7 @@ class Loaded:
     market: Market
     digest: str
     manifest: dict[str, Any]
+    capture_exclusions: dict[str, Counter[str]] = field(default_factory=dict)
 
 
 def _unique(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -216,10 +219,44 @@ def _filters(
     )
 
 
+def _book_spread(instrument: Instrument, ev: Evidence, body: dict[str, Any]) -> Spread | str:
+    try:
+        bids, asks = ([number(level[0]) for level in body[side]] for side in ("bids", "asks"))
+        if not bids or not asks:
+            return "EMPTY_BOOK"
+        if min(bids) <= ZERO or min(asks) <= ZERO:
+            return "INVALID_BOOK"
+        bid, ask = max(bids), min(asks)
+        if bid > ask:
+            return "CROSSED_BOOK"
+        bps = 20_000 * (ask - bid) / (ask + bid)
+    except (KeyError, IndexError, ValueError, TypeError, DecimalException):
+        return "INVALID_BOOK"
+    try:
+        return Spread(instrument, ev, bps)
+    except ValueError:
+        return "SPREAD_OUT_OF_BOUNDS"
+
+
+def _capture_identity(item: dict[str, Any], time: int) -> Instrument | str:
+    symbol = item["symbol"]
+    onboard = item.get("onboardDate")
+    if type(onboard) is not int or not 0 <= onboard <= time:
+        return "INVALID_LISTING"
+    if any(not isinstance(item.get(key), str) or not item[key] for key in ("status", "quoteAsset", "contractType")):
+        return "INVALID_LISTING"
+    multiplier = re.match(r"^(1000000|100000|10000|1000)(?=[A-Z])", symbol)
+    try:
+        return Instrument(symbol, onboard, int(multiplier[1]) if multiplier else 1)
+    except ValueError:
+        return "UNSUPPORTED_SYMBOL"
+
+
 def _capture_observations(
     path: Path, wanted: set[str], cutoff: int,
     prior_listings: tuple[Listing, ...] = (),
     *, seal: HistorySeal | None = None, expected_digest: str | None = None,
+    exclusions: dict[str, Counter[str]] | None = None,
 ) -> tuple[list[Listing], list[Filters | FilterWithdrawal], list[Schedule], list[Spread], list[str]]:
     """Import M0 captures with the manifest listings they can supersede."""
     seal = registered_seal() if seal is None else seal
@@ -230,6 +267,15 @@ def _capture_observations(
     spreads: list[Spread] = []
     hashes: list[str] = []
     current: dict[str, Instrument] = {}
+    snapshot_at: datetime | None = None
+    snapshot_floor = 0
+    unknown = "MISSING_EXCHANGE_INFO"
+    rejected: dict[str, str] = {}
+
+    def exclude(symbol: str, reason: str) -> None:
+        if exclusions is not None and (not wanted or symbol in wanted or symbol == "*"):
+            exclusions.setdefault(symbol, Counter())[reason] += 1
+
     # Every capture is a complete snapshot: what it omits is withdrawn from its receipt.
     known: dict[Instrument, Listing] = {}
     prior: dict[Instrument, list[Listing]] = {}
@@ -240,7 +286,7 @@ def _capture_observations(
     try:
         connection.execute("BEGIN")
         schema = connection.execute("PRAGMA user_version").fetchone()[0]
-        if schema not in (1, 2, 3):
+        if schema not in (1, 2, 3, 4):
             raise ValueError("Unsupported M0 capture schema")
         compression = "payload_encoding" if schema >= 2 else "NULL"
         rows = connection.execute(
@@ -248,7 +294,7 @@ def _capture_observations(
                FROM capture_attempts WHERE status = 'CAPTURED' AND provenance = 'VERIFIED'
                ORDER BY received_at, id"""
         )
-        receipts: list[tuple[int, str, int, str]] = []
+        receipts: list[tuple[int, str, int, str, datetime, int]] = []
         for row_id, url, stamp, sha in rows:
             observation = datetime.fromisoformat(stamp)
             # Round observation UP to the millisecond so the snapshot is never backdated.
@@ -260,12 +306,12 @@ def _capture_observations(
             # Apply the seal to the actual receipt, including sub-ms receipts at the end.
             if seal.seals_time(received):
                 continue
-            receipts.append((row_id, url, time, sha))
+            receipts.append((row_id, url, time, sha, observation, received))
             hashes.append(digest((url, stamp, sha)))
         if expected_digest is not None and digest(hashes) != expected_digest:
             raise ValueError("Capture selection differs from the pinned manifest")
 
-        for row_id, url, time, sha in receipts:
+        for row_id, url, time, sha, observation, received in receipts:
             payload, encoding = connection.execute(
                 f"SELECT payload, {compression} FROM capture_attempts WHERE id = ?", (row_id,)
             ).fetchone()
@@ -276,26 +322,68 @@ def _capture_observations(
             if f"{parsed_url.scheme}://{parsed_url.netloc}" != BASE_URL:
                 raise ValueError("M0 capture has an unsupported source")
             endpoint = parsed_url.path.rsplit("/", 1)[-1]
+            if snapshot_at is not None:
+                if any(snapshot_floor < window.end <= received for window in seal.ranges):
+                    unknown = "SEALED_EXCHANGE_INFO_GAP"
+                    snapshot_at = None
+                elif observation - snapshot_at > timedelta(seconds=EXCHANGE_INFO_MAX_AGE_SECONDS):
+                    unknown = "STALE_EXCHANGE_INFO"
+                    snapshot_at = None
+                if snapshot_at is None:
+                    current.clear()
+                    rejected.clear()
             ev = Evidence(url, "m0_capture:" + sha, Provenance.VERIFIED, time)
-            body = json.loads(raw, object_pairs_hook=_unique)
+            # Content and selection pins above are mandatory even for excluded receipts.
+            depth_symbol = parse_qs(parsed_url.query).get("symbol", ["*"])[0] if endpoint == "depth" else "*"
+            try:
+                body = json.loads(raw, object_pairs_hook=_unique)
+                if endpoint in {"exchangeInfo", "fundingInfo", "premiumIndex"}:
+                    records = body["symbols"] if endpoint == "exchangeInfo" else body
+                    if not isinstance(records, list) or any(
+                        not isinstance(row, dict) or not isinstance(row.get("symbol"), str) for row in records
+                    ):
+                        raise ValueError("Invalid symbol records")
+            except (ValueError, TypeError, KeyError, RecursionError):
+                exclude(depth_symbol, "INVALID_RECEIPT")
+                if endpoint == "exchangeInfo":
+                    snapshot_at = None
+                    current.clear()
+                    rejected.clear()
+                    unknown = "INVALID_EXCHANGE_INFO"
+                continue
             if endpoint == "exchangeInfo":
-                current = {}
+                snapshot_at, snapshot_floor = observation, received
+                current.clear()
+                rejected.clear()
+                unknown = "NO_MATCHING_EPOCH"
+                symbol_counts = Counter(item["symbol"] for item in body["symbols"])
                 for item in body["symbols"]:
                     symbol = item["symbol"]
                     if wanted and symbol not in wanted:
                         continue
-                    multiplier = re.match(r"^(1000000|100000|10000|1000)(?=[A-Z])", symbol)
-                    inst = Instrument(
-                        symbol, int(item["onboardDate"]), int(multiplier[1]) if multiplier else 1,
-                    )
+                    if symbol_counts[symbol] > 1:
+                        if symbol not in rejected:
+                            rejected[symbol] = "AMBIGUOUS_EXCHANGE_SYMBOL"
+                            exclude(symbol, rejected[symbol])
+                        continue
+                    inst = _capture_identity(item, time)
+                    if isinstance(inst, str):
+                        rejected[symbol] = inst
+                        exclude(symbol, inst)
+                        continue
                     current[symbol] = inst
                     listing = Listing(
                         inst, time, ev, item["status"], item["quoteAsset"], item["contractType"],
-                        item.get("underlyingType") in {"INDEX", "PREMARKET", "TRADIFI"},
+                        item.get("underlyingType") in ("INDEX", "PREMARKET", "TRADIFI"),
                     )
                     listings.append(listing)
                     known[inst] = listing
-                    snapshot: Filters | FilterWithdrawal | None = _filters(inst, time, ev, item["filters"])
+                    snapshot: Filters | FilterWithdrawal | None
+                    try:
+                        snapshot = _filters(inst, time, ev, item["filters"])
+                    except (KeyError, TypeError, ValueError, DecimalException):
+                        snapshot = None
+                        exclude(symbol, "INVALID_FILTERS")
                     if snapshot is None:
                         snapshot = FilterWithdrawal(
                             inst, time, Evidence(url, "exchangeInfo_filter_absence:" + sha,
@@ -335,19 +423,43 @@ def _capture_observations(
                         known[epoch] = withdrawal
             elif endpoint in {"premiumIndex", "fundingInfo"}:
                 present = set()
+                symbol_counts = Counter(item["symbol"] for item in body)
+                if not body and snapshot_at is None:
+                    exclude("*", unknown)
                 for item in body:
-                    observed_inst = current.get(item["symbol"])
+                    symbol = item["symbol"]
+                    observed_inst = current.get(symbol)
                     if observed_inst is None:
+                        exclude(symbol, rejected.get(symbol, unknown))
                         continue
+                    if symbol in present:
+                        continue
+                    present.add(symbol)
+                    ambiguous = symbol_counts[symbol] > 1
                     if endpoint == "fundingInfo":
-                        present.add(observed_inst.symbol)
-                        schedules.append(Schedule(
-                            observed_inst, time, ev, int(item["fundingIntervalHours"]) * HOUR,
-                            cap=number(item["adjustedFundingRateCap"]),
-                            floor=number(item["adjustedFundingRateFloor"]),
-                        ))
-                    elif int(item["nextFundingTime"]) > time:
-                        schedules.append(Schedule(observed_inst, time, ev, next_time=int(item["nextFundingTime"])))
+                        try:
+                            if ambiguous:
+                                raise ValueError("Duplicate funding adjustment")
+                            schedule = Schedule(
+                                observed_inst, time, ev, integer(item["fundingIntervalHours"]) * HOUR,
+                                cap=number(item["adjustedFundingRateCap"]),
+                                floor=number(item["adjustedFundingRateFloor"]),
+                            )
+                        except (KeyError, ValueError, TypeError, DecimalException):
+                            exclude(symbol, "AMBIGUOUS_FUNDING_RECORD" if ambiguous else "INVALID_FUNDING_ADJUSTMENT")
+                            schedule = Schedule(observed_inst, time, Evidence(
+                                url, "fundingInfo_invalid:" + sha, Provenance.UNAVAILABLE, time,
+                                "Latest funding adjustment is unusable",
+                            ), interval_withdrawn=True)
+                        schedules.append(schedule)
+                    elif ambiguous:
+                        exclude(symbol, "AMBIGUOUS_FUNDING_RECORD")
+                    else:
+                        next_time = item.get("nextFundingTime")
+                        if type(next_time) is not int or next_time < 0:
+                            exclude(symbol, "INVALID_FUNDING_FORECAST")
+                        elif next_time > time:
+                            schedules.append(Schedule(observed_inst, time, ev, next_time=next_time))
                 if endpoint == "fundingInfo":
                     absence = Evidence(url, "fundingInfo_absence:" + sha, Provenance.UNAVAILABLE,
                                        time, "Absence supplies no funding interval")
@@ -355,12 +467,16 @@ def _capture_observations(
                         current[symbol], time, absence, interval_withdrawn=True,
                     ) for symbol in current.keys() - present)
             elif endpoint == "depth":
-                symbol = parse_qs(urlsplit(url).query).get("symbol", [""])[0]
+                symbol = depth_symbol
                 instrument = current.get(symbol)
-                if instrument is not None and body["bids"] and body["asks"]:
-                    bid, ask = number(body["bids"][0][0]), number(body["asks"][0][0])
-                    if ZERO < bid <= ask:
-                        spreads.append(Spread(instrument, ev, 20_000 * (ask - bid) / (ask + bid)))
+                if instrument is None:
+                    exclude(symbol, rejected.get(symbol, unknown))
+                    continue
+                spread = _book_spread(instrument, ev, body)
+                if isinstance(spread, Spread):
+                    spreads.append(spread)
+                else:
+                    exclude(symbol, spread)
     finally:
         connection.close()
     return listings, filters, schedules, spreads, hashes
@@ -452,11 +568,12 @@ def load_history_manifest(
         MarkGap(instruments[x["id"]], _time(x["start"]), _time(x["end"]), _evidence(x["evidence"]))
         for x in manifest.get("mark_gaps", [])
     )
+    exclusions: dict[str, Counter[str]] = {}
     if capture_db is not None:
         capture = manifest["capture"]
         captured_listings, captured_filters, captured_schedules, captured_spreads, _ = _capture_observations(
             capture_db, set(capture["symbols"]), _time(capture["cutoff"]),
-            tuple(listings), seal=seal, expected_digest=capture["digest"],
+            tuple(listings), seal=seal, expected_digest=capture["digest"], exclusions=exclusions,
         )
         listings.extend(captured_listings)
         filters.extend(captured_filters)
@@ -495,4 +612,4 @@ def load_history_manifest(
     return Loaded(Market(Dataset(
         tuple(listings), tuple(candles), tuple(funding), tuple(schedules), tuple(filters),
         tuple(maintenance), tuple(spreads), marks,
-    )), digest(manifest), manifest)
+    )), digest(manifest), manifest, exclusions)

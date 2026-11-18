@@ -570,6 +570,8 @@ Emit an event-numbered wallet/equity snapshot after each fill, funding posting o
 
 - `history-seal-v1` requires the start and end of every registered prospective holdout and retrospective reserve to be exactly `00:00:00.000 UTC`. M0 capture and M1/M2 data entry points refuse a misaligned registry before payload or network access. M0 alone can use a prospective snapshot to schedule capture when the receipt and slot are outside retrospective reserves. [Verification](evidence/m0/dynamic-depth.md)
 
+- `capture-depth-v2` (SQLite schema 4) journals a resumable rotating request offset, carries per-source cooldowns across slots and reports late/missed receipts on exit. The capture importer binds depth and funding to the latest unsealed exchange snapshot for up to 129,600 seconds. Crossing a sealed span invalidates that binding. Unsupported identities and unusable books receive per-symbol exclusion reasons. Bounded REST sidecars bind their local paths to the query before payload access, with explicit pins for the accepted M1 exports. [Checks and evidence](evidence/m0/dynamic-depth.md#capture-depth-v2)
+
 ## 14. Change control and release policy
 
 - PRD controls **what and why**; SPEC controls **precise behavior and invariants**; ROADMAP controls **when and acceptance**; README controls **setup and operation**.
