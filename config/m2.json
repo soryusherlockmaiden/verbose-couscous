@@ -42,6 +42,18 @@
     },
     "majors": ["BTCUSDT", "ETHUSDT"],
     "coverage_probe": ["BTCUSDT", "ETHUSDT", "DGBUSDT"],
+    "o2_inventory": {
+      "operator_approved_at_utc_date": "2026-11-18",
+      "scope": "metadata_only",
+      "windows_ref": "proposed.windows",
+      "symbols_ref": "proposed.coverage_probe",
+      "sources": ["Binance Vision exact archive keys", "dated Binance publications", "pinned M1 evidence"],
+      "archive_checks": ["ZIP HEAD", "CHECKSUM GET"],
+      "in_use_period_evidence": "dated contract listing and delisting evidence",
+      "additional_symbols_require_operator_review": true,
+      "stage_2_status": "OPEN",
+      "evidence": "evidence/m2/o2-inventory.json"
+    },
     "intervals": ["15m", "1h"],
     "adx_period": 14,
     "adx_threshold": "25",
