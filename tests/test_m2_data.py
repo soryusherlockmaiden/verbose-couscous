@@ -1,6 +1,14 @@
 import hashlib
 import json
+import os
+import runpy
+import sqlite3
+import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import replace
 from datetime import timedelta
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -15,14 +23,22 @@ from m2_fixture import (
     write_json,
 )
 
-from acgs.history_io import load_history, read_json
-from acgs.m2_data import AccessRefused, Window, fetch_inputs, load_research_inputs
+from acgs.__main__ import main as m1_main
+from acgs.history_io import load_history, read_history_asset, read_json
+from acgs.history_seal import AccessRefused, Window, utc_ms
+from acgs.ledger import open_ledger
+from acgs.m2_coverage import coverage
+from acgs.m2_data import fetch_inputs, load_research_inputs
 from acgs.m2_io import main
 from acgs.market_data import PublicResponse
-from acgs.pit import HOUR
+from acgs.pit import DAY, HOUR
+from acgs.research_io import _policy
 from acgs.sim_config import EPOCH, digest
 
-POLICY = Path(__file__).resolve().parents[1] / "config" / "m1.json"
+REPO = Path(__file__).resolve().parents[1]
+POLICY = REPO / "config" / "m1.json"
+RESERVE_START = utc_ms("2025-01-01T00:00:00Z")
+RESERVE_END = utc_ms("2026-01-01T00:00:00Z")
 
 
 @pytest.fixture
@@ -49,22 +65,35 @@ def pin(paths, config, manifest):
     write_json(manifest_path, manifest)
 
 
-def forbid_payload_reads(monkeypatch, root):
-    original_open = Path.open
-    reads = []
-
-    def watch(path, *args, **kwargs):
-        if path.is_relative_to(root):
-            reads.append(path)
-            pytest.fail(f"Attempted payload I/O at {path}")
-        return original_open(path, *args, **kwargs)
-
-    monkeypatch.setattr(Path, "open", watch)
-    return reads
+_watched_root: Path | None = None
 
 
-@pytest.mark.parametrize("case", ["holdout_role", "direct", "dependency", "funding_dependency"])
-def test_t15_seal_refuses_research_and_coverage_before_payload_read(paths, monkeypatch, capsys, case):
+def _audit(event: str, args: tuple[object, ...]) -> None:
+    if _watched_root is None:
+        return
+    if event in {"socket.connect", "urllib.Request"}:
+        raise AssertionError(f"Attempted network access: {event}")
+    if event == "open" and isinstance(args[0], str | bytes):
+        if Path(os.path.abspath(os.fsdecode(args[0]))).is_relative_to(_watched_root):
+            raise AssertionError(f"Attempted payload open: {args[0]}")
+
+
+sys.addaudithook(_audit)
+
+
+@contextmanager
+def forbid_io(root: Path) -> Iterator[None]:
+    # Audit hooks are permanent. Activate the guard only around the operation under test.
+    global _watched_root
+    _watched_root = root.resolve()
+    try:
+        yield
+    finally:
+        _watched_root = None
+
+
+@pytest.mark.parametrize("case", ["direct", "dependency", "funding_dependency"])
+def test_t15_seal_refuses_research_and_coverage_before_payload_read(paths, capsys, case):
     config_path, manifest_path, root = paths
     config = read_json(config_path)
     manifest = read_json(manifest_path)
@@ -74,23 +103,35 @@ def test_t15_seal_refuses_research_and_coverage_before_payload_read(paths, monke
     )
     manifest["assets"].append(held_out)
     config["access"]["approvals"]["development"]["decision_window"]["end"] = HOLDOUT_START
-    config["protocol_status"] = "FROZEN" if case == "holdout_role" else "DRAFT"
     pin(paths, config, manifest)
-    reads = forbid_payload_reads(monkeypatch, root)
-    purpose = "holdout" if case == "holdout_role" else "development"
     start = HOLDOUT_START - HOUR if case == "dependency" else HOLDOUT_START
     end = HOLDOUT_START if case == "dependency" else HOLDOUT_START + HOUR
     expected = "dependency exceeds" if case == "dependency" else "holdout seal"
-    if case == "holdout_role":
-        expected = "Holdout is sealed"
     if case == "funding_dependency":
         start, end = HOLDOUT_START - 3 * HOUR, HOLDOUT_START - 2 * HOUR
         expected = "fundingRate dependency exceeds"
-    with pytest.raises(AccessRefused, match=expected):
-        load_research_inputs(config_path, manifest_path, root, purpose, Window(start, end))
-    assert cli(paths, purpose, "coverage", start=start, end=end) == 1
+    with forbid_io(root):
+        with pytest.raises(AccessRefused, match=expected):
+            load_research_inputs(config_path, manifest_path, root, "development", Window(start, end))
+        assert cli(paths, "development", "coverage", start=start, end=end) == 1
     assert expected in capsys.readouterr().err
-    assert reads == []
+
+
+@pytest.mark.parametrize("status", ["DRAFT", "FROZEN"])
+def test_t15_direct_holdout_role_is_refused_in_every_m2_entry_point(paths, capsys, status):
+    config_path, manifest_path, root = paths
+    config = read_json(config_path)
+    config["protocol_status"] = status
+    write_json(config_path, config)
+    with forbid_io(root):
+        with pytest.raises(AccessRefused, match="Holdout is sealed"):
+            load_research_inputs(
+                config_path, manifest_path, root, "holdout",
+                Window(HOLDOUT_START, HOLDOUT_START + HOUR),
+            )
+        for command in ("fetch", "coverage"):
+            assert cli(paths, "holdout", command) == 1
+            assert "Holdout is sealed" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("case", [
@@ -98,7 +139,7 @@ def test_t15_seal_refuses_research_and_coverage_before_payload_read(paths, monke
     "overlap_fundingRate", "wrong_interval", "alias",
 ])
 def test_t15_fetch_preflights_entire_manifest_and_load_reads_nothing(
-    paths, monkeypatch, capsys, case,
+    paths, capsys, case,
 ):
     config_path, manifest_path, root = paths
     config, manifest = map(read_json, paths[:2])
@@ -131,31 +172,22 @@ def test_t15_fetch_preflights_entire_manifest_and_load_reads_nothing(
         expected = "path must match"
     if case != "bad_digest":
         pin(paths, config, manifest)
-    reads = forbid_payload_reads(monkeypatch, root)
-    requests = []
-
-    def unexpected(url, *, max_payload):
-        requests.append(url)
-        pytest.fail(f"Made a request for {url}")
-
-    monkeypatch.setattr("acgs.m2_data.fetch_public", unexpected)
-    assert cli(paths, "development", "fetch") == 1
+    with forbid_io(root):
+        assert cli(paths, "development", "fetch") == 1
+        with pytest.raises(AccessRefused, match=expected):
+            load_research_inputs(config_path, manifest_path, root, "development", Window(START, END))
     assert expected in capsys.readouterr().err
-    with pytest.raises(AccessRefused, match=expected):
-        load_research_inputs(config_path, manifest_path, root, "development", Window(START, END))
-    assert reads == requests == []
 
 
-def test_draft_without_approvals_refuses_fetch_and_coverage(paths, monkeypatch, capsys):
+def test_draft_without_approvals_refuses_fetch_and_coverage(paths, capsys):
     config_path, _, root = paths
     config = read_json(config_path)
     config["access"] = {"holdout": None, "approvals": {}}
     write_json(config_path, config)
-    reads = forbid_payload_reads(monkeypatch, root)
-    assert cli(paths, "development", "fetch") == 1
-    assert cli(paths, "development", "coverage") == 1
+    with forbid_io(root):
+        assert cli(paths, "development", "fetch") == 1
+        assert cli(paths, "development", "coverage") == 1
     assert "dataset approval is OPEN" in capsys.readouterr().err
-    assert reads == []
 
 
 def test_fetch_checks_pins_and_reuses_verified_local_assets(paths):
@@ -263,9 +295,215 @@ def test_operator_settlement_mark_sidecar_is_local_and_matched(paths, capsys):
 
 
 
-def test_legacy_history_entry_point_refuses_m2_manifest_before_payload_read(paths, monkeypatch):
+def test_legacy_history_entry_point_refuses_m2_manifest_before_payload_read(paths):
     _, manifest, root = paths
-    reads = forbid_payload_reads(monkeypatch, root)
-    with pytest.raises(ValueError, match="Unknown historical dataset schema"):
+    with forbid_io(root), pytest.raises(ValueError, match="Unknown historical dataset schema"):
         load_history(manifest, root)
-    assert reads == []
+
+
+def test_t15_legacy_schema_and_cli_refuse_sealed_assets_before_any_payload_read(paths, capsys):
+    _, manifest_path, root = paths
+    manifest = read_json(manifest_path)
+    manifest["version"] = "m1-history-v1"
+    manifest.pop("m2_purpose")
+    manifest["ingested_at"] = RESERVE_END
+    sealed = archive(root, "klines", "1h", "2025-01-01", RESERVE_START,
+                     RESERVE_START + DAY, candles(RESERVE_START, HOUR, [0]))
+    manifest["assets"].append(sealed)
+    write_json(manifest_path, manifest)
+    base_args = ["--manifest", str(manifest_path), "--assets", str(root)]
+    window_args = ["--policy", str(POLICY), "--start", "2024-12-30T00:00:00Z",
+                   "--end", "2025-01-01T00:00:00Z"]
+    with forbid_io(root):
+        with pytest.raises(AccessRefused, match="Source bundle overlaps"):
+            read_history_asset(root, sealed)
+        with pytest.raises(AccessRefused, match="Source bundle overlaps"):
+            load_history(manifest_path, root)
+        for command, extra in (
+            ("historical", []), ("feasibility", window_args),
+            ("replay", [*window_args, "--plan", "unused"]),
+        ):
+            assert m1_main([command, *base_args, *extra]) == 1
+            assert "Source bundle overlaps" in capsys.readouterr().err
+
+    manifest["assets"].pop()
+    write_json(manifest_path, manifest)
+    window_args[-2:] = ["--end", "2025-01-02T00:00:00Z"]
+    with forbid_io(root):
+        for command, extra in (
+            ("feasibility", window_args), ("replay", [*window_args, "--plan", "unused"]),
+        ):
+            assert m1_main([command, *base_args, *extra]) == 1
+            assert "M1 research request overlaps" in capsys.readouterr().err
+
+
+def test_t15_legacy_monthly_fetch_preflights_a_straddling_bundle(paths, tmp_path, monkeypatch):
+    _, manifest_path, root = paths
+    record = tmp_path / "seal.json"
+    write_json(record, {"version": "history-seal-v1", "ranges": [
+        {"start": "2024-12-15T00:00:00Z", "end": RESERVE_START},
+        {"start": RESERVE_START, "end": RESERVE_END},
+    ]})
+    monkeypatch.setattr("acgs.history_seal.RECORD_PATH", record)
+    manifest = read_json(manifest_path)
+    manifest["version"] = "m1-history-v1"
+    manifest.pop("m2_purpose")
+    first = archive(root, "klines", "1h", "2000-01", START, START + HOUR,
+                    candles(START, HOUR, [0]), period="monthly")
+    start = utc_ms("2024-12-01T00:00:00Z")
+    straddling = archive(root, "klines", "1h", "2024-12", start, start + HOUR,
+                        candles(start, HOUR, [0]), period="monthly")
+    manifest["assets"] = [first, straddling]
+    manifest["ingested_at"] = RESERVE_END
+    write_json(manifest_path, manifest)
+    (root / first["path"]).unlink()  # Would GET before encountering the second entry.
+    script = REPO / "evidence" / "m1" / "fetch.py"
+    monkeypatch.setattr(sys, "argv", [str(script), str(manifest_path), str(root)])
+    with forbid_io(root), pytest.raises(SystemExit, match="Source bundle overlaps"):
+        runpy.run_path(str(script), run_name="__main__")
+
+
+def test_t15_settlement_query_cannot_hide_a_sealed_tail(paths):
+    _, _, root = paths
+    declared_start = RESERVE_START - HOUR
+    entry = {
+        "kind": "fundingMarks",
+        "id": f"FIXTUREUSDT@{declared_start}",
+        "start": declared_start,
+        "end": RESERVE_START,
+        "source": "https://fapi.binance.com/fapi/v1/fundingRate?"
+                  f"symbol=FIXTUREUSDT&startTime={declared_start}&endTime={RESERVE_START}&limit=1000",
+        "path": "settlements.json",
+    }
+    write_json(root / entry["path"], [])
+    with forbid_io(root), pytest.raises(AccessRefused, match="Source bundle overlaps"):
+        read_history_asset(root, entry)
+
+
+@pytest.mark.parametrize(("start", "end"), [
+    (RESERVE_END, RESERVE_END + DAY),
+    (HOLDOUT_START, RESERVE_END - 1),
+])
+def test_t15_m2_config_cannot_move_or_truncate_the_registered_reserve(paths, capsys, start, end):
+    config_path, manifest_path, root = paths
+    config, manifest = map(read_json, paths[:2])
+    config["access"]["holdout"] = {"start": start, "end": end}
+    config["access"]["approvals"]["development"]["data_window"]["end"] = start
+    manifest["assets"].append(
+        archive(root, "klines", "1h", "2025-01-01", RESERVE_START,
+                RESERVE_START + DAY, candles(RESERVE_START, HOUR, [0])),
+    )
+    manifest["ingested_at"] = RESERVE_END
+    pin(paths, config, manifest)
+    with forbid_io(root):
+        with pytest.raises(AccessRefused, match="must cover every registered sealed range"):
+            load_research_inputs(config_path, manifest_path, root, "development", Window(START, END))
+        for command in ("fetch", "coverage"):
+            assert cli(paths, "development", command) == 1
+            assert "must cover every registered sealed range" in capsys.readouterr().err
+
+
+def test_t15_frozen_label_cannot_authorize_development(paths, capsys):
+    config_path, manifest_path, root = paths
+    config = read_json(config_path)
+    config["protocol_status"] = "FROZEN"
+    write_json(config_path, config)
+    with forbid_io(root):
+        with pytest.raises(AccessRefused, match="frozen authorization is unavailable"):
+            load_research_inputs(config_path, manifest_path, root, "development", Window(START, END))
+        for command in ("fetch", "coverage"):
+            assert cli(paths, "development", command) == 1
+            assert "frozen authorization is unavailable" in capsys.readouterr().err
+
+
+def test_coverage_pins_semantics_independently_of_halt_buffer(paths):
+    config, manifest, root = paths
+    window = Window(START, END)
+    policy = _policy(POLICY)
+    baseline = coverage(config, manifest, root, "development", window)
+    modified = replace(policy, halt_buffer=Decimal("1.00"))
+    assert modified.digest != policy.digest
+    assert coverage(config, manifest, root, "development", window, modified) == baseline
+    for variant in (
+        replace(policy, funding_ownership_window_ms=0),
+        replace(policy, funding_jitter_ms=policy.funding_jitter_ms + 1),
+        replace(policy, funding_intervals_ms=(HOUR, 2 * HOUR)),
+        replace(policy, decimal_precision=policy.decimal_precision + 1),
+        replace(policy, accounting_tolerance=Decimal("0.00000002")),
+    ):
+        with forbid_io(root), pytest.raises(AccessRefused, match="pinned M1 semantics"):
+            coverage(config, manifest, root, "development", window, variant)
+
+
+def test_m2_requires_announcement_source_for_maintenance_tiers(paths):
+    config_path, manifest_path, root = paths
+    config, manifest = map(read_json, paths[:2])
+    evidence = {"source": "https://fapi.binance.com/fapi/v1/leverageBracket",
+                "method": "synthetic", "provenance": "VERIFIED", "as_of": START}
+    manifest["maintenance"] = [{
+        "id": manifest["listings"][0]["id"], "effective": START, "evidence": evidence,
+        "tiers": [{"ceiling": "1000", "rate": "0.01", "deduction": "0", "max_leverage": 5}],
+    }]
+    pin(paths, config, manifest)
+    with forbid_io(root), pytest.raises(AccessRefused, match="dated Binance announcement"):
+        load_research_inputs(config_path, manifest_path, root, "development", Window(START, END))
+    evidence["source"] = "https://www.binance.com/en/support/announcement/detail/synthetic-notice"
+    pin(paths, config, manifest)
+    with forbid_io(root / "unexpected"):
+        loaded = load_research_inputs(config_path, manifest_path, root, "development", Window(START, END))
+    assert next(iter(loaded.market.maintenance.values()))[0].evidence.as_of == START
+
+
+def test_t15_capture_gate_reads_only_allowed_blobs_by_receipt(tmp_path, monkeypatch):
+    db = tmp_path / "capture.sqlite3"
+    url = "https://fapi.binance.com/fapi/v1/exchangeInfo"
+    allowed = b'{"symbols":[]}'
+    good_sha = hashlib.sha256(allowed).hexdigest()
+    sealed_sha = "0" * 64
+    sealed_receipt = "2025-12-31T23:59:59.999999+00:00"
+    allowed_receipt = "2026-01-01T00:00:00+00:00"
+    with open_ledger(db) as conn, conn:
+        conn.executemany(
+            """INSERT INTO capture_attempts
+               (source_url, slot, requested_at, received_at, status, http_status,
+                payload, sha256, provenance, payload_encoding)
+               VALUES (?, ?, ?, ?, 'CAPTURED', 200, ?, ?, 'VERIFIED', ?)""",
+            [
+                (url, "seal", sealed_receipt, sealed_receipt, b"invalid zlib", sealed_sha, "zlib"),
+                (url, "safe", allowed_receipt, allowed_receipt, allowed, good_sha, None),
+            ],
+        )
+    manifest_path = tmp_path / "capture.json"
+    manifest = {
+        "version": "m1-history-v1", "ingested_at": RESERVE_END, "candle_delay_ms": 1000,
+        "funding_delay_ms": 5000, "instruments": [], "listings": [], "assets": [],
+        "capture": {"cutoff": RESERVE_END, "symbols": [],
+                    "digest": digest([digest((url, allowed_receipt, good_sha))])},
+    }
+    write_json(manifest_path, manifest)
+    queries = []
+    original_connect = sqlite3.connect
+
+    def traced(*args, **kwargs):
+        conn = original_connect(*args, **kwargs)
+        conn.set_trace_callback(queries.append)
+        return conn
+
+    monkeypatch.setattr("acgs.history_io.sqlite3.connect", traced)
+    assert load_history(manifest_path, tmp_path, db).digest == digest(manifest)
+    blob_queries = [query for query in queries if "SELECT payload" in query]
+    assert len(blob_queries) == 1 and blob_queries[0].endswith("WHERE id = 2")
+    queries.clear()
+    manifest["capture"]["digest"] = digest([
+        digest((url, sealed_receipt, sealed_sha)), digest((url, allowed_receipt, good_sha)),
+    ])
+    write_json(manifest_path, manifest)
+    with pytest.raises(ValueError, match="Capture selection differs"):
+        load_history(manifest_path, tmp_path, db)
+    assert not any("SELECT payload" in query for query in queries)
+    manifest["capture"]["cutoff"] = RESERVE_END - 1
+    write_json(manifest_path, manifest)
+    queries.clear()
+    with pytest.raises(AccessRefused, match="Capture cutoff overlaps"):
+        load_history(manifest_path, tmp_path, db)
+    assert queries == []

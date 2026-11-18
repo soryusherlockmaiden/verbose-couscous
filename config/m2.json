@@ -1,11 +1,10 @@
 {
-  "version": "m2-v1",
+  "version": "m2-v2",
   "mode": "OFFLINE",
   "protocol_status": "DRAFT",
-  "m1": {
-    "replay": "m1-replay-v8",
-    "policy": "m1-v3",
-    "policy_sha256": "dd0187eb938370e1cb72b6a02d08752da185549fbfb99741bb71acddeec4b76e"
+  "m1_semantics": {
+    "version": "m1-semantics-v1",
+    "sha256": "007d9887419bd969899a6db881a097964e8bd372f5cc6d95b848aff5d87735f9"
   },
   "access": {
     "holdout": null,
@@ -26,10 +25,11 @@
     "baseline_reserve_usdt": "0"
   },
   "proposed": {
+    "holdout_design": "prospective_after_protocol_freeze",
     "windows": {
       "development": {"start": "2023-01-01T00:00:00Z", "end": "2023-12-31T00:00:00Z"},
       "validation": {"start": "2024-01-01T00:00:00Z", "end": "2024-12-31T00:00:00Z"},
-      "holdout": {"start": "2025-01-01T00:00:00Z", "end": "2026-01-01T00:00:00Z"}
+      "holdout": null
     },
     "majors": ["BTCUSDT", "ETHUSDT"],
     "coverage_probe": ["BTCUSDT", "ETHUSDT", "DGBUSDT"],
@@ -52,7 +52,11 @@
     "O2_universe_and_publication": null,
     "O3_provenance_policy": null,
     "O4_strategy_and_trigger_semantics": null,
-    "O5_sizing_and_preventive_risk": null,
+    "O5_sizing_and_preventive_risk": {
+      "halt_buffer": null,
+      "liquidation_buffer_rate": null,
+      "fee_funding_reserve": null
+    },
     "O6_numeric_promotion_gates": null,
     "O7_reserve_and_post_mortem_tolerances": null,
     "O8_comparators_resampling_and_grid": null,

@@ -8,18 +8,18 @@ from typing import Any
 from acgs.funding import funding_complete, ownership_boundary
 from acgs.m2_data import (
     INTERVALS,
-    OWNERSHIP_WINDOW_MS,
     SIGNAL_INTERVALS,
     AccessRefused,
     Window,
     _approve,
     _load,
-    _window,
 )
+from acgs.m2_semantics import ACCEPTED_M1_SEMANTICS, M1Semantics
+from acgs.m2_semantics import VERSION as SEMANTICS_VERSION
 from acgs.pit import Evidence, Market
 from acgs.sim_config import Policy
 
-COVERAGE_SCHEMA = "m2-coverage-v1"
+COVERAGE_SCHEMA = "m2-coverage-v2"
 
 
 def _evidence(observation: Evidence) -> dict[str, Any]:
@@ -73,7 +73,7 @@ def _time_summary(rows: list[tuple[int, Evidence]]) -> dict[str, Any]:
 
 
 def _epochs(
-    market: Market, dependencies: dict[str, Window], request: Window, policy: Policy,
+    market: Market, dependencies: dict[str, Window], request: Window, semantics: M1Semantics,
 ) -> list[dict[str, Any]]:
     result = []
     for inst, listings in sorted(market.listings.items()):
@@ -97,7 +97,7 @@ def _epochs(
                 {"settled_at": row.time, "affected_bar": [start, start + size]}
                 for row in funding
                 if row.mark is None
-                and ownership_boundary(row.time, size, OWNERSHIP_WINDOW_MS) is None
+                and ownership_boundary(row.time, size, semantics.funding_ownership_window_ms) is None
                 and (start := row.time // size * size) < request.end
                 and request.start < start + size
             ]
@@ -142,7 +142,7 @@ def _epochs(
                 ],
                 "by_source": _time_summary([(row.evidence.as_of, row.evidence) for row in funding]),
                 "settlement_continuity_on_decision_window": funding_complete(
-                    funding, request.start, request.end, policy,
+                    funding, request.start, request.end, semantics,
                 ),
                 "archive_interval_fields_ms": sorted({
                     row.interval_ms for row in funding if row.interval_ms is not None
@@ -155,20 +155,19 @@ def _epochs(
 
 
 def coverage(
-    config: Path, manifest: Path, root: Path, purpose: str, request: Window, policy: Policy,
+    config: Path, manifest: Path, root: Path, purpose: str, request: Window,
+    policy: Policy | None = None,
 ) -> dict[str, Any]:
     approved = _approve(config, manifest, purpose, request)
-    if (
-        policy.digest != approved.policy_digest
-        or policy.funding_ownership_window_ms != OWNERSHIP_WINDOW_MS
-    ):
-        raise AccessRefused("Coverage requires the pinned m1-v3 policy and ownership window")
+    semantics = ACCEPTED_M1_SEMANTICS if policy is None else M1Semantics.from_policy(policy)
+    if semantics.digest != ACCEPTED_M1_SEMANTICS.digest:
+        raise AccessRefused("Coverage requires the pinned M1 semantics")
     loaded = _load(root, approved)
     return {
         "schema": COVERAGE_SCHEMA,
         "config_sha256": approved.config_digest,
         "manifest_sha256": loaded.digest,
-        "policy_sha256": policy.digest,
+        "m1_semantics": {"version": SEMANTICS_VERSION, "sha256": semantics.digest},
         "purpose": approved.purpose,
         "dependencies": {name: asdict(window) for name, window in approved.dependencies.items()},
         "asset_count": len(loaded.manifest["assets"]),
@@ -183,11 +182,11 @@ def coverage(
                 "epoch": row["id"],
                 "kind": row["kind"],
                 "source": row["source"],
-                "declared_effective_window": asdict(_window(row)),
+                "declared_effective_window": asdict(Window.parse(row)),
                 "size_bytes": row["size_bytes"],
                 "sha256": row["sha256"],
             }
             for row in loaded.manifest["assets"]
         ],
-        "epochs": _epochs(loaded.market, approved.dependencies, approved.request, policy),
+        "epochs": _epochs(loaded.market, approved.dependencies, approved.request, semantics),
     }

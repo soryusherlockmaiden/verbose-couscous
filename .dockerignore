@@ -9,5 +9,6 @@
 .ruff_cache
 **/__pycache__
 data
-evidence
+evidence/**
+!evidence/m1/fetch.py
 *.sqlite3*

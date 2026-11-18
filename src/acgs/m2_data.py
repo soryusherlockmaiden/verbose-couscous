@@ -5,7 +5,6 @@ import re
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any
@@ -18,57 +17,26 @@ from acgs.history_io import (
     read_history_asset,
     read_json,
 )
+from acgs.history_seal import ARCHIVE_HOST as ARCHIVE_HOST
+from acgs.history_seal import CANDLES, registered_seal
+from acgs.history_seal import AccessRefused as AccessRefused
+from acgs.history_seal import Window as Window
+from acgs.history_seal import utc_ms as utc_ms
+from acgs.m2_semantics import ACCEPTED_M1_SEMANTICS
+from acgs.m2_semantics import VERSION as SEMANTICS_VERSION
 from acgs.market_data import PublicResponse, fetch_public
 from acgs.pit import DAY, HOUR, Instrument
-from acgs.sim_config import digest, instant_ms
+from acgs.sim_config import digest
 
 INTERVALS = {"15m": HOUR // 4, "1h": HOUR, "1d": DAY}
 SIGNAL_INTERVALS = ("15m", "1h")
-OWNERSHIP_WINDOW_MS = 15_000  # Accepted m1-v3 contract.
-ARCHIVE_HOST = "https://data.binance.vision"
 MANIFEST_SCHEMA = "m2-history-v1"
-CANDLES = ("klines", "markPriceKlines")
-ARCHIVE = re.compile(
-    r"https://data\.binance\.vision/data/futures/um/(?P<period>monthly|daily)/"
-    r"(?P<kind>klines|markPriceKlines|fundingRate)/(?P<symbol>[A-Z0-9]+)/"
-    r"(?:(?P<interval>15m|1h|1d)/)?(?P=symbol)"
-    r"(?:-(?P=interval))?-(?P<date>[0-9]{4}-[0-9]{2}(?:-[0-9]{2})?)\.zip"
-)
 SHA256 = re.compile(r"[0-9a-f]{64}")
+TIER_ANNOUNCEMENT = re.compile(
+    r"https://(?:www\.)?binance\.com/(?:[a-z]{2}(?:-[A-Z]{2})?/)?"
+    r"support/announcement/(?:detail/)?[A-Za-z0-9-]+"
+)
 METADATA = ("listings", "filters", "maintenance", "spreads", "schedules", "mark_gaps")
-
-
-class AccessRefused(ValueError):
-    """A request has no approved access to these inputs."""
-
-
-def utc_ms(value: Any) -> int:
-    if type(value) is int and value >= 0:
-        return value
-    if isinstance(value, str):
-        timestamp = datetime.fromisoformat(value)
-        if timestamp.utcoffset() == timedelta(0):
-            result = instant_ms(timestamp)
-            if result >= 0:
-                return result
-    raise AccessRefused("Expected a UTC timestamp at millisecond resolution")
-
-
-@dataclass(frozen=True)
-class Window:
-    start: int
-    end: int
-
-    def __post_init__(self) -> None:
-        if not 0 <= self.start < self.end:
-            raise AccessRefused("Expected a nonempty half-open UTC window")
-
-    def contains(self, other: "Window") -> bool:
-        return self.start <= other.start < other.end <= self.end
-
-
-def _window(raw: dict[str, Any]) -> Window:
-    return Window(utc_ms(raw["start"]), utc_ms(raw["end"]))
 
 
 def _dependencies(request: Window, approval: dict[str, Any]) -> dict[str, Window]:
@@ -76,7 +44,7 @@ def _dependencies(request: Window, approval: dict[str, Any]) -> dict[str, Window
     days = integer(approval["history_days"])
     prior = integer(approval["funding_lookback_ms"])
     tail = integer(approval["funding_lookahead_ms"])
-    if min(bars, days, prior) <= 0 or tail <= OWNERSHIP_WINDOW_MS:
+    if min(bars, days, prior) <= 0 or tail <= ACCEPTED_M1_SEMANTICS.funding_ownership_window_ms:
         raise AccessRefused("Explicit history and funding dependency bounds are required")
     result = {"decision": request}
     for name in SIGNAL_INTERVALS:
@@ -98,34 +66,6 @@ def _dependencies(request: Window, approval: dict[str, Any]) -> dict[str, Window
     return result
 
 
-def _archive_window(entry: dict[str, Any], symbol: str) -> Window:
-    asset = ARCHIVE.fullmatch(entry["source"])
-    if asset is None or asset["symbol"] != symbol or asset["kind"] != entry["kind"]:
-        raise AccessRefused("Expected a canonical Binance USD-M archive URL")
-    if entry["path"] != entry["source"].removeprefix(ARCHIVE_HOST + "/"):
-        raise AccessRefused("Archive path must match its source")
-    interval, label = asset["interval"], asset["date"]
-    if asset["kind"] in CANDLES:
-        if interval is None or integer(entry["interval_ms"]) != INTERVALS[interval]:
-            raise AccessRefused("Archive interval differs from manifest")
-    elif interval is not None or "interval_ms" in entry:
-        raise AccessRefused("Unexpected funding archive interval")
-    monthly = asset["period"] == "monthly"
-    if monthly != (len(label) == 7):
-        raise AccessRefused("Archive period differs from URL date")
-    name = f"{symbol}-{interval}" if interval else symbol
-    directory = f"{symbol}/{interval}" if interval else symbol
-    expected = f"{ARCHIVE_HOST}/data/futures/um/{asset['period']}/{asset['kind']}"
-    if entry["source"] != f"{expected}/{directory}/{name}-{label}.zip":
-        raise AccessRefused("Expected canonical archive directory and file name")
-    start = datetime.fromisoformat(label + "-01" if monthly else label).replace(tzinfo=UTC)
-    if monthly:
-        end = (start + timedelta(days=32)).replace(day=1)
-    else:
-        end = start + timedelta(days=1)
-    return Window(instant_ms(start), instant_ms(end))
-
-
 def _settlement_marks(entry: dict[str, Any], symbol: str, window: Window) -> None:
     # A dated, bounded REST export may be supplied by the operator. Only the
     # three public archive families are fetched automatically.
@@ -145,7 +85,6 @@ class _Approved:
     manifest: dict[str, Any]
     dependencies: dict[str, Window]
     config_digest: str
-    policy_digest: str
     request: Window
     purpose: str
 
@@ -157,23 +96,27 @@ def _approve(
         raise AccessRefused("Holdout is sealed. Only development and validation are supported.")
     config = read_json(config_path)
     if (
-        config.get("version") != "m2-v1" or config.get("mode") != "OFFLINE"
-        or config.get("protocol_status") not in {"DRAFT", "FROZEN"}
+        config.get("version") != "m2-v2" or config.get("mode") != "OFFLINE"
     ):
         raise AccessRefused("Expected a versioned OFFLINE M2 configuration")
-    policy = config["m1"]
+    if config.get("protocol_status") != "DRAFT":
+        raise AccessRefused("Phase A requires a DRAFT protocol; frozen authorization is unavailable")
+    semantics = config["m1_semantics"]
     if (
-        policy["replay"] != "m1-replay-v8" or policy["policy"] != "m1-v3"
-        or not SHA256.fullmatch(policy["policy_sha256"])
+        semantics["version"] != SEMANTICS_VERSION
+        or semantics["sha256"] != ACCEPTED_M1_SEMANTICS.digest
     ):
-        raise AccessRefused("Expected a pinned accepted M1 execution contract")
+        raise AccessRefused("Expected the pinned M1 semantics")
+    seal = registered_seal()
     access = config["access"]
     approval = access["approvals"].get(purpose)
     if access["holdout"] is None or approval is None:
         raise AccessRefused("Holdout boundary or dataset approval is OPEN")
-    holdout = _window(access["holdout"])
-    safe = _window(approval["data_window"])
-    decisions = _window(approval["decision_window"])
+    holdout = Window.parse(access["holdout"])
+    if not all(holdout.contains(registered) for registered in seal.ranges):
+        raise AccessRefused("Configured holdout must cover every registered sealed range")
+    safe = Window.parse(approval["data_window"])
+    decisions = Window.parse(approval["decision_window"])
     request = decisions if request is None else request
     if safe.end > holdout.start:
         raise AccessRefused("Approved data window crosses the holdout seal")
@@ -208,6 +151,8 @@ def _approve(
         for row in manifest.get(name, []):
             if name == "listings" and not {"quote", "contract", "excluded_product"} <= row.keys():
                 raise AccessRefused("Listing evidence needs explicit instrument classification")
+            if name == "maintenance" and not TIER_ANNOUNCEMENT.fullmatch(row["evidence"]["source"]):
+                raise AccessRefused("M2 maintenance tiers require a dated Binance announcement")
             times = [utc_ms(row["evidence"]["as_of"])]
             times.extend(utc_ms(row[key]) for key in ("effective", "start", "next_time") if key in row)
             if max(times) >= safe.end or any(
@@ -226,7 +171,7 @@ def _approve(
             fields.add("interval_ms")
         if entry.keys() != fields:
             raise AccessRefused("Unexpected or missing asset fields")
-        window = _window(entry)
+        window = Window.parse(entry)
         inst = instruments[entry["id"]]
         if (
             not SHA256.fullmatch(entry["sha256"])
@@ -238,17 +183,23 @@ def _approve(
         paths.add(entry["path"])
         if entry["kind"] == "fundingMarks":
             _settlement_marks(entry, inst.symbol, window)
-            bundle = window
-        else:
-            bundle = _archive_window(entry, inst.symbol)
-        if not safe.contains(bundle) or not bundle.contains(window):
+        elif entry["kind"] not in {*CANDLES, "fundingRate"}:
+            raise AccessRefused("Unsupported M2 asset kind")
+        elif entry["path"] != entry["source"].removeprefix(ARCHIVE_HOST + "/"):
+            raise AccessRefused("Archive path must match its source")
+        bundle, interval = seal.check_asset(entry)
+        if interval is not None and (
+            interval not in INTERVALS or integer(entry["interval_ms"]) != INTERVALS[interval]
+        ):
+            raise AccessRefused("Archive interval differs from manifest")
+        if not safe.contains(bundle):
             raise AccessRefused(f"Asset bundle exceeds approved pre-holdout coverage: {entry['path']}")
         streams[inst.id, entry["kind"], entry.get("interval_ms")].append(window)
     for windows in streams.values():
         ordered = sorted(windows, key=lambda window: window.start)
         if any(left.end > right.start for left, right in zip(ordered, ordered[1:], strict=False)):
             raise AccessRefused("Declared coverage overlaps for an epoch and asset stream")
-    return _Approved(manifest, dependencies, digest(config), policy["policy_sha256"], request, purpose)
+    return _Approved(manifest, dependencies, digest(config), request, purpose)
 
 
 def _m1_manifest(manifest: dict[str, Any], assets: list[Any]) -> dict[str, Any]:

@@ -95,16 +95,15 @@ def make_fixture(output):
         "assets": assets,
     }
     config = {
-        "version": "m2-v1",
+        "version": "m2-v2",
         "mode": "OFFLINE",
         "protocol_status": "DRAFT",
-        "m1": {
-            "replay": "m1-replay-v8",
-            "policy": "m1-v3",
-            "policy_sha256": "dd0187eb938370e1cb72b6a02d08752da185549fbfb99741bb71acddeec4b76e",
+        "m1_semantics": {
+            "version": "m1-semantics-v1",
+            "sha256": "007d9887419bd969899a6db881a097964e8bd372f5cc6d95b848aff5d87735f9",
         },
         "access": {
-            "holdout": {"start": HOLDOUT_START, "end": "2000-02-01T00:00:00Z"},
+            "holdout": {"start": HOLDOUT_START, "end": "2026-01-01T00:00:00Z"},
             "approvals": {"development": {
                 "manifest_sha256": digest(manifest),
                 "decision_window": {"start": START, "end": END},

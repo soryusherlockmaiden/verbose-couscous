@@ -24,7 +24,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     audit = commands.add_parser("coverage", help="Audit approved history without running strategy")
     audit.add_argument("--start", required=True)
     audit.add_argument("--end", required=True)
-    audit.add_argument("--policy", type=Path, required=True)
+    audit.add_argument("--policy", type=Path, help="Check a supplied M1 policy's semantic subset")
     args = parser.parse_args(argv)
     try:
         if args.command == "fetch":
@@ -32,7 +32,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             report = coverage(
                 args.config, args.manifest, args.assets, args.purpose,
-                Window(utc_ms(args.start), utc_ms(args.end)), _policy(args.policy),
+                Window(utc_ms(args.start), utc_ms(args.end)),
+                _policy(args.policy) if args.policy is not None else None,
             )
         print(canonical(report))
     except (ValueError, KeyError, TypeError, DecimalException, BadZipFile, OSError) as error:
