@@ -224,7 +224,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 | Milestone | Status | Owner | Evidence | Decision |
 |---|---|---|---|---|
 | M0 | PASS | Operator | [M0 verification](evidence/m0/verification.md) | **Accepted by the operator on 2026-11-17 (UTC)** at code commit `e16d08f`: all ROADMAP §3 checks passed ([hosted CI](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44191231342)), including Windows live capture (five `CAPTURED`/`VERIFIED` responses). Merged to `main` through PR #2. |
-| M1 | IN REVIEW | Codex | [M1 verification](evidence/m1/verification.md) · [50 USDT report](evidence/m1/feasibility.md) | Independent Claude review fixes recorded. Two SC-02 decisions remain open (R1, R2). Fresh Codex review and operator acceptance pending. |
+| M1 | IN REVIEW | Codex | [M1 verification](evidence/m1/verification.md) · [50 USDT report](evidence/m1/feasibility.md) | Follow-up fixes cover R1, R2 and empty feasibility windows. Claude recheck, fresh Codex review and operator acceptance pending. |
 | M2 | NOT STARTED | TBD | — | Pending |
 | M3 | NOT STARTED | TBD | — | Pending |
 | M4 | NOT STARTED | TBD | — | Pending |
@@ -244,7 +244,7 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 M1 tracker update (2026-11-18, Asia/Bangkok) records the M1 implementation and evidence awaiting independent review.
 
-Independent review update (2026-11-18 UTC) records the review fixes and the open SC-02 decisions in the M1 verification.
+Independent review update (2026-11-18 UTC) records review fixes and the follow-up SC-02 and SC-12 verification.
 
 - M0 accepted by the operator on 2026-11-17 (UTC) at code commit `e16d08f` and merged through PR #2; tracker status `PASS`.
 - Recorded the independent Windows live capture re-verification at `e16d08f`; M0 technical verification is PASS, with operator acceptance still pending and M1 not started.

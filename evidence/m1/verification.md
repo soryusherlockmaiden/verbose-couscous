@@ -1,8 +1,8 @@
 # M1 verification
 
-Branch `codex/m1-market-offline` from `origin/main` at `0903329ead42ed3097a14c4e8ba15c97157c2e5d`. The initial implementation commit is `7d8af7f20773e400362e45e90a974613f64441b4`. The implementation and evidence await independent review and operator acceptance. [PR #4](https://github.com/soryusherlockmaiden/verbose-couscous/pull/4) · [50 USDT report](feasibility.md).
+Branch `codex/m1-market-offline` from `origin/main` at `0903329ead42ed3097a14c4e8ba15c97157c2e5d`. The initial implementation commit is `7d8af7f20773e400362e45e90a974613f64441b4`. Claude recheck of the follow-up changes, fresh Codex review, and operator acceptance are pending. [PR #4](https://github.com/soryusherlockmaiden/verbose-couscous/pull/4) · [50 USDT report](feasibility.md).
 
-## Checks
+## Initial implementation checks
 
 | Environment | Commands and result |
 |---|---|
@@ -16,11 +16,7 @@ Branch `codex/m1-market-offline` from `origin/main` at `0903329ead42ed3097a14c4e
 
 No stochastic fills are used. The deterministic fixture entry/exit run using `config/m1.json` has run digest `58294990f235395a7b717006f9ccccaec2a83ad1951ddc51bf736fbe2a74176b` and canonical replay hash `3a4cbe6c11e66912fa1da3c56ce59c10d5fb87f5d8bcaa801907d811297f5b01`. The runtime regression compares artifacts with the wall clock disabled through direct and transitive module paths and uses a different ambient Decimal context.
 
-The public-sample CLI regression rejects the entry for incomplete PIT metadata, persists its `EligibilityDecision` (`MISSING_PIT_FILTER`, `LIQUIDATION_BUFFER`) and keeps the actual mark source in each flat close snapshot. Re-running the same plan yields canonical output hash `6685126f290f98a4cc0f8c40a59151d1b5d699b1801b774a2a9846eb3955070d` (run digest `1d3419e5b642fd701e7322e2953d0544991f9b4eeadc1e2393fdccc1aa8ec7ef`). The earlier hash `501a6622b7adf16fd39e2fdf53b94851f4f2333a35bdc35ee4662caad9c44845` predates the review fix that persists the decision; events and snapshots are unchanged.
-
-```text
-uv run --locked python -m acgs replay --manifest evidence/m1/binance-2024.json --assets data/m1/archive --policy config/m1.json --start 2024-03-01T00:00:00Z --end 2024-03-04T00:00:00Z --plan evidence/m1/replay-plan.json --out data/m1/replay-public-v3.json
-```
+At Claude's review head the public replay persisted the PIT refusal and produced `6685126f290f98a4cc0f8c40a59151d1b5d699b1801b774a2a9846eb3955070d`. The current replay commands and hashes are in the follow-up below.
 
 ## ROADMAP §4 acceptance coverage
 
@@ -41,7 +37,7 @@ SC-01, SC-02 and SC-12 technical resolutions are in SPEC v0.5 §13.1. Historical
 
 ## Independent review (Claude, 2026-11-18 UTC)
 
-Reviewed the full PR diff at head `0fd2ed00dda8fe4ac08776364faec1212d40f130` against `main` `0903329`. Each fix below is a focused commit on this branch with a regression test that fails on the reviewed head. The fixture replay hashes above (`58294990…`, `3a4cbe6c…`) and the 38-of-72 synthetic feasibility figures are unchanged.
+Claude reviewed the full PR diff at head `0fd2ed00dda8fe4ac08776364faec1212d40f130` against `main` `0903329`. The findings and decisions at the time of that review are preserved below. Claude's resulting head `f5dbf2444681e9d3ab8e390040e04f48e3aefb1a` passed all four CI jobs. [Claude review head CI](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44204820759).
 
 | # | Severity | Finding | Resolution |
 |---|---|---|---|
@@ -65,3 +61,20 @@ Reviewed the full PR diff at head `0fd2ed00dda8fe4ac08776364faec1212d40f130` aga
 | Pinned Gitleaks v8.24.3 (README command) | 44 commits scanned (all local refs, including this record), no leaks |
 
 Not run here: the `--capture-db` ingestion, because no M0 capture database is in this container (`fapi.binance.com` returned HTTP 451 and was not bypassed); and Windows native, which is covered by the hosted `windows-2025` job. The real 2024 sample still has no point-in-time filters or BTC/ETH maintenance tiers, so SC-12 sizing and rejection behavior is exercised only on synthetic fixtures. Promotion-grade feasibility needs forward-captured filters. M1 acceptance remains the operator's decision.
+
+## Follow-up on R1, R2 and feasibility status
+
+| Finding | Verified follow-up |
+|---|---|
+| R1, lagged close and trailing | Snapshots now publish `trigger_available_at`. All three public close snapshots become eligible 1,000 ms after their timestamps. T-37 verifies a deferred update on the next eligible open, old-stop gap priority, a crossed proposed stop, and rejection when the original position has closed. |
+| R2, funding at the bar boundary | All 999 archive settlements match a public REST rate and timestamp exactly and now carry settlement marks. T-18 verifies a held position posts an offset settlement once at the original time, the default 15 s ambiguity guard refuses entries and exits around funding, and delayed cash cannot size an entry before observation. Tests also retain the exact-clock time-priority sensitivity. |
+| SC-12, zero or unusable attempts | The January 2 sample has zero attempts due to insufficient warm-up and returns `INCONCLUSIVE_NO_ASSESSABLE_ATTEMPTS`. Stale or disallowed critical metadata cannot establish an assessable rejection. The main sample still has 8,136 unavailable attempts and reports `INCONCLUSIVE_CRITICAL_INPUT_UNAVAILABLE`. |
+
+Windows native passed `uv sync --locked`, `uv run --locked ruff check .`, `uv run --locked mypy`, and `uv run --locked pytest -q` with 156 tests. Docker passed `docker compose config --quiet`, `docker compose --profile check build acgs check`, `docker compose run --rm acgs smoke` twice, and `docker compose --profile check run --rm check` with the same 156 tests. Native smoke also replayed twice with the recorded M0 digest. Read-only M0 capture ingestion was rechecked on Windows. Use the pinned Gitleaks command above or the PR `secrets` job.
+
+```text
+uv run --locked python -m acgs replay --manifest evidence/m1/binance-2024.json --assets data/m1/archive --policy config/m1.json --start 2024-03-01T00:00:00Z --end 2024-03-04T00:00:00Z --plan evidence/m1/replay-plan.json --out data/m1/replay-public-v4.json
+uv run --locked python -m acgs feasibility --manifest evidence/m1/binance-2024.json --assets data/m1/archive --policy config/m1.json --start 2024-01-02T00:00:00Z --end 2024-01-03T00:00:00Z --out data/m1/feasibility-empty-v3.json
+```
+
+Windows and Docker reproduced canonical replay hash `86857766da69199345a7c4ed1bfcd2f7771841de8084771f7b397ab9fcbc0ee2` and [main feasibility hash](feasibility.md) `ee0714a60baf1576f816cffd928e01fc4b94b1c517c7013f006882118d4ad918`. Docker used the runtime service with the checkout mounted read-only at `/sample` and outputs in the named `/data` volume. The deterministic exact-clock fixture uses run digest `d0360b1ede9001d50b4564a1f9b16dce1c990e388072988332a813ec2cdd34c6` and replay hash `92a6e207f73bff49b5429ee02a5cd3cf504f05e1cfe206fe7b00f2ffa791b87e`. The new hashes reflect the versioned policy, dataset, and replay snapshot schema.

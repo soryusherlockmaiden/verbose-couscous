@@ -1,6 +1,6 @@
 {
   "version": "m1-history-v1",
-  "ingested_at": "2026-11-17T23:20:00Z",
+  "ingested_at": "2026-11-18T00:16:13Z",
   "candle_delay_ms": 1000,
   "funding_delay_ms": 5000,
   "instruments": [
@@ -416,6 +416,33 @@
       "start": "2024-04-01T00:00:00Z",
       "end": "2024-05-01T00:00:00Z",
       "interval_ms": 86400000
+    },
+    {
+      "path": "fundingRest/BTCUSDT-2024-fundingRate.json",
+      "kind": "fundingMarks",
+      "id": "BTCUSDT@1704067200000",
+      "source": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&startTime=1704067200000&endTime=1714521599999&limit=1000",
+      "sha256": "591ac3dfed08baca5bea2d5ab3db8dd8de5dcad777b12c871bc8e04a13e69e37",
+      "start": "2024-01-01T00:00:00Z",
+      "end": "2024-05-01T00:00:00Z"
+    },
+    {
+      "path": "fundingRest/ETHUSDT-2024-fundingRate.json",
+      "kind": "fundingMarks",
+      "id": "ETHUSDT@1704067200000",
+      "source": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=ETHUSDT&startTime=1704067200000&endTime=1714521599999&limit=1000",
+      "sha256": "b8a4936b0ac6d72cd304cd0ac87dc6089a3ddd7652ccd6624f181eba6b621a68",
+      "start": "2024-01-01T00:00:00Z",
+      "end": "2024-05-01T00:00:00Z"
+    },
+    {
+      "path": "fundingRest/DGBUSDT-2024-fundingRate.json",
+      "kind": "fundingMarks",
+      "id": "DGBUSDT@1704067200000",
+      "source": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=DGBUSDT&startTime=1704067200000&endTime=1711929599999&limit=1000",
+      "sha256": "e57d6442506b3b5e6c7685205985c18cb7fd493e4b20f8317a5056f056a8c34f",
+      "start": "2024-01-01T00:00:00Z",
+      "end": "2024-04-01T00:00:00Z"
     }
   ]
 }

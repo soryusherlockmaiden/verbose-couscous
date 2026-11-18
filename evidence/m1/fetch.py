@@ -1,10 +1,10 @@
-"""Reproduce the pinned Binance archive sample through public GETs."""
+"""Reproduce the pinned Binance history sample through public GETs."""
 
 import argparse
 import hashlib
 import time
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 from acgs.history_io import read_json
 from acgs.market_data import MAX_PAYLOAD, fetch_public
@@ -19,12 +19,24 @@ def main() -> None:
     for entry in read_json(args.manifest)["assets"]:
         url = urlsplit(entry["source"])
         target = (root / entry["path"]).resolve()
-        if not (
-            target.is_relative_to(root) and url.scheme == "https" and url.netloc == "data.binance.vision"
-            and url.path.startswith("/data/futures/um/monthly/") and url.path.endswith(".zip")
-            and not url.query and not url.fragment
+        archive = (
+            url.netloc == "data.binance.vision" and url.path.startswith("/data/futures/um/monthly/")
+            and url.path.endswith(".zip") and not url.query
+        )
+        query = parse_qs(url.query, strict_parsing=True)
+        settlement_marks = (
+            entry["kind"] == "fundingMarks" and url.netloc == "fapi.binance.com"
+            and url.path == "/fapi/v1/fundingRate"
+            and query.keys() == {"symbol", "startTime", "endTime", "limit"}
+            and query["symbol"] == [entry["id"].split("@", 1)[0]]
+            and all(len(query[key]) == 1 and query[key][0].isdigit()
+                    for key in ("startTime", "endTime", "limit"))
+        )
+        if (
+            not target.is_relative_to(root) or url.scheme != "https" or url.fragment
+            or not (archive or settlement_marks)
         ):
-            raise SystemExit("Expected a pinned Binance USD-M public archive")
+            raise SystemExit("Expected a pinned Binance USD-M public source")
         if target.exists():
             if hashlib.sha256(target.read_bytes()).hexdigest() != entry["sha256"]:
                 raise SystemExit(f"Existing asset checksum mismatch: {target}")
