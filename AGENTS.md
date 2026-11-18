@@ -25,7 +25,7 @@ Read this file completely at the start of every session. Do not rely on memory o
 | File | Owns | Rule for agents |
 |---|---|---|
 | `PRD.md` (v1.4, **Approved & Locked**) | Product intent, scope, capital baselines (what and why) | Never change it without explicit operator instruction |
-| `SPEC.md` (v0.4) | Exact behavior, formulas, invariants (`INV-*`), tests (`T-*`), open contracts (`SC-*`) | Implement as written; record resolved contracts with rationale and tests |
+| `SPEC.md` (v0.5) | Exact behavior, formulas, invariants (`INV-*`), tests (`T-*`), open contracts (`SC-*`) | Implement as written; record resolved contracts with rationale and tests |
 | `ROADMAP.md` (v0.4) | Milestone scope, acceptance gates, status | Use for scope and Definition of Done; update the status tracker with evidence |
 | `README.md` | Setup, commands, operating modes | Keep commands accurate to the code; README never overrides the others |
 

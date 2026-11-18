@@ -1,9 +1,9 @@
 # ACGS — Engineering Roadmap
 
-**Version:** 0.4 — Pre-M0 Corrections  
-**Date:** 2026-11-17  
-**Status:** Engineering baseline candidate; no milestone accepted  
-**Basis:** `PRD.md` v1.4 (**Approved & Locked**) and `SPEC.md` v0.4  
+**Version:** 0.4\
+**Date:** 2026-11-17\
+**Status:** M0 and M1 accepted. M2 in progress with Phase A accepted (see §12).\
+**Basis:** `PRD.md` v1.4 (**Approved & Locked**) and `SPEC.md` v0.5\
 **Execution principle:** Research-first, risk-before-order, evidence-based stop/go.
 
 ## 1. Delivery rules
@@ -235,14 +235,16 @@ Use **Define → Implement → Test → Review → Fix → Merge** per milestone
 
 1. **PRD v1.4 is Approved & Locked** as the product baseline; no further PRD approval task remains.
 2. **M1 accepted** by the operator on 2026-11-18 (UTC) and merged through PR #4.
-3. **M2 Phase A accepted** by the operator on 2026-11-18 (UTC) and merged through PR #5. All-symbol depth capture was merged through PR #6 (`capture-depth-v1`, with 00:00 UTC seal boundaries) and hardened through PR #7 (`capture-depth-v2`, SQLite schema 4: slot outcome reporting, request rotation, per-receipt import exclusions and epoch resets) ([verification](evidence/m0/dynamic-depth.md)). An independent audit completed one live slot from an operator workstation: 522 symbols, all on time, in about 161 s of a 300 s slot. Before Phase B, decide the exact O1 dates and O2–O4. Run capture continuously from an eligible host. Confirm complete slots on the deployment host through the `Capture slot=…` summary and exit status, measure cycle duration and daily database growth, and plan disk capacity or archival before about 70% use. At 522 symbols, growth may reach about 150 MB/day, an unmeasured scaling of the fixture. Change the seal registry only through reviewed pull requests. Then continue SC-03, SC-04 and SC-05, including the delayed-trailing and funding-cost reporting noted in SPEC §4.5.1. P3-2 and P3-3 are due before Phase C.
-4. **M0 accepted** by the operator on 2026-11-17 (UTC) and merged through PR #2. Start continuous forward capture on the VPS (`docker compose --profile capture up -d capture`).
-5. Continue forward capture to extend point-in-time evidence for M2 feasibility and cost research.
+3. **M2 Phase A accepted** on 2026-11-18 (UTC) through PR #5. Before Phase B, approve the development and validation windows and research cutoff under O1, and decide O2–O4. Then verify filter, dated maintenance-tier and spread coverage separately on approved inputs before setting prospective holdout dates under O1. The holdout starts after protocol freeze. Register its dates through a reviewed pull request. Continue SC-03, SC-04 and SC-05, including the delayed-trailing and funding-cost reporting in SPEC §4.5.1. P3-2 and P3-3 are due before Phase C. [Draft protocol](evidence/m2/protocol.md#operator-decisions)
+4. **VPS capture is running.** PR #6 introduced all-symbol capture and PR #7 hardened it as `capture-depth-v2` (SQLite schema 4). The operator reported all 522 expected books on time in the 2026-11-18 15:55 UTC deployment slot and a baseline SQLite size of 0.71 MiB. The audit of 288 slots and daily growth is pending. At 522 symbols, about 150 MB/day is a fixture-based estimate. Measure cycle duration and plan disk capacity or archival before about 70% use. [Capture verification](evidence/m0/dynamic-depth.md#deployment-host-smoke)
+5. Continue forward capture to extend point-in-time evidence for M2 feasibility and cost research. Assess its filter, spread and maintenance-tier evidence separately.
 6. Pre-register M2 numeric promotion criteria **before** holdout evaluation.
 
 **Roadmap acceptance:** This document plans work; it does not authorize live orders, real transfers, or a production deployment.
 
 ## 13. v0.4 targeted change notes
+
+- Record the two O1 approvals and the operator-reported VPS smoke. The development and validation scope and cutoff precede the coverage checks used to set prospective holdout dates.
 
 - `capture-depth-v2` adds slot outcome reporting, restart-safe rotation and cross-slot retries, and hardens SC-01 capture import and T-15 sidecar preflight. Deployment-host coverage, cycle duration and growth remain operator checks. [Verification](evidence/m0/dynamic-depth.md#capture-depth-v2)
 

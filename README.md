@@ -8,7 +8,7 @@ ACGS is a research-first, safety-first experiment with automated trading on **Bi
 
 | Item | State |
 |---|---|
-| Phase | **M1 accepted** (2026-11-18 UTC); M2 Strategy Research not started |
+| Phase | **M2 Phase A accepted** (2026-11-18 UTC). M2 Strategy Research in progress |
 | `PRD.md` | v1.4, Approved & Locked |
 | `SPEC.md` | v0.5, engineering baseline candidate |
 | `ROADMAP.md` | v0.4, progress and evidence in §12 |
@@ -79,7 +79,7 @@ Test-order acceptance proves only that a request is valid. A protective-order ty
 |---|---|---|
 | M0 Foundation | Offline skeleton, CI, config, account eligibility pre-check, forward data capture | PASS (accepted) |
 | M1 Market & Offline Execution | PIT data, deterministic simulator and equity ledger, 50 USDT feasibility report | PASS (accepted) |
-| M2 Strategy Research | Preregistered research decision: `PASS` / `FAIL` / `INCONCLUSIVE` | Not started |
+| M2 Strategy Research | Preregistered research decision: `PASS` / `FAIL` / `INCONCLUSIVE` | In progress (Phase A accepted) |
 | M3 Capital & Risk Engine | State machine, risk engine, recovery simulation, fault injection | Not started |
 | M4 Paper Pilot | Mainnet shadow operation with no real orders | Not started |
 | M5 Controlled Live Pilot | Optional; staged `LIVE_SHADOW` → smoke test → `LIVE_ARMED` | Not authorized |
@@ -138,7 +138,7 @@ For `TRAIL`, `time` is the source bar's closing boundary and `available` may fol
 
 ### M2 development data
 
-The [draft research protocol](evidence/m2/protocol.md) and [data audit](evidence/m2/data-audit.md) record the proposed research windows and the operator decisions needed for market data approval. The Phase A entry point serves approved development and validation and keeps holdout sealed.
+The draft research protocol and data audit record the proposed windows and operator decisions. Approve the development and validation windows and research cutoff first. Set the prospective holdout dates after checking filter, maintenance-tier and spread coverage on approved research inputs. The Phase A entry point serves approved development and validation and keeps holdout sealed. [Draft research protocol](evidence/m2/protocol.md) · [Data audit](evidence/m2/data-audit.md)
 
 Generate and audit a synthetic manifest from the repository root.
 

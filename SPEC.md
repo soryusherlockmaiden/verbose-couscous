@@ -136,7 +136,11 @@ Persist source, method, as-of time, coverage and limitations. Exploratory resear
 
 **Expected coverage and forward capture:** Binance public endpoints are expected to expose only current instrument filters (to be confirmed in M1), so most historical filters will be `RECONSTRUCTED`. From M0, a credential-free forward-capture job records daily `exchangeInfo` and `fundingInfo` snapshots, periodic `premiumIndex` snapshots (all symbols) and periodic order-book/spread samples for the candidate universe. These are `VERIFIED` from their capture time onward and are the preferred basis for promotion-grade feasibility and cost evidence on later periods.
 
-**M0 capture-depth-v1 (SQLite schema 3).** Dynamic capture uses the latest fresh, valid `CAPTURED` exchange snapshot received strictly before the slot boundary. It journals every trading USDT-quoted perpetual and any configured depth symbols as a sorted plan. A snapshot that arrives during the slot can first change the next plan. The collector may use a prospective holdout snapshot solely to plan capture slots, including slots that straddle or follow the holdout end. The receipt and slot must both be outside retrospective reserves. For a holdout-derived plan, depth received at or after slot end is recorded without a payload. Missing, invalid, stale or inaccessible metadata falls back to the configured list with its reason recorded. Window gaps and late receipts are explicit. Public request reservations survive restart and enforce the declared rolling request-weight budget. Sealed receipts remain unavailable to research loaders. The slot journal is operational metadata and stays outside research inputs. Capture membership supplies no M2 universe eligibility decision. [Verification](evidence/m0/dynamic-depth.md)
+**M0 capture-depth-v2 (SQLite schema 4).** Dynamic capture uses the latest fresh, valid `CAPTURED` exchange snapshot received strictly before the slot boundary. It journals every trading USDT-quoted perpetual and any configured depth symbols as a sorted plan. A snapshot that arrives during the slot can first change the next plan. Each plan stores a rotating request start offset for restart. The next plan advances the previous offset by the number of on-time targets, or by one after a fully served or empty slot. When membership changes, use the next available name in sorted order and wrap when necessary. Public request reservations survive restart and enforce the rolling weight budget. Retry cooldowns follow the source URL across slots.
+
+The collector may use a prospective holdout snapshot solely to plan capture slots, including slots that straddle or follow the holdout end. The receipt and slot must both be outside retrospective reserves. For a holdout-derived plan, depth received at or after slot end is recorded without a payload. Missing, invalid, stale or inaccessible metadata falls back to the configured list with its reason recorded. Window gaps and late receipts are explicit. The CLI reports slot state, expected, on-time, late and missed counts, and fallback reason. A one-shot exits nonzero on fallback, late or missing expected books in a closed slot, or failed/deferred requests. A captured book must have usable prices to support an M1 spread observation.
+
+Sealed receipts remain unavailable to research loaders. The slot journal is operational metadata and stays outside research inputs. Capture membership supplies no M2 universe eligibility decision. The importer binds depth and funding observations to the latest unsealed exchange snapshot for up to 129,600 seconds and clears that binding across a sealed span. Unsupported identities and unusable books receive per-symbol exclusion reasons. [Verification](evidence/m0/dynamic-depth.md#capture-depth-v2)
 
 
 ### 4.3.1 Funding evidence
@@ -238,7 +242,8 @@ For every candidate entry, compute and persist a deterministic `EligibilityDecis
 
 - Signal engine returns `NO_SIGNAL`, `LONG_CANDIDATE`, or `SHORT_CANDIDATE` with timestamp, source bars, feature values, strategy/config digest and reason codes.
 - Strategy cannot calculate final authorized order quantity or submit an order.
-- **OPEN before M2 (strategy semantics, SC-04):** exact candle-close decision time, next-bar execution, volume-window indexing, Donchian band exclusion of signal candle, ADX/ATR/EMA warm-up, stop-level computation, and handling of open positions when a symbol leaves the universe or its momentum sign flips. Intrabar stop ordering, funding timing and tie-breaking are simulator rules frozen in M1 (§4.5.1), not M2 decisions.
+- **Donchian input:** compute the band from prior completed bars, excluding the signal bar (PRD §6.2).
+- **OPEN for M2 (strategy semantics, SC-04):** exact decision time, modeled execution open, indicator indexing and ADX/ATR/EMA warm-up, stop-level computation, and handling of open positions when a symbol leaves the universe or its momentum sign flips. M1 fixes intrabar stop ordering, funding timing and tie-breaking (§4.5.1).
 - **Trailing-stop implementation (decided):** the ATR trailing stop updates only at completed bar close and ratchets only in the favorable direction. Live, it is an exchange-hosted stop order replaced by placing the new order before cancelling the old (§9.2). Research models exactly this step-wise level, never continuous intrabar trailing. Exchange-native percentage-callback trailing orders are not used for the ATR exit.
 - Evaluate baseline without pyramiding first. Additional families and adaptive selector are research-only until separately promoted.
 
@@ -469,7 +474,7 @@ Research must use chronological development/validation windows, walk-forward tes
 
 **No numeric thresholds are invented in this draft.** They are an explicit M2 prerequisite; post-hoc thresholds are prohibited. A reference-account backtest alone cannot promote a 50 USDT strategy. `INCONCLUSIVE` does not authorize live trading.
 
-[M2 draft research protocol](evidence/m2/protocol.md) and [versioned draft configuration](config/m2.json) track SC-03, SC-04 and SC-05. The operator owns freeze.
+The operator first approves the development and validation decision and data windows and the research cutoff under O1. The prospective holdout dates follow separate checks of filter, maintenance-tier and spread coverage on approved research inputs. The holdout starts after protocol freeze. The operator owns freeze. The draft protocol and configuration track SC-03, SC-04 and SC-05. [M2 draft research protocol](evidence/m2/protocol.md) · [Versioned draft configuration](config/m2.json)
 
 ## 12. Verification matrix
 
@@ -570,7 +575,8 @@ Emit an event-numbered wallet/equity snapshot after each fill, funding posting o
 
 - `history-seal-v1` requires the start and end of every registered prospective holdout and retrospective reserve to be exactly `00:00:00.000 UTC`. M0 capture and M1/M2 data entry points refuse a misaligned registry before payload or network access. M0 alone can use a prospective snapshot to schedule capture when the receipt and slot are outside retrospective reserves. [Verification](evidence/m0/dynamic-depth.md)
 
-- `capture-depth-v2` (SQLite schema 4) journals a resumable rotating request offset, carries per-source cooldowns across slots and reports late/missed receipts on exit. The capture importer binds depth and funding to the latest unsealed exchange snapshot for up to 129,600 seconds. Crossing a sealed span invalidates that binding. Unsupported identities and unusable books receive per-symbol exclusion reasons. Bounded REST sidecars bind their local paths to the query before payload access, with explicit pins for the accepted M1 exports. [Checks and evidence](evidence/m0/dynamic-depth.md#capture-depth-v2)
+- PR #7 adds `capture-depth-v2` (SQLite schema 4) with slot reporting, request rotation, source cooldowns and capture import hardening (§4.3). Bounded REST sidecars bind their local paths to the query before payload access, with explicit pins for the accepted M1 exports. [Checks and evidence](evidence/m0/dynamic-depth.md#capture-depth-v2)
+- Record the O1 approval order (§11) and clarify the PRD's requirement that the Donchian band uses prior completed bars (§6).
 
 ## 14. Change control and release policy
 

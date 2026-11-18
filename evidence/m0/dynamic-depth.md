@@ -142,4 +142,16 @@ foreach ($run in 1,2) { docker compose -p acgs-hardening-check run --rm acgs smo
 docker run --rm --env GIT_CONFIG_COUNT=1 --env GIT_CONFIG_KEY_0=safe.directory --env GIT_CONFIG_VALUE_0=/repo --mount "type=bind,source=C:\dev\acgs,target=/repo,readonly" ghcr.io/gitleaks/gitleaks:v8.24.3@sha256:e1b35e12a8c6fa8901f060459cfb6b2fc4c484d3afbe3b029733a3bbfab07055 git --redact --log-opts=--all /repo
 ```
 
-The deployment host still needs its own one-cycle smoke and growth measurement. The post-stop sizing contract stays in SC-02. Funding candidates outside 1h/2h/4h/8h, horizon-dependent trailing diagnostics, the M2 data-window lower bound and full-archive decompression cost remain outside this change.
+The local PR #7 verification left deployment smoke and growth measurement for the VPS. The post-stop sizing contract stays in SC-02. Funding candidates outside 1h/2h/4h/8h, horizon-dependent trailing diagnostics, the M2 data-window lower bound and full-archive decompression cost remain outside this change.
+
+## Deployment host smoke
+
+An earlier independent audit on the operator workstation completed 522 on-time depth captures in about 161 seconds of a 300-second slot. The operator subsequently reported this slot from the VPS running `capture --watch` after PR #7:
+
+```text
+Capture slot=2026-11-18T15:55:00+00:00 state=closed expected=522 on_time=522 late=0 missed=0 fallback=none
+2026-11-18T15:55:00+00:00 EXCHANGE_INFO {"captured": 522, "configured_only": {}, "expected": 522, "missed": {}}
+SQLite: 0.71 MiB
+```
+
+The slot summary and read-only SQLite query agree. The 15:50 UTC bootstrap used the configured symbols and stored `exchangeInfo` for the next slot. The 0.71 MiB figure is the rounded baseline for this VPS database. VPS cycle duration, the 288-slot audit and measured daily growth remain pending. This smoke verifies public acquisition on the deployment host.
