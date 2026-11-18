@@ -1,5 +1,5 @@
 {
-  "version": "m2-v2",
+  "version": "m2-v3",
   "mode": "OFFLINE",
   "protocol_status": "DRAFT",
   "m1_semantics": {
@@ -8,6 +8,7 @@
   },
   "access": {
     "holdout": null,
+    "research_cutoff": null,
     "approvals": {}
   },
   "settled": {

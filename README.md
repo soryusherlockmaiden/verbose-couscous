@@ -147,7 +147,7 @@ uv run --locked python tests/m2_fixture.py data/m2/fixture
 uv run --locked python -m acgs.m2_io --config data/m2/fixture/m2.json --manifest data/m2/fixture/manifest.json --assets data/m2/fixture/assets --purpose development coverage --policy config/m1.json --start 2000-01-01T00:00:00Z --end 2000-01-01T02:00:00Z
 ```
 
-For approved market data, supply the approved config, manifest, asset root and purpose to `acgs.m2_io` with the `fetch` command, then run `coverage` on the approved UTC window. Fetch verifies the manifest, full archive dates, sizes and checksums. The approved manifests must pin these values before fetch. The shipped `config/m2.json` leaves market approvals open. [Verification and exact commands](evidence/m2/verification.md).
+For approved market data, supply the approved config, manifest, asset root and purpose to `acgs.m2_io` with the `fetch` command, then run `coverage` on the approved UTC window. Fetch verifies the manifest, full archive dates, sizes and checksums. Draft config `m2-v3` requires `access.holdout` to cover the committed registry and an explicit `access.research_cutoff` to bound approval. The shipped `config/m2.json` leaves market approvals open. [Config and migration](evidence/m2/data-audit.md#candidate-pool-and-scoped-acquisition) · [Verification](evidence/m2/verification.md)
 
 ### Public forward capture
 

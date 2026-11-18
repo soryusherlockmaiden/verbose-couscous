@@ -16,6 +16,8 @@ Use OFFLINE execution, one shared simulated USDT wallet, and a maximum of one po
 | Validation | 2024 candidate, exact dates OPEN | Chronological evaluation with separately pinned inputs. Disclose prior M1 exposure to January–April 2024 daily data in the report. |
 | Holdout | Prospective after protocol freeze, dates OPEN | Register only after the separate coverage checks and provide space for terminal funding and modeled-open dependencies. |
 
+In the `m2-v3` draft, `access.holdout` covers every registered range. The approved `access.research_cutoff` sets the exclusive research boundary and can be earlier than the first prospective holdout. The registry determines which dates inside the covering interval are sealed. [Config and migration](data-audit.md#candidate-pool-and-scoped-acquisition)
+
 For development and validation, the proposed design uses a one-day decision buffer for modeled opens and funding dependencies. Walk-forward uses expanding development history and calendar-quarter evaluation inside 2024, clipping each training decision window ahead of the following evaluation boundary. Calibrate, fit and select using only the preceding approved history. Pin roles and purge boundaries before examining strategy validation output. Holdout warm-up can use a separately designated prefix under freeze. The future authorization must match the frozen protocol, config and holdout manifest digests, identify the code commit, and require an explicit operator command. Phase A refuses the FROZEN status and all holdout commands. [Acquisition and dependency details](data-audit.md)
 
 ## M1 semantics and research settings

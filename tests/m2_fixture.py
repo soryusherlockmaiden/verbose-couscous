@@ -95,7 +95,7 @@ def make_fixture(output):
         "assets": assets,
     }
     config = {
-        "version": "m2-v2",
+        "version": "m2-v3",
         "mode": "OFFLINE",
         "protocol_status": "DRAFT",
         "m1_semantics": {
@@ -104,6 +104,7 @@ def make_fixture(output):
         },
         "access": {
             "holdout": {"start": HOLDOUT_START, "end": "2026-01-01T00:00:00Z"},
+            "research_cutoff": HOLDOUT_START,
             "approvals": {"development": {
                 "manifest_sha256": digest(manifest),
                 "decision_window": {"start": START, "end": END},

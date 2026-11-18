@@ -39,6 +39,7 @@ REPO = Path(__file__).resolve().parents[1]
 POLICY = REPO / "config" / "m1.json"
 RESERVE_START = utc_ms("2025-01-01T00:00:00Z")
 RESERVE_END = utc_ms("2026-01-01T00:00:00Z")
+HOLDOUT_PURPOSE = "m2-prospective-holdout"
 
 
 @pytest.fixture
@@ -106,7 +107,7 @@ def test_t15_seal_refuses_research_and_coverage_before_payload_read(paths, capsy
     pin(paths, config, manifest)
     start = HOLDOUT_START - HOUR if case == "dependency" else HOLDOUT_START
     end = HOLDOUT_START if case == "dependency" else HOLDOUT_START + HOUR
-    expected = "dependency exceeds" if case == "dependency" else "holdout seal"
+    expected = "dependency exceeds" if case == "dependency" else "research cutoff"
     if case == "funding_dependency":
         start, end = HOLDOUT_START - 3 * HOUR, HOLDOUT_START - 2 * HOUR
         expected = "fundingRate dependency exceeds"
@@ -182,12 +183,26 @@ def test_t15_fetch_preflights_entire_manifest_and_load_reads_nothing(
 def test_draft_without_approvals_refuses_fetch_and_coverage(paths, capsys):
     config_path, _, root = paths
     config = read_json(config_path)
-    config["access"] = {"holdout": None, "approvals": {}}
+    config["access"] = {"holdout": None, "research_cutoff": None, "approvals": {}}
     write_json(config_path, config)
     with forbid_io(root):
         assert cli(paths, "development", "fetch") == 1
         assert cli(paths, "development", "coverage") == 1
     assert "dataset approval is OPEN" in capsys.readouterr().err
+
+
+def test_t15_approved_manifest_still_requires_an_explicit_research_cutoff(paths, capsys):
+    config_path, manifest_path, root = paths
+    config = read_json(config_path)
+    config["access"]["research_cutoff"] = None
+    write_json(config_path, config)
+    expected = "research cutoff or dataset approval is OPEN"
+    with forbid_io(root):
+        with pytest.raises(AccessRefused, match=expected):
+            load_research_inputs(config_path, manifest_path, root, "development", Window(START, END))
+        for command in ("fetch", "coverage"):
+            assert cli(paths, "development", command) == 1
+            assert expected in capsys.readouterr().err
 
 
 def test_fetch_checks_pins_and_reuses_verified_local_assets(paths):
@@ -396,11 +411,30 @@ def test_t15_m2_config_cannot_unseal_the_registered_reserve(paths, capsys, start
     manifest["ingested_at"] = RESERVE_END
     pin(paths, config, manifest)
     with forbid_io(root):
-        with pytest.raises(AccessRefused, match="(overlaps|truncates) a registered sealed range"):
+        with pytest.raises(AccessRefused, match="must cover every registered sealed range"):
             load_research_inputs(config_path, manifest_path, root, "development", Window(START, END))
         for command in ("fetch", "coverage"):
             assert cli(paths, "development", command) == 1
-            assert "a registered sealed range" in capsys.readouterr().err
+            assert "must cover every registered sealed range" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(("start", "end"), [
+    (HOLDOUT_START, HOLDOUT_START + DAY),
+    (RESERVE_END + DAY, RESERVE_END + 2 * DAY),
+])
+def test_t15_m2_config_cannot_omit_a_disjoint_registered_range(paths, capsys, start, end):
+    config_path, manifest_path, root = paths
+    config = read_json(config_path)
+    config["access"]["holdout"] = {"start": start, "end": end}
+    write_json(config_path, config)
+    # The manifest and requested data are otherwise admissible.
+    expected = "must cover every registered sealed range"
+    with forbid_io(root):
+        with pytest.raises(AccessRefused, match=expected):
+            load_research_inputs(config_path, manifest_path, root, "development", Window(START, END))
+        for command in ("fetch", "coverage"):
+            assert cli(paths, "development", command) == 1
+            assert expected in capsys.readouterr().err
 
 
 def _seal_record(tmp_path, monkeypatch, *ranges, purpose="m2-retrospective-reserve"):
@@ -412,18 +446,29 @@ def _seal_record(tmp_path, monkeypatch, *ranges, purpose="m2-retrospective-reser
     monkeypatch.setattr("acgs.history_seal.RECORD_PATH", record)
 
 
-def test_t15_m2_approves_data_between_a_registered_range_and_the_holdout(paths, tmp_path, monkeypatch):
-    # A reserve registered before the approved data, as 2025 precedes 2026 forward evidence.
+@pytest.mark.parametrize("registered_holdout", [False, True])
+def test_t15_m2_approves_data_after_a_reserve_but_before_cutoff(
+    paths, tmp_path, monkeypatch, registered_holdout,
+):
     config_path, manifest_path, root = paths
     config = read_json(config_path)
-    onboard = config["access"]["approvals"]["development"]["data_window"]["start"]
+    access = config["access"]
+    onboard = access["approvals"]["development"]["data_window"]["start"]
     reserve = (onboard - 3 * DAY, onboard - DAY)
-    _seal_record(tmp_path, monkeypatch, reserve)
+    if registered_holdout:
+        prospective = (HOLDOUT_START, HOLDOUT_START + DAY, HOLDOUT_PURPOSE)
+        _seal_record(tmp_path, monkeypatch, reserve, prospective)
+        access["holdout"] = {"start": reserve[0], "end": prospective[1]}
+    else:
+        _seal_record(tmp_path, monkeypatch, reserve)
+        access["holdout"] = {"start": reserve[0], "end": reserve[1]}
+    write_json(config_path, config)
     loaded = load_research_inputs(config_path, manifest_path, root, "development", Window(START, END))
     assert loaded.market.bars
     assert cli(paths, "development", "fetch") == 0
+    assert cli(paths, "development", "coverage") == 0
 
-    config["access"]["approvals"]["development"]["data_window"]["start"] = reserve[1] - 1
+    access["approvals"]["development"]["data_window"]["start"] = reserve[1] - 1
     write_json(config_path, config)
     with forbid_io(root), pytest.raises(AccessRefused, match="Approved data window overlaps"):
         load_research_inputs(config_path, manifest_path, root, "development", Window(START, END))
@@ -587,10 +632,7 @@ def test_t15_capture_gate_reads_only_allowed_blobs_by_receipt(tmp_path, monkeypa
     assert queries == []
 
 
-HOLDOUT_PURPOSE = "m2-prospective-holdout"
-
-
-@pytest.mark.parametrize("case", ["config_after_registered", "data_after_registered", "truncated_reserve"])
+@pytest.mark.parametrize("case", ["cutoff_after_registered", "data_after_registered", "truncated_reserve"])
 def test_t15_config_cannot_shift_research_chronology(paths, tmp_path, monkeypatch, capsys, case):
     config_path, manifest_path, root = paths
     config = read_json(config_path)
@@ -599,19 +641,21 @@ def test_t15_config_cannot_shift_research_chronology(paths, tmp_path, monkeypatc
         # The registered 2025 reserve, cut short by the config.
         config["access"]["holdout"] = {"start": RESERVE_START, "end": RESERVE_START + 150 * DAY}
         approval["data_window"]["end"] = HOLDOUT_START
-        expected = "truncates a registered sealed range"
+        expected = "must cover every registered sealed range"
     else:
-        # A registered prospective holdout one day long, with the config moved later.
+        # An independent prospective holdout one day long.
         registered = (HOLDOUT_START, HOLDOUT_START + DAY, HOLDOUT_PURPOSE)
         _seal_record(tmp_path, monkeypatch, registered)
         later = HOLDOUT_START + 10 * DAY
-        config["access"]["holdout"] = {"start": later, "end": later + DAY}
-        expected = "starts after a registered holdout"
-        if case == "data_after_registered":
-            # Development data after the registered holdout ends, before the moved config.
+        config["access"]["holdout"] = {"start": registered[0], "end": registered[1]}
+        if case == "cutoff_after_registered":
+            config["access"]["research_cutoff"] = later
+            expected = "Research cutoff falls after a registered holdout starts"
+        else:
             approval["data_window"] = {"start": HOLDOUT_START + 2 * DAY, "end": later}
             approval["decision_window"] = {"start": HOLDOUT_START + 3 * DAY,
                                            "end": HOLDOUT_START + 4 * DAY}
+            expected = "Approved data window crosses the research cutoff"
     write_json(config_path, config)
     with forbid_io(root):
         with pytest.raises(AccessRefused, match=expected):

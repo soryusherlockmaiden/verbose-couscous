@@ -231,3 +231,27 @@ uv run --locked python -m acgs replay --manifest evidence/m1/binance-2024.json -
 ```
 
 The earlier pending status for the public hash reruns is closed. Exact windows, the separate coverage checks, approved market manifests and SC-03 through SC-05 remain open, and P3-2/P3-3 are due before Phase C.
+
+## Registry coverage follow-up on `dc50b64`
+
+The T-15 regressions for configs entirely before or after the registered reserve both reproduced an attempted fixture payload open on `dc50b64`. The `m2-v3` config requires full registry coverage through `access.holdout` and an explicit `access.research_cutoff`. The loader, fetch CLI and coverage CLI now refuse omitted or truncated ranges before payload access or a network request. Gap tests verify approved data after a reserve and before the cutoff, with and without a registered prospective holdout. The chronology tests verify that a cutoff after a registered prospective holdout starts and data extending beyond a valid cutoff are refused.
+
+Local Ruff and mypy passed, with **238** pytest cases including **42** Phase A data tests. Two independent synthetic fixture runs matched byte-for-byte. The manifest file SHA-256 is `35c72ed42f63a396605e7bbfb8b042694c59f086058af7d4cd0add0dc9ac9f00`. The coverage file SHA-256 is `b2782e2f034d982ea08a3216c5747688c1cc2190de3cec20a734d4e854842de5` and includes the new config digest. The previous public M1 rerun evidence above applies to the same M1 code and manifests. This follow-up uses synthetic payloads. [PR checks](https://github.com/soryusherlockmaiden/verbose-couscous/pull/5/checks)
+
+```sh
+.venv/bin/python -m pytest -q tests/test_m2_data.py
+.venv/bin/ruff check .
+.venv/bin/mypy
+.venv/bin/python -m pytest -q
+git diff --exit-code 7c47fe3 -- 'evidence/m1/*.json' config/m1.json tests/fixtures PRD.md
+git diff --exit-code dc50b64 -- evidence/m1 src/acgs/history_seal.py src/acgs/history_io.py src/acgs/broker_sim.py
+git diff --check
+fixture_dir=$(mktemp -d /tmp/acgs-cutoff-fixture.XXXXXX)
+for run in a b; do
+  .venv/bin/python tests/m2_fixture.py "$fixture_dir/$run"
+  .venv/bin/python -m acgs.m2_io --config "$fixture_dir/$run/m2.json" --manifest "$fixture_dir/$run/manifest.json" --assets "$fixture_dir/$run/assets" --purpose development coverage --start 2000-01-01T00:00:00Z --end 2000-01-01T02:00:00Z > "$fixture_dir/$run/coverage.json"
+done
+cmp "$fixture_dir/a/manifest.json" "$fixture_dir/b/manifest.json"
+cmp "$fixture_dir/a/coverage.json" "$fixture_dir/b/coverage.json"
+sha256sum "$fixture_dir/a/manifest.json" "$fixture_dir/a/coverage.json"
+```

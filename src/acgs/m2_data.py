@@ -95,9 +95,9 @@ def _approve(
         raise AccessRefused("Holdout is sealed. Only development and validation are supported.")
     config = read_json(config_path)
     if (
-        config.get("version") != "m2-v2" or config.get("mode") != "OFFLINE"
+        config.get("version") != "m2-v3" or config.get("mode") != "OFFLINE"
     ):
-        raise AccessRefused("Expected a versioned OFFLINE M2 configuration")
+        raise AccessRefused("Expected an OFFLINE M2 configuration with schema m2-v3")
     if config.get("protocol_status") != "DRAFT":
         raise AccessRefused("Phase A requires a DRAFT protocol; frozen authorization is unavailable")
     semantics = config["m1_semantics"]
@@ -109,30 +109,25 @@ def _approve(
     seal = registered_seal()
     access = config["access"]
     approval = access["approvals"].get(purpose)
-    if access["holdout"] is None or approval is None:
-        raise AccessRefused("Holdout boundary or dataset approval is OPEN")
-    holdout = Window.parse(access["holdout"])
+    cutoff = access.get("research_cutoff")
+    if access["holdout"] is None or cutoff is None or approval is None:
+        raise AccessRefused("Holdout coverage, research cutoff or dataset approval is OPEN")
+    envelope = Window.parse(access["holdout"])
+    research_cutoff = utc_ms(cutoff)
+    if not all(envelope.contains(registered) for registered in seal.ranges):
+        raise AccessRefused("Configured holdout must cover every registered sealed range")
+    if any(research_cutoff > registered.start for registered in seal.holdouts):
+        raise AccessRefused("Research cutoff falls after a registered holdout starts")
     safe = Window.parse(approval["data_window"])
     decisions = Window.parse(approval["decision_window"])
     request = decisions if request is None else request
-    # The registry is the sealing authority. The configured holdout may only tighten
-    # it: it cannot truncate a registered range or start after a registered holdout.
-    # Approved data may fall between a reserve and a later holdout, never inside a
-    # registered range and never after the start of a registered holdout.
-    if any(
-        holdout.start < sealed.end and sealed.start < holdout.end and not holdout.contains(sealed)
-        for sealed in seal.ranges
-    ):
-        raise AccessRefused("Configured holdout truncates a registered sealed range")
-    if any(holdout.start > registered.start for registered in seal.holdouts):
-        raise AccessRefused("Configured holdout starts after a registered holdout")
+    # The covering envelope can span an unsealed gap. Only actual registry
+    # ranges are sealed, while the explicit cutoff bounds research chronology.
     seal.require_unsealed(safe, "Approved data window")
-    if any(safe.end > registered.start for registered in seal.holdouts):
-        raise AccessRefused("Approved data window ends after a registered holdout starts")
-    if safe.end > holdout.start:
-        raise AccessRefused("Approved data window crosses the holdout seal")
-    if request.end > holdout.start:
-        raise AccessRefused("Decision request crosses the holdout seal")
+    if safe.end > research_cutoff:
+        raise AccessRefused("Approved data window crosses the research cutoff")
+    if request.end > research_cutoff:
+        raise AccessRefused("Decision request crosses the research cutoff")
     if not safe.contains(decisions) or not decisions.contains(request):
         raise AccessRefused("Decision request outside the approved window")
     dependencies = _dependencies(request, approval)
