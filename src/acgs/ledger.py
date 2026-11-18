@@ -46,6 +46,21 @@ MIGRATIONS: tuple[tuple[str, ...], ...] = (
         """CREATE INDEX capture_restriction_open ON capture_attempts (id)
            WHERE status = 'ACCESS_RESTRICTED' AND cleared_at IS NULL""",
     ),
+    (
+        """CREATE TABLE capture_depth_cycles (
+            slot TEXT PRIMARY KEY, ends_at TEXT NOT NULL, gap_from TEXT,
+            exchange_info_received_at TEXT, exchange_info_sha256 TEXT,
+            selection TEXT NOT NULL, expected_symbols TEXT, targets TEXT NOT NULL,
+            coverage TEXT
+        )""",
+        """CREATE TABLE capture_request_budget (
+            id INTEGER PRIMARY KEY, requested_at TEXT NOT NULL, weight INTEGER NOT NULL
+        )""",
+        """CREATE INDEX capture_request_time ON capture_request_budget (requested_at, id)""",
+        """CREATE INDEX capture_depth_slot ON capture_attempts (slot, source_url, id)""",
+        """CREATE INDEX capture_info_receipts ON capture_attempts (source_url, received_at, id)
+           WHERE status = 'CAPTURED'""",
+    ),
 )
 SCHEMA_VERSION = len(MIGRATIONS)
 

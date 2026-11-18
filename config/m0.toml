@@ -3,3 +3,6 @@ mode = "OFFLINE"
 [capture]
 symbols = ["BTCUSDT", "ETHUSDT"]
 interval_seconds = 300
+depth_targets = "trading_usdt_perpetuals"
+exchange_info_max_age_seconds = 129600
+request_weight_per_minute = 1200

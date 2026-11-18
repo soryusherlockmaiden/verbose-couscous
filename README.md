@@ -151,7 +151,7 @@ For approved market data, supply the approved config, manifest, asset root and p
 
 ### Public forward capture
 
-Defaults are in [config/m0.toml](config/m0.toml). M0 supports `OFFLINE` only. A missing mode defaults to `OFFLINE`; an invalid or unsupported mode is refused at startup. Pass `--config` and `--db` before the subcommand when running the Python entry point.
+Compose loads [config/m0.toml](config/m0.toml), which enables all-symbol depth capture. M0 supports only `OFFLINE` and defaults to it when the mode is omitted. Pass `--config` and `--db` before the subcommand when running the Python entry point.
 
 ```text
 uv run --locked python -m acgs --config config/m0.toml capture
@@ -164,7 +164,17 @@ docker compose --profile capture logs -f capture
 docker compose --profile capture stop capture
 ```
 
-Use one capture process per database. The scheduled service polls for due work. It records `exchangeInfo` and `fundingInfo` once per UTC day, and `premiumIndex` plus shallow order books at the configured interval (default five minutes, BTCUSDT and ETHUSDT for depth). Successful records carry the response (stored zlib-compressed), fixed-width UTC timestamps, source URL, the SHA-256 of the raw response bytes and observation provenance.
+Use one capture process per database. It records `exchangeInfo` and `fundingInfo` once per UTC day, and `premiumIndex` and shallow order books at the five-minute default interval. Successful records retain the zlib-compressed response, the UTC request and receipt timestamps, the source URL, the SHA-256 of the raw response and observation provenance.
+
+The `trading_usdt_perpetuals` mode freezes a sorted depth list at each slot boundary. It includes every `TRADING` USDT-quoted perpetual in the latest captured `exchangeInfo` received before the slot, plus the configured symbols. It requests up to five levels per side. Missing, invalid, stale or inaccessible metadata leaves only the configured symbols (BTCUSDT and ETHUSDT in the shipped config). The freshness limit is 129,600 seconds (36 hours). A new installation typically uses the configured symbols in its first slot and expands in the next.
+
+M0 can use a fresh `exchangeInfo` receipt from a prospective holdout to plan capture slots, including slots that straddle or follow the end. The snapshot receipt and planned slot must both be outside retrospective reserves. If the plan uses a holdout snapshot, a depth response received at or after the slot end is recorded as a missed sample without a payload. The seal registry requires both endpoints of every range to be exactly `00:00:00.000 UTC`.
+
+The `capture_depth_cycles` table records the snapshot pin, target list, fallback reason and per-slot coverage. Coverage counts books received before the slot ended and reports configured-only symbols separately. A recorded book still needs a usable bid and ask to yield a spread in M1. Interrupted slots resume from persisted targets and completed captures. Expired slots record missed symbols, and `gap_from` marks an interval that elapsed without a plan. Restart retries can resend a GET whose response never committed. Rows whose slot or source snapshot touches a sealed range are sealed operational metadata. Keep them outside research inputs and apply the registry before any future research reader accesses the journal.
+
+Dynamic capture paces every request from its weight and records reservations in SQLite before network I/O. The default is 1,200 weight in any rolling minute for this collector, half Binance's documented IP limit. This leaves capacity for latency and other IP use without measuring the traffic of other processes. Run one dynamic collector per IP. The documented weights are 2 for depth at limit 5, 10 for all-symbol `premiumIndex`, and 1 for `exchangeInfo`. The collector charges `fundingInfo` one local unit. Binance documents zero IP weight for it and a separate shared funding endpoint limit. [Weight sources and verification](evidence/m0/dynamic-depth.md)
+
+To use the original fixed list, set `depth_targets = "configured"` or omit it, and remove `exchange_info_max_age_seconds` and `request_weight_per_minute`. The old configuration and the no-config smoke still produce `e2fb3f83…2505`. The shipped dynamic configuration produces `35be0f12…bc34` in Compose or when passed explicitly to smoke.
 
 A HTTP 200 response counts as captured only if every record passes minimum structure and value checks; otherwise it is stored as `INVALID_PAYLOAD` without provenance and retried after 60 seconds.
 
@@ -172,7 +182,7 @@ HTTP 403/451 latches capture: no further request is sent until the operator has 
 
 The Compose `capture` service uses `restart: unless-stopped`. It starts again after a reboot or a Docker restart once Docker is running, unless you stopped it with `docker compose --profile capture stop capture`. Because a latched service pauses instead of exiting, the restart policy never loops on HTTP 403/451. Rate-limit responses defer further requests. A one-shot `capture` exits 0 only when everything due was captured.
 
-The all-symbol `premiumIndex` snapshot dominates storage at the default five-minute interval (roughly 150 KB per snapshot before compression). Check the database size during the first days of operation and keep enough free disk on the VPS. Capture uses only public market-data GET requests and requires no API credentials.
+At five-minute intervals and 300–400 symbols, a one-day fixture load produced about **87–116 MB** of SQLite data, equivalent to about **32–42 GB/year** at that rate. The estimate includes compressed depth, daily metadata, all-symbol `premiumIndex`, the slot journal and SQLite indexes. The depth payload alone was about 15–20 MB/day. The previous M0 estimate for each all-symbol `premiumIndex` snapshot was about 150 KB before compression. Count retries, transaction journals and backups separately. Measure actual database growth during the first days of deployment and monitor free disk, especially on the 60 GB SSD. Capture uses public market-data GET requests without credentials. [Fixture measurements](evidence/m0/dynamic-depth.md#sqlite-growth-estimate)
 
 To scan the full Git history from a checkout with Docker, run the same Gitleaks image as CI:
 

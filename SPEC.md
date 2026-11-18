@@ -136,6 +136,8 @@ Persist source, method, as-of time, coverage and limitations. Exploratory resear
 
 **Expected coverage and forward capture:** Binance public endpoints are expected to expose only current instrument filters (to be confirmed in M1), so most historical filters will be `RECONSTRUCTED`. From M0, a credential-free forward-capture job records daily `exchangeInfo` and `fundingInfo` snapshots, periodic `premiumIndex` snapshots (all symbols) and periodic order-book/spread samples for the candidate universe. These are `VERIFIED` from their capture time onward and are the preferred basis for promotion-grade feasibility and cost evidence on later periods.
 
+**M0 capture-depth-v1 (SQLite schema 3).** Dynamic capture uses the latest fresh, valid `CAPTURED` exchange snapshot received strictly before the slot boundary. It journals every trading USDT-quoted perpetual and any configured depth symbols as a sorted plan. A snapshot that arrives during the slot can first change the next plan. The collector may use a prospective holdout snapshot solely to plan capture slots, including slots that straddle or follow the holdout end. The receipt and slot must both be outside retrospective reserves. For a holdout-derived plan, depth received at or after slot end is recorded without a payload. Missing, invalid, stale or inaccessible metadata falls back to the configured list with its reason recorded. Window gaps and late receipts are explicit. Public request reservations survive restart and enforce the declared rolling request-weight budget. Sealed receipts remain unavailable to research loaders. The slot journal is operational metadata and stays outside research inputs. Capture membership supplies no M2 universe eligibility decision. [Verification](evidence/m0/dynamic-depth.md)
+
 
 ### 4.3.1 Funding evidence
 
@@ -565,6 +567,8 @@ Emit an event-numbered wallet/equity snapshot after each fill, funding posting o
 - Replay v8 keeps ambiguous settlement valuations out of trigger evaluation. Capture omissions retain their effective time and wait for supporting epoch evidence before appearing in universe snapshots. [Verification](evidence/m1/verification.md).
 
 - M2 Phase A adds the shared `history-seal-v1` check to OFFLINE M1 and M2 history tooling. The `m2-v3` config must cover every registered range. M2 approves data outside those ranges and ending no later than the explicit research cutoff, which cannot exceed the start of any registered prospective holdout. Evidence first observed at or after a range starts cannot describe an event inside it. Earlier forecasts remain admissible. The `m1-semantics-v1` pin preserves accepted SC-02 and the SC-01 funding inference used by coverage. SC-03, SC-04 and SC-05 remain open. [Phase A verification](evidence/m2/verification.md)
+
+- `history-seal-v1` requires the start and end of every registered prospective holdout and retrospective reserve to be exactly `00:00:00.000 UTC`. M0 capture and M1/M2 data entry points refuse a misaligned registry before payload or network access. M0 alone can use a prospective snapshot to schedule capture when the receipt and slot are outside retrospective reserves. [Verification](evidence/m0/dynamic-depth.md)
 
 ## 14. Change control and release policy
 
