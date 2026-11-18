@@ -140,3 +140,23 @@ Pinned Gitleaks scanned 57 commits with no leaks.
 `uv run --locked ruff check .`, `uv run --locked mypy` and `uv run --locked pytest` passed on Linux with 186 tests. Docker Compose built the runtime and check targets, passed the same 186 tests, and recorded and replayed smoke digest `e2fb3f83500b5aa748b93e0e3151cd9fc1536048d56692da249ed0e877362505`. The local Docker build used the sandbox proxy CA as a build secret and standard checkout permissions on the public configuration. Pinned Gitleaks found no leaks in the source commit and its ancestry.
 
 The public replay command above uses a new output filename for `m1-replay-v6`. Two native runs and one Docker run produced identical bytes. The canonical replay hash is `066e3a87f233d75a2c04c8eff501dcb3eaef903e1fec695d1a9ebf52bc1b9949` (run digest `7449cec2c6e942dc1c0d9a9af2cc75e1963f57c26ec7600469153aedb43bc664`). Historical, main feasibility and empty-window hashes match the third follow-up. The main feasibility sample remains `INCONCLUSIVE_CRITICAL_INPUT_UNAVAILABLE`.
+
+## Fifth follow-up (review of `b8330ca`)
+
+Claude reproduced the claims of `3bcc007` and `b8330ca` (186 tests and the recorded hashes), then found three issues. The fixes below follow the operator's refinements. Each has a regression test that fails on `b8330ca`.
+
+| Finding | Fix |
+|---|---|
+| P2: a settlement inside a bar valued the held position at the settlement mark and was eligible at once. In the review case cycle equity read 53.48 USDT at mark 104 in a bar whose stop ended it at 45.59. Even without a stop, only the bar's full OHLC shows that the position survived to the settlement. | Replay `m1-replay-v7` makes the snapshot eligible no earlier than the bar's close availability, stop or no stop. This includes a settlement outside the 15 s window of a 1 h bar. Its certain min(cash, 0) is observed at once and does not block the next entry. |
+| P3: a TRADING row effective before a capture but learned later stayed in force from the moment it was learned until the next capture, despite the observed absence. | The capture records the symbol's absence at receipt and overrides any status effective before receipt, whether it was known at receipt or learned later. Epochs and statuses effective after receipt are untouched. The late-delisting case from `3bcc007` still passes. |
+| P3 (reporting): `historical` counted filter withdrawals as filter observations. | `filter_observations` keeps the total and is split into `filter_snapshots` and `filter_withdrawals`. |
+
+Cloud agent: ruff, mypy and pytest passed with 192 tests. Docker passed smoke twice (`e2fb3f83…`) and the `check` service with 192 tests, using the sandbox CA layer. The fixture digests are exact-clock `c68da53cc3c03f926d7954cb094c3cf50400d59662ea2ac168c1f6dce34bdf30` and released policy `18f604db79aef28f38a2d544316dfd6a9270c2d592e92dd6359651416805f776`.
+
+Two native runs and one Docker run gave identical outputs:
+
+- historical `920427b48e7823562fb039a9abe314f1d69711c277c6e9919a945e0a046d9798`, which adds the split counts (all zero in the 2024 sample);
+- [main feasibility](feasibility.md) `b4858aa261a01fcb747a2fcc5c05e7c671325e1a56d59dd2355abe9426ba8bcb` and empty window `6f1ab1e5d222f1b1c38e44f3fe3fb7afa8cc1e4d39aaf734ba9d2efb7225f838`, both unchanged;
+- public replay `aa5fd629e1200dcde7b83619d8811b2a97c077d3bb1b51b9c4652df4469b138e` (run digest `a871e815cb5e4378ef17c9694d3b1b506b1ad443c473735ae884dd74dff71151`).
+
+Pinned Gitleaks scanned 63 commits with no leaks.
