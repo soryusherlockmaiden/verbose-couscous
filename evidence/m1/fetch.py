@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 from acgs.history_io import read_json
-from acgs.history_seal import ARCHIVE_HOST, registered_seal
+from acgs.history_seal import ARCHIVE_HOST, registered_seal, resolve_asset_path
 from acgs.market_data import MAX_PAYLOAD, fetch_public
 
 
@@ -25,8 +25,8 @@ def main() -> None:
         seal.check_manifest(manifest)
         for entry in manifest["assets"]:
             url = entry["source"]
-            target = (root / entry["path"]).resolve()
-            if not target.is_relative_to(root) or not (
+            target = resolve_asset_path(root, entry)
+            if not (
                 entry["kind"] == "fundingMarks"
                 or url.startswith(f"{ARCHIVE_HOST}/data/futures/um/monthly/")
             ):

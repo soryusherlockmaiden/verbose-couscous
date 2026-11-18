@@ -15,7 +15,7 @@ from urllib.parse import parse_qs, urlsplit
 from zipfile import ZipFile
 
 from acgs.capture import stored_payload
-from acgs.history_seal import HistorySeal, Window, registered_seal
+from acgs.history_seal import HistorySeal, Window, registered_seal, resolve_asset_path
 from acgs.market_data import BASE_URL
 from acgs.pit import (
     HOUR,
@@ -368,9 +368,12 @@ def _capture_observations(
 
 def read_history_asset(root: Path, info: dict[str, Any]) -> bytes:
     registered_seal().check_asset(info)
-    path = (root / str(info["path"])).resolve()
-    if not path.is_relative_to(root.resolve()) or path.stat().st_size > MAX_HISTORY_ASSET:
-        raise ValueError("Dataset asset path/size outside allowed bounds")
+    return _read_pinned_asset(resolve_asset_path(root, info), info)
+
+
+def _read_pinned_asset(path: Path, info: dict[str, Any]) -> bytes:
+    if path.stat().st_size > MAX_HISTORY_ASSET:
+        raise ValueError("Dataset asset size outside allowed bounds")
     with path.open("rb") as stream:
         raw = stream.read(MAX_HISTORY_ASSET + 1)
     if len(raw) > MAX_HISTORY_ASSET or (
@@ -394,6 +397,7 @@ def load_history_manifest(
         raise ValueError("Unknown historical dataset schema")
     seal = registered_seal()
     seal.check_manifest(manifest)
+    paths = [resolve_asset_path(root, info) for info in manifest["assets"]]
     ingestion = _time(manifest["ingested_at"])
     if ingestion < 0:
         raise ValueError("Invalid ingestion timestamp")
@@ -464,14 +468,14 @@ def load_history_manifest(
     candles: list[Candle] = []
     funding: list[Funding] = []
     funding_marks: list[Funding] = []
-    for info in manifest["assets"]:
+    for info, target_path in zip(manifest["assets"], paths, strict=True):
         inst = instruments[info["id"]]
         source = info["source"]
         start, end = _time(info["start"]), _time(info["end"])
         if not inst.onboard <= start < end <= ingestion:
             raise ValueError("Invalid declared archive coverage")
         kind = info["kind"]
-        raw = read_history_asset(root, info)
+        raw = _read_pinned_asset(target_path, info)
         if kind in {"klines", "markPriceKlines"}:
             candles.extend(_candles(
                 _archive_rows(raw, kind), inst, source, info["interval_ms"], start, end,

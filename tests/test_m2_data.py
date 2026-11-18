@@ -378,6 +378,46 @@ def test_t15_legacy_monthly_fetch_preflights_a_straddling_bundle(paths, tmp_path
         runpy.run_path(str(script), run_name="__main__")
 
 
+@pytest.mark.parametrize("kind", ["klines", "fundingMarks"])
+def test_t15_legacy_preflights_an_unsealed_source_with_a_sealed_local_path(paths, monkeypatch, kind):
+    _, manifest_path, root = paths
+    manifest = read_json(manifest_path)
+    manifest["version"] = "m1-history-v1"
+    manifest.pop("m2_purpose")
+    first = archive(root, "klines", "1h", "2000-01", START, START + HOUR,
+                    candles(START, HOUR, [0]), period="monthly")
+    next_month = utc_ms("2000-02-01T00:00:00Z")
+    if kind == "klines":
+        entry = archive(root, kind, "1h", "2000-02", next_month, next_month + HOUR,
+                        candles(next_month, HOUR, [0]), period="monthly")
+    else:
+        symbol = manifest["instruments"][0]["symbol"]
+        entry = {
+            "kind": kind, "id": first["id"], "start": next_month, "end": next_month + HOUR,
+            "source": "https://fapi.binance.com/fapi/v1/fundingRate?"
+                      f"symbol={symbol}&startTime={next_month}&endTime={next_month + HOUR - 1}&limit=1000",
+            "sha256": first["sha256"],
+        }
+    sealed = archive(root, "klines", "1h", "2025-01", RESERVE_START, RESERVE_START + HOUR,
+                     candles(RESERVE_START, HOUR, [0]), period="monthly")
+    entry["path"] = sealed["path"]
+    manifest["assets"] = [first, entry]
+    manifest["ingested_at"] = RESERVE_END
+    write_json(manifest_path, manifest)
+
+    with forbid_io(root):
+        with pytest.raises(AccessRefused, match="Asset filename"):
+            read_history_asset(root, entry)
+        with pytest.raises(AccessRefused, match="Asset filename"):
+            load_history(manifest_path, root)
+
+    (root / first["path"]).unlink()  # Fetch would issue a GET before reaching the local mismatch.
+    script = REPO / "evidence" / "m1" / "fetch.py"
+    monkeypatch.setattr(sys, "argv", [str(script), str(manifest_path), str(root)])
+    with forbid_io(root), pytest.raises(SystemExit, match="Asset filename"):
+        runpy.run_path(str(script), run_name="__main__")
+
+
 def test_t15_settlement_query_cannot_hide_a_sealed_tail(paths):
     _, _, root = paths
     declared_start = RESERVE_START - HOUR

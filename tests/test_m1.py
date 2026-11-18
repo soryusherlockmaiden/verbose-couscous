@@ -724,7 +724,7 @@ def test_t01_t20_t23_runtime_clock_report_and_config_identity(
 
 
 def test_t01_ingest_integrity_cli_and_immutable_outputs(tmp_path: Path) -> None:
-    asset = tmp_path / "market.zip"
+    asset = tmp_path / f"{INST.symbol}-1h-1970-03-22.zip"
     with ZipFile(asset, "w") as archive:
         archive.writestr("fixture.csv", f"{T},100,102,99,101,10,{T+HOUR-1},1000,10,0,0,0\n")
     source = {
@@ -735,7 +735,7 @@ def test_t01_ingest_integrity_cli_and_immutable_outputs(tmp_path: Path) -> None:
                       "evidence": dict(source="fixture", method="test", as_of=INST.onboard,
                                        provenance="VERIFIED")}],
         "assets": [{"id": INST.id, "source": "https://data.binance.vision/data/futures/um/daily/"
-                    f"klines/{INST.symbol}/1h/{INST.symbol}-1h-1970-03-22.zip",
+                    f"klines/{INST.symbol}/1h/{asset.name}",
                     "path": asset.name, "start": T,
                     "end": T + HOUR, "kind": "klines", "interval_ms": HOUR,
                     "sha256": hashlib.sha256(asset.read_bytes()).hexdigest()}],
@@ -782,7 +782,7 @@ def test_t23_stale_filters_do_not_establish_no_trade(dataset: Dataset, policy: P
 
 
 def test_t18_archive_mark_enrichment_requires_exact_settlement_match(tmp_path: Path) -> None:
-    archive = tmp_path / "funding.zip"
+    archive = tmp_path / f"{INST.symbol}-fundingRate-1970-03-22.zip"
     time = T + 15
     with ZipFile(archive, "w") as zipped:
         zipped.writestr("funding.csv", f"calc_time,funding_interval_hours,last_funding_rate\n"
@@ -791,7 +791,7 @@ def test_t18_archive_mark_enrichment_requires_exact_settlement_match(tmp_path: P
     mark = tmp_path / "funding.json"
     mark.write_text(json.dumps([row]), encoding="utf-8")
     funding_source = ("https://data.binance.vision/data/futures/um/daily/"
-                      f"fundingRate/{INST.symbol}/{INST.symbol}-fundingRate-1970-03-22.zip")
+                      f"fundingRate/{INST.symbol}/{archive.name}")
     mark_source = ("https://fapi.binance.com/fapi/v1/fundingRate?"
                    f"symbol={INST.symbol}&startTime={T}&endTime={T + HOUR - 1}&limit=1000")
     manifest = {

@@ -35,7 +35,7 @@ Base: main at `7c47fe38e9883f1cd84d4b45e2052bfb544cf114` (PR #4). Accepted execu
 |---|---|---|
 | Historical data and provenance audit | Met for accepted M1 evidence and fixture. Real M2 inventory blocked by O1/O2. | [Data audit](data-audit.md) records each measured symbol-period and the historical filters, tiers, interval and spread limitations. |
 | Checksum pins and deterministic manifest | Met on synthetic inputs. Market manifests blocked by O1/O2. | The current fixture has seven ZIPs totaling 1,706 bytes. Its manifest file `35c72ed42f63a396605e7bbfb8b042694c59f086058af7d4cd0add0dc9ac9f00` and `m2-v3` coverage file `b2782e2f034d982ea08a3216c5747688c1cc2190de3cec20a734d4e854842de5` matched across two independent runs (registry coverage follow-up below). The initial 1,682-byte fixture hashes predate the funding archive filename fix. Real M2 transfer: 0 bytes. |
-| Registered history seal | Verified in the supported OFFLINE M1 and M2 history entry points. | T-15 covers M1 historical, feasibility, replay, the shared loader and legacy fetch, and M2 fetch, research load and coverage. Tested refusals occur before payload opens or network requests. Capture selection skips sealed receipts before requesting BLOBs. Protocol freeze and holdout authorization remain separate. |
+| Registered history seal | Verified in the supported OFFLINE M1 and M2 history entry points. | T-15 covers M1 historical, feasibility, replay, the shared loader and legacy fetch, and M2 fetch, research load and coverage. Tested refusals, including legacy source and local archive filename mismatch, occur before payload opens or network requests. Capture selection skips sealed receipts before requesting BLOBs. Protocol freeze and holdout authorization remain separate. |
 | SC-03, SC-04, SC-05 draft | Met for review. | [Protocol](protocol.md) and [config](../../config/m2.json), with nine operator decisions and proposed alternatives. |
 | M1 accounting, event order and fixtures | Regression suite met. | Accepted M1 test suite passes, including the shared broker/funding helper. Canonical M1 JSON, policy and recorded raw fixtures are byte-identical to main. No M2 market replay ran. |
 | Freeze readiness | Pending. | Real approved datasets, choices, implementation and development/validation evidence remain outstanding. |
@@ -161,6 +161,28 @@ done
 cmp "$fixture_dir/a/manifest.json" "$fixture_dir/b/manifest.json"
 cmp "$fixture_dir/a/coverage.json" "$fixture_dir/b/coverage.json"
 sha256sum "$fixture_dir/a/manifest.json" "$fixture_dir/a/coverage.json"
+```
+
+## T-15 local archive identity follow-up
+
+At `513b06d` a legacy manifest with an unsealed source URL and a local path naming a synthetic January 2025 archive reached a payload open. The shared loader and the legacy fetch script now preflight every resolved path before any payload opens or requests. A ZIP must retain the basename of its canonical source URL. Bounded REST settlement responses require a local `.json` target so they cannot be used to open ZIPs.
+
+The new audit-hook cases cover both source kinds through the direct asset reader, the shared loader and the legacy fetch script. Both cases reproduced on the old code and pass with the fix. Each manifest places an otherwise valid asset first, so the tests also check that the loader reads nothing and the fetcher sends no GET before detecting the later mismatch.
+
+Ruff and mypy passed. Pytest passed **240** cases, including **44** data tests and **46** import-contract tests. Both native smokes agreed on `e2fb3f83500b5aa748b93e0e3151cd9fc1536048d56692da249ed0e877362505`. Two independent synthetic audit runs reproduced both hashes from the registry coverage follow-up. The canonical M1 manifests, policy, raw fixtures and PRD were byte-identical to `7c47fe3`. The public M1 manifest metadata and local names passed preflight. No market payload was read or downloaded for this follow-up. The Docker socket denied the local build. Hosted CI runs Docker, the native matrix and pinned Gitleaks. [PR checks](https://github.com/soryusherlockmaiden/verbose-couscous/pull/5/checks)
+
+```sh
+.venv/bin/python -m pytest -q tests/test_m2_data.py -k sealed_local_path --tb=short
+.venv/bin/ruff check .
+.venv/bin/mypy
+.venv/bin/python -m pytest -q
+.venv/bin/python -m pytest -q tests/test_import_contracts.py tests/test_m2_data.py
+.venv/bin/python -m acgs smoke
+.venv/bin/python -m acgs smoke
+git diff --exit-code 7c47fe3 -- 'evidence/m1/*.json' config/m1.json tests/fixtures PRD.md
+git diff --exit-code dc50b64 -- src/acgs/broker_sim.py
+git diff --check
+docker compose build acgs
 ```
 
 The normal local Compose build hit the managed proxy's PyPI CA error. Both image targets built with the session CA supplied as a BuildKit secret. An intermediate build passed **222** container tests, and its two smokes recorded and replayed digest `e2fb3f83500b5aa748b93e0e3151cd9fc1536048d56692da249ed0e877362505`. The final local rebuilder produced both images but ran out of disk while creating the first smoke container. Hosted CI on `5f68ede` passed both standard Compose builds, both Docker smokes, Docker check with **222** tests, and the Ubuntu and Windows native jobs. [Hosted PR run](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44272128130)

@@ -15,6 +15,7 @@ RECORD_PATH = Path(__file__).with_name("history_seal.json")
 VERSION = "history-seal-v1"
 ARCHIVE_HOST = "https://data.binance.vision"
 CANDLES = ("klines", "markPriceKlines")
+SETTLEMENT_REST = ("fundingMarks", "fundingRest")
 METADATA = ("listings", "filters", "maintenance", "spreads", "schedules", "mark_gaps")
 # Instrument onboard instants are identity anchors and stay admissible. Event
 # times and spans in inline metadata are sealed when observed at or after the
@@ -69,7 +70,7 @@ def _source_bundle(entry: Mapping[str, Any]) -> tuple[Window, str | None]:
     source = entry["source"]
     kind = entry["kind"]
     symbol = entry["id"].split("@", 1)[0]
-    if kind in {"fundingMarks", "fundingRest"}:
+    if kind in SETTLEMENT_REST:
         url = urlsplit(source)
         query = parse_qs(url.query, strict_parsing=True)
         if (
@@ -98,6 +99,19 @@ def _source_bundle(entry: Mapping[str, Any]) -> tuple[Window, str | None]:
     else:
         end = start + timedelta(days=1)
     return Window(instant_ms(start), instant_ms(end)), interval
+
+
+def resolve_asset_path(root: Path, entry: Mapping[str, Any]) -> Path:
+    """Resolve the local target of an asset whose source has passed preflight."""
+    target = Path(root, entry["path"]).resolve()
+    if not target.is_relative_to(root.resolve()):
+        raise AccessRefused("Dataset asset path outside allowed root")
+    if entry["kind"] in SETTLEMENT_REST:
+        if target.suffix != ".json":
+            raise AccessRefused("Asset filename for a settlement response must end in .json")
+    elif target.name != entry["source"].rsplit("/", 1)[-1]:
+        raise AccessRefused("Asset filename must match the source archive")
+    return target
 
 
 @dataclass(frozen=True)
