@@ -14,6 +14,7 @@ FROM base AS check
 COPY tests/ ./tests/
 COPY evidence/m1/fetch.py ./evidence/m1/fetch.py
 COPY evidence/m2/ingest_notices.py ./evidence/m2/ingest_notices.py
+COPY evidence/m2/extract_exchangeinfo.py ./evidence/m2/extract_exchangeinfo.py
 RUN uv sync --locked --no-editable
 CMD ["sh", "-c", "/app/.venv/bin/ruff check . && /app/.venv/bin/mypy && /app/.venv/bin/pytest"]
 
