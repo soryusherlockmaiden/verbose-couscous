@@ -112,6 +112,8 @@ O1 has an approved design and inventory scope, with final dates and manifest pin
 
 **O2 Stage A expansion.** The operator approved the Wayback `exchangeInfo` copies from 2022-11-27 and 2023-11-02 as discovery and filter evidence. Their dated status and filter observations use capture time as `as_of`. Filter use outside the observation follows the approved O3 evidence policy and its still-open validity settings. Coverage between observations and throughout 2024 remains inconclusive. Review the expanded candidate list before starting Stage B. [Snapshot evidence](o2-exchangeinfo-snapshots.json) · [Candidate list](o2-candidates.json)
 
+The pre-cutoff A1 search found no usable archived S3 XML listing. Archived Binance trading-rules pages contribute names and reported onboard dates for discovery. Trade status and filter eligibility still require applicable evidence at the decision time. [A1 search](o2-a1-wayback.json) · [Trading-rules evidence](o2-trading-rules-snapshots.json)
+
 | ID and requirement | Policy, options and recommendation | Work blocked |
 |---|---|---|
 | O1 · PRD §6.5, SPEC §11 | First approve the development and validation windows, buffers and research cutoff. Step 1 inventory scope approved on 2026-11-18 (UTC); see Windows and seal. Disclose the January–April 2024 M1 exposure in validation. Then examine filter, dated maintenance-tier and spread coverage separately on approved inputs and set the prospective holdout dates. Keep the 2025 reserve sealed. Exact dates, roots and manifest approvals remain OPEN. | The first step bounds market inventory and dataset approval. A purpose-specific pin is required before fetch or load. The second step is required for prospective holdout registration. |

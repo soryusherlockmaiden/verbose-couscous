@@ -1,5 +1,5 @@
 {
-  "version": "m2-o2-candidates-v2",
+  "version": "m2-o2-candidates-v3",
   "status": "PENDING_OPERATOR_REVIEW",
   "coverage_conclusion": "INCONCLUSIVE",
   "window_start": "2023-01-01T00:00:00Z",
@@ -23,28 +23,31 @@
   "m1_coverage_source": "evidence/m1/feasibility.md",
   "interpretation": {
     "candidate_id": "Provisional inventory label. An effective listing date in this label cannot substitute for a proven UTC onboard instant.",
-    "evidence_status": "OPERATOR_COPY_CONFIRMED applies to one or more events with reviewed PDF evidence. INDEX_HINT_ONLY indicates relevant dated indexed support inside the window. UNVERIFIED covers uncertain overlap, inferred symbol spelling or unresolved lifecycle conflicts. The event-level status governs each fact. SNAPSHOT_OBSERVED identifies candidates sourced solely from a dated archive copy. Existing evidence labels describe earlier lifecycle evidence. Any snapshot_observations reference status at the recorded as-of.",
+    "evidence_status": "OPERATOR_COPY_CONFIRMED applies to one or more events with reviewed PDF evidence. INDEX_HINT_ONLY indicates relevant dated indexed support inside the window. UNVERIFIED covers uncertain overlap, inferred symbol spelling or unresolved lifecycle conflicts. The event-level status governs each fact. SNAPSHOT_OBSERVED identifies candidates sourced solely from a dated archive copy. Existing evidence labels describe earlier lifecycle evidence. Any snapshot_observations reference status at the recorded as-of. TRADING_RULES_OBSERVED marks a discovery-only candidate from archived HTML.",
     "planned_active_months": "Tentative request planning from in-window event hints or existing probe evidence. Unknown openings generally use the window start as a working bound and unknown endings may extend to the cutoff. No lifecycle continuity is implied. Added snapshot-only months require an in-window TRADING observation. A pre-window observation and a SETTLING observation leave in-window trading unresolved.",
     "possible_additional_months": "Months outside the tentative plan with no evidence sufficient to skip the key. Previous-era listings and unresolved transitions can have only possible months.",
     "outside_active_months": "Full months proven outside the known active period. DGBUSDT May through December 2024 retains the accepted three-symbol inventory decision.",
     "events": "Published display times remain separate from effective UTC times. A null effective value is unresolved. Settlement is a scheduled boundary, with actual delisting completion recorded only when supported.",
     "flags": "Discovery flags carry no O2 step 2 eligibility decision. Digit prefixes are preserved. The absence of a flag does not establish a negative classification.",
-    "snapshot_observations": "Join source_id and symbol to the exchangeInfo ledger for filters. The observed status is stored at as_of and onboard_at is the exchange-reported onboardDate. The metadata onboard time does not replace a dated listing or relaunch time."
+    "snapshot_observations": "Join source_id and symbol to the exchangeInfo ledger for filters. The observed status is stored at as_of and onboard_at is the exchange-reported onboardDate. The metadata onboard time does not replace a dated listing or relaunch time.",
+    "trading_rules_observations": "Archived product name and reported onboard date at the capture as-of. These observations provide no trading status, filter validity, or active-month determination. Symbols discovered only this way contribute possible months."
   },
   "counts": {
-    "total_epoch_candidates": 321,
-    "distinct_symbols": 319,
+    "total_epoch_candidates": 342,
+    "distinct_symbols": 340,
     "by_evidence_status": {
       "INDEX_HINT_ONLY": 148,
       "OPERATOR_COPY_CONFIRMED": 3,
       "SNAPSHOT_OBSERVED": 121,
+      "TRADING_RULES_OBSERVED": 21,
       "UNVERIFIED": 49
     },
     "excluded_evidence_records": 46,
     "epochs_with_snapshot_observations": 228,
     "snapshot_only_epochs_on_existing_symbols": 1,
     "new_snapshot_only_trading_symbols": 117,
-    "new_snapshot_only_settling_symbols": 3
+    "new_snapshot_only_settling_symbols": 3,
+    "epochs_with_trading_rules_observations": 259
   },
   "stage_b_request_estimate": {
     "probe_series_per_symbol_month": 7,
@@ -57,9 +60,9 @@
       "boundary_checksum_if_all_found": 1120
     },
     "including_possible": {
-      "symbol_months": 7648,
-      "monthly_head": 53536,
-      "monthly_checksum_if_all_found": 53536,
+      "symbol_months": 8152,
+      "monthly_head": 57064,
+      "monthly_checksum_if_all_found": 57064,
       "boundary_day_keys": 1120,
       "boundary_checksum_if_all_found": 1120
     },
@@ -73,8 +76,12 @@
     "status": "BLOCKED",
     "reason": "The current Binance Vision symbol prefix has no verified server-side pre-cutoff boundary.",
     "index_gap_count": null,
-    "post_cutoff_names_discarded": null
+    "post_cutoff_names_discarded": null,
+    "historical_a1_outcome": "NO_USABLE_S3_CAPTURE_FOUND",
+    "historical_a1_evidence": "evidence/m2/o2-a1-wayback.json"
   },
+  "trading_rules_evidence": "evidence/m2/o2-trading-rules-snapshots.json",
+  "trading_rules_reconciliation_base": "9a5f1c70aea9d071547177d6e4d38ea3efeadce8",
   "exclusions": [
     {"source_id":"0e830f621fa1424b8f9315c6e3a49bd5","reason":"NON_USDT_QUOTE","symbols":["AVAXUSDC"]},
     {"source_id":"0e84e685101d457a95cbe5c550b6e891","reason":"NON_USDT_QUOTE","symbols":["1000LUNCBUSD"]},
@@ -141,6 +148,23 @@
       ]
     },
     {
+      "candidate_id": "1000BONKUSDT@trading-rules-2023-11-22T14:00:00.000Z",
+      "symbol": "1000BONKUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": ["NUMBER_PREFIX_PRESERVED"],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-11-22T14:00:00.000Z"}
+      ],
+      "events": []
+    },
+    {
       "candidate_id": "1000BTTCUSDT@2022-01-26",
       "symbol": "1000BTTCUSDT",
       "contract_type": "USD_M_PERPETUAL",
@@ -203,6 +227,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-05-06T00:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-05-06T00:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-05-06T00:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -220,6 +248,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-09-08T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-09-08T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-09-08T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2022-09-08T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2022-09-09T13:00:00Z","flags":[],"notes":null,"displayed_publication":"2022-09-08 05:15","evidence_status":"INDEX_HINT_ONLY","source_id":"5b9bc7ef56834de895cf829af859207e"}
@@ -240,6 +272,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-05-05T00:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-05-05T00:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-05-05T00:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -254,6 +290,9 @@
       "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11"],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-12-15T14:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-12-15T14:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-12-15 11:41","evidence_status":"INDEX_HINT_ONLY","source_id":"c6eb2557f7a94f8db24ffda21ef0346e"}
       ]
@@ -270,6 +309,9 @@
       "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11"],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-12-12T14:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-12-12T14:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-12-12 08:15","evidence_status":"INDEX_HINT_ONLY","source_id":"a86323c8ac774e85ba77a497f8f88e7f"}
       ]
@@ -289,6 +331,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-05-10T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-05-10T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-05-10T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-05-10T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2021-05-10T13:00:00Z","flags":["SYMBOL_FORMAT_INFERRED"],"notes":"Base and USDT margin are explicit; archive symbol spelling is inferred","displayed_publication":"2021-05-10 10:02","evidence_status":"INDEX_HINT_ONLY","source_id":"fa934b93fea6494fb7361d45ca7cc98a"}
@@ -326,6 +372,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-09-16T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-09-16T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-09-16T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-09-16T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -359,6 +409,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2020-12-25T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2020-12-25T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2020-12-25T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2020-12-25T07:00:00.000Z"}
       ],
       "events": []
     },
@@ -394,6 +448,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -408,6 +466,9 @@
       "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11"],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-12-18T10:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-12-18T10:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-12-18 07:15","evidence_status":"INDEX_HINT_ONLY","source_id":"e580de0ab2644098bafa59a8eebc1a6a"}
       ]
@@ -426,6 +487,10 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-02-21T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-02-21T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-02-21T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-02-22T14:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-02-22 03:00","evidence_status":"INDEX_HINT_ONLY","source_id":"73fdad20457b41e09bda8c73c893b83d"}
@@ -447,6 +512,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -463,6 +532,9 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-02-15T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-02-15T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-02-16T14:15:00Z","flags":[],"notes":null,"displayed_publication":"2023-02-15 11:00","evidence_status":"INDEX_HINT_ONLY","source_id":"5f499de4a4d845adb7a8e472f151fa1a"}
@@ -483,9 +555,29 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-07-29T02:30:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-07-29T02:30:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-07-29T02:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-07-28 10:40","evidence_status":"INDEX_HINT_ONLY","source_id":"7bf08e1f38ed4316a9c5477bfbe21889"}
       ]
+    },
+    {
+      "candidate_id": "AIUSDT@trading-rules-2024-01-08T12:30:00.000Z",
+      "symbol": "AIUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": [],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2024-01-08T12:30:00.000Z"}
+      ],
+      "events": []
     },
     {
       "candidate_id": "AIXBTUSDT@2024-12-20",
@@ -535,6 +627,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -552,6 +648,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-03-15T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-03-15T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-03-15T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-03-15T07:00:00.000Z"}
       ],
       "events": []
     },
@@ -587,6 +687,27 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "events": []
+    },
+    {
+      "candidate_id": "ALTUSDT@trading-rules-2024-01-25T14:00:00.000Z",
+      "symbol": "ALTUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": [],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2024-01-25T14:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -603,6 +724,10 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-03-29T00:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-03-29T00:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-03-29T00:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-03-30T12:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-03-29 11:00","evidence_status":"INDEX_HINT_ONLY","source_id":"bd18df283ead40d09fd60c8eab984e41"}
@@ -624,6 +749,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-01-25T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-01-25T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-01-25T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-01-25T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -641,6 +770,9 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-12-24T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-12-24T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-12-24T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"CLOSE_ONLY","effective_at":"2024-04-01T08:30:00Z","flags":[],"notes":null,"displayed_publication":"2024-03-25 04:40","evidence_status":"INDEX_HINT_ONLY","source_id":"ce74360a3fd444b2b35da7186f8dd0ad"},
@@ -663,6 +795,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-03-17T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-03-17T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-03-17T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2022-03-17T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -680,6 +816,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-02-21T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-02-21T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-02-21T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2022-02-21T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2022-02-22T03:30:00Z","flags":["SYMBOL_FORMAT_INFERRED"],"notes":"Base and USDT margin are explicit; archive symbol spelling is inferred","displayed_publication":"2022-02-21 04:28","evidence_status":"INDEX_HINT_ONLY","source_id":"3e091344eaaa4632bbdc1e5ded1237e1"}
@@ -701,6 +841,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-10-18T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-10-18T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-10-18T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2022-10-18T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -717,6 +861,10 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-03-23T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-03-23T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-03-23T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-03-23T17:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-03-22 12:15","evidence_status":"INDEX_HINT_ONLY","source_id":"2698359b2ceb45ff94365f060d616b88"}
@@ -737,6 +885,9 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-07-28T02:45:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-07-28T02:45:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-07-28T02:45:00Z","flags":[],"notes":null,"displayed_publication":"2023-07-27 11:00","evidence_status":"INDEX_HINT_ONLY","source_id":"25df92f5680242f3a45dd8fc53969830"}
       ]
@@ -755,6 +906,9 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-09-19T14:30:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-09-19T14:30:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-09-19T14:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-09-19 08:20","evidence_status":"INDEX_HINT_ONLY","source_id":"fc3bcf1121494924a67be78e81060ec4"}
@@ -776,6 +930,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-10-18T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-10-18T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-10-18T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-10-18T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -794,6 +952,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-09-28T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-09-28T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-09-28T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-09-28T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -810,6 +972,10 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-02-13T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-02-13T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-02-13T07:00:00.000Z"}
       ],
       "events": []
     },
@@ -829,6 +995,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-08-30T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-08-30T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-08-30T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-08-30T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -847,6 +1017,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -861,6 +1035,9 @@
       "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11"],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-12-15T13:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-12-15T13:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-12-15 09:25","evidence_status":"INDEX_HINT_ONLY","source_id":"bc79a7505e2e432b87dfa1e3f4e59f5c"}
       ]
@@ -880,6 +1057,9 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-08-18T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-08-18T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-08-18T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"SCHEDULED_SETTLEMENT_AND_DELISTING","effective_at":"2024-05-16T09:00:00Z","flags":[],"notes":"Scheduled settlement; exact delisting completion is not stated","displayed_publication":"2024-05-08 05:00","evidence_status":"INDEX_HINT_ONLY","source_id":"cb525a5fbb954935afc77630fc5bd0cc"},
@@ -918,6 +1098,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -936,9 +1120,30 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2020-11-20T07:00:00Z","flags":[],"notes":null,"displayed_publication":"2020-11-19 07:43","evidence_status":"INDEX_HINT_ONLY","source_id":"31a0e30f88ca4c2bb661d9a27c70ebd7"}
       ]
+    },
+    {
+      "candidate_id": "BADGERUSDT@trading-rules-2023-11-09T12:30:00.000Z",
+      "symbol": "BADGERUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": [],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-11-09T12:30:00.000Z"}
+      ],
+      "events": []
     },
     {
       "candidate_id": "BAKEUSDT@2021-05-19",
@@ -955,6 +1160,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-05-18T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-05-18T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-05-18T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-05-18T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2021-05-19T07:00:00Z","flags":["SYMBOL_FORMAT_INFERRED"],"notes":"Base and USDT margin are explicit; archive symbol spelling is inferred","displayed_publication":"2021-05-18 05:59","evidence_status":"INDEX_HINT_ONLY","source_id":"a24db130a3bd48328bfbe7ad6e5e1a35"}
@@ -975,6 +1184,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2020-09-01T07:00:00Z","flags":[],"notes":null,"displayed_publication":"2020-09-01 04:06","evidence_status":"INDEX_HINT_ONLY","source_id":"b093a2d4c3d441d4aedd8c6289fbffe4"}
@@ -1012,6 +1225,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -1046,6 +1263,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -1064,6 +1285,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -1078,6 +1303,9 @@
       "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10"],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-11-17T13:30:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-11-17T13:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-11-17 06:50","evidence_status":"INDEX_HINT_ONLY","source_id":"25c05ab82d674c7396eab887d1384b05"}
       ]
@@ -1098,6 +1326,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -1114,6 +1346,9 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-09-28T12:30:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-09-28T12:30:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-09-28T12:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-09-28 03:10","evidence_status":"INDEX_HINT_ONLY","source_id":"9d38d2eb114b441ead0fc90a75893235"}
@@ -1134,6 +1369,9 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-10-12T14:30:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-10-12T14:30:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-10-12T14:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-10-12 11:17","evidence_status":"INDEX_HINT_ONLY","source_id":"d956c31e085444c2ba4d97c554318476"}
       ]
@@ -1153,6 +1391,9 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-11-01T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-11-01T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-11-01T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2022-11-02T12:00:00Z","flags":["INDEX"],"notes":"Launch notice indicates an index underlying","displayed_publication":"2022-11-02 03:25","evidence_status":"INDEX_HINT_ONLY","source_id":"6971c0a0c4fe43ef9969c1d6252dea74"},
@@ -1175,6 +1416,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-04-27T00:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-04-27T00:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-04-27T00:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-04-28T12:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-04-27 12:26","evidence_status":"INDEX_HINT_ONLY","source_id":"00b84a2f4a9b44e184722acdbb6d2629"}
       ]
@@ -1194,6 +1439,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2020-09-17T07:00:00Z","flags":[],"notes":null,"displayed_publication":"2020-09-16 08:19","evidence_status":"INDEX_HINT_ONLY","source_id":"b27aa1a173554eb6885e99f9f9d0422e"}
@@ -1215,6 +1464,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2020-02-10T08:00:00Z","flags":[],"notes":null,"displayed_publication":"2020-02-07 10:43","evidence_status":"INDEX_HINT_ONLY","source_id":"360039190692"}
       ]
@@ -1233,6 +1486,9 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-08-10T12:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-08-10T12:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-08-10T12:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-08-09 04:01","evidence_status":"INDEX_HINT_ONLY","source_id":"e59b61e52ad24b43bd1032052ea3a025"}
@@ -1274,6 +1530,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-02-22T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-02-22T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-02-22T07:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-02-22T14:45:00Z","flags":["RELISTING_NOTICE"],"notes":"Relaunch is explicitly announced after the earlier scheduled settlement","displayed_publication":"2023-02-22 10:15","evidence_status":"INDEX_HINT_ONLY","source_id":"940d0e48493e4627889c3f46371df70b"}
       ]
@@ -1308,6 +1568,9 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-10-15T14:30:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-10-15T14:30:00.000Z"}
       ],
       "events": [
         {"kind":"CLOSE_ONLY","effective_at":"2024-12-16T08:30:00Z","flags":[],"notes":null,"displayed_publication":"2024-12-06 03:00","evidence_status":"INDEX_HINT_ONLY","source_id":"27eac260521b4f40ab331e1a345887a7"},
@@ -1345,6 +1608,9 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-10-20T12:30:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-10-20T12:30:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-10-20T12:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-10-20 03:15","evidence_status":"INDEX_HINT_ONLY","source_id":"21802d4be7ce4e4a880e2990a6775422"}
       ]
@@ -1381,6 +1647,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-06-17T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-06-17T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-06-17T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-06-17T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -1398,6 +1668,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":null,"effective_date":"2019-09-09","flags":[],"notes":"Launch day stated retrospectively in the Binance blog; exact UTC onboard time unknown","displayed_publication":"2020-09-15","evidence_status":"OPERATOR_COPY_CONFIRMED","source_id":"OPERATOR_BTC"}
@@ -1453,6 +1727,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-08-23T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-08-23T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-08-23T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-08-23T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -1467,6 +1745,9 @@
       "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10"],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-11-02T12:45:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-11-02T12:45:00Z","flags":[],"notes":null,"displayed_publication":"2023-11-02 07:30","evidence_status":"INDEX_HINT_ONLY","source_id":"a33e70c5215841299b4d4614918b93a5"}
       ]
@@ -1503,6 +1784,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-09-26T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-09-26T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-09-26T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-09-26T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -1521,6 +1806,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-03-29T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-03-29T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-03-29T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-03-29T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -1537,6 +1826,10 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-02-19T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-02-19T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-02-19T07:00:00.000Z"}
       ],
       "events": []
     },
@@ -1604,6 +1897,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-03-12T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-03-12T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-03-12T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-03-12T07:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2021-03-12T07:00:00Z","flags":["SYMBOL_FORMAT_INFERRED"],"notes":"Base and USDT margin are explicit; archive symbol spelling is inferred","displayed_publication":"2021-03-12 03:51","evidence_status":"INDEX_HINT_ONLY","source_id":"86f5ef4c343c4acda8358918e3f77698"}
       ]
@@ -1624,6 +1921,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-01-21T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-01-21T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-01-21T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-01-21T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -1640,6 +1941,10 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-02-27T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-02-27T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-02-27T07:00:00.000Z"}
       ],
       "events": []
     },
@@ -1680,6 +1985,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-06-02T12:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-06-02T12:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-06-02T12:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -1697,6 +2006,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2020-06-30T09:00:00Z","flags":[],"notes":null,"displayed_publication":"2020-06-29 08:48","evidence_status":"INDEX_HINT_ONLY","source_id":"9f245e5e19e8494bad7a3f49424943aa"}
@@ -1734,6 +2047,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-03-09T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-03-09T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-03-09T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-03-09T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -1751,6 +2068,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2020-09-01T07:00:00Z","flags":[],"notes":null,"displayed_publication":"2020-09-01 04:06","evidence_status":"INDEX_HINT_ONLY","source_id":"b093a2d4c3d441d4aedd8c6289fbffe4"}
@@ -1772,6 +2093,9 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": [
         {"kind":"CLOSE_ONLY","effective_at":"2024-04-01T08:30:00Z","flags":[],"notes":null,"displayed_publication":"2024-03-25 04:40","evidence_status":"INDEX_HINT_ONLY","source_id":"ce74360a3fd444b2b35da7186f8dd0ad"},
         {"kind":"SCHEDULED_SETTLEMENT_AND_DELISTING","effective_at":"2024-04-01T09:00:00Z","flags":[],"notes":"Scheduled settlement; exact delisting completion is not stated","displayed_publication":"2024-03-25 04:40","evidence_status":"INDEX_HINT_ONLY","source_id":"ce74360a3fd444b2b35da7186f8dd0ad"}
@@ -1792,6 +2116,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-10-25T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-10-25T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-10-25T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-10-25T07:00:00.000Z"}
       ],
       "events": []
     },
@@ -1831,6 +2159,9 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-09-21T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-09-21T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-09-21T07:00:00.000Z"}
+      ],
       "events": [
         {"kind":"SCHEDULED_SETTLEMENT_AND_DELISTING","effective_at":"2024-05-13T09:00:00Z","flags":[],"notes":"Settlement is scheduled; the notice may put delisting after settlement","displayed_publication":"2024-05-06 05:00","evidence_status":"INDEX_HINT_ONLY","source_id":"a58cc13f78a34fbba11f00ff7144e9ee"}
       ]
@@ -1850,6 +2181,9 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-08-21T12:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-08-21T12:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -1867,6 +2201,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-04-28T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-04-28T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-04-28T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2022-04-28T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"CLOSE_ONLY","effective_at":"2024-12-26T08:30:00Z","flags":[],"notes":null,"displayed_publication":"2024-12-19 03:00","evidence_status":"INDEX_HINT_ONLY","source_id":"21551cde98784f64b374f8d50ff2a438"},
@@ -1890,6 +2228,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -1907,6 +2249,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": []
     },
@@ -1957,6 +2303,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-03-23T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-03-23T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-03-23T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-03-23T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2021-03-24T04:00:00Z","flags":["SYMBOL_FORMAT_INFERRED"],"notes":"Base and USDT margin are explicit; archive symbol spelling is inferred","displayed_publication":"2021-03-24 02:41","evidence_status":"INDEX_HINT_ONLY","source_id":"e50421e9fea947d6a5d4d3f923671a2d"}
@@ -2010,6 +2360,9 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-04-19T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-04-19T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-04-19T07:00:00.000Z"}
+      ],
       "events": [
         {"kind":"CLOSE_ONLY","effective_at":"2024-04-01T08:30:00Z","flags":[],"notes":null,"displayed_publication":"2024-03-25 04:40","evidence_status":"INDEX_HINT_ONLY","source_id":"ce74360a3fd444b2b35da7186f8dd0ad"},
         {"kind":"CLOSE_ONLY","effective_at":"2024-04-01T08:30:00Z","flags":[],"notes":null,"displayed_publication":"2024-03-25 04:40","evidence_status":"OPERATOR_COPY_CONFIRMED","source_id":"OPERATOR_DGB"},
@@ -2048,6 +2401,9 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-08-08T12:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-08-08T12:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-08-08T12:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-08-07 09:55","evidence_status":"INDEX_HINT_ONLY","source_id":"a5d54915771e4ec58aa835cebc7e314f"}
       ]
@@ -2067,6 +2423,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2020-07-10T09:00:00Z","flags":[],"notes":null,"displayed_publication":"2020-07-09 08:00","evidence_status":"INDEX_HINT_ONLY","source_id":"7777402b13574c41afe13b334d3e047e"}
@@ -2104,6 +2464,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -2138,6 +2502,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-01-06T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-01-06T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-01-06T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2022-01-06T07:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2022-01-07T03:30:00Z","flags":["SYMBOL_FORMAT_INFERRED"],"notes":"Base and USDT margin are explicit; archive symbol spelling is inferred","displayed_publication":"2022-01-06 04:27","evidence_status":"INDEX_HINT_ONLY","source_id":"b5c82d3590ea4087adeb15f8edcd8e1f"}
       ]
@@ -2158,6 +2526,27 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-09-09T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-09-09T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-09-09T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-09-09T07:00:00.000Z"}
+      ],
+      "events": []
+    },
+    {
+      "candidate_id": "DYMUSDT@trading-rules-2024-02-07T07:00:00.000Z",
+      "symbol": "DYMUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": [],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2024-02-07T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -2174,6 +2563,10 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-04-28T00:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-04-28T00:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-04-28T00:00:00.000Z"}
       ],
       "events": []
     },
@@ -2193,6 +2586,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -2210,6 +2607,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": []
     },
@@ -2229,6 +2630,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-11-29T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-11-29T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-11-29T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-11-29T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -2247,6 +2652,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -2264,6 +2673,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2020-01-16T08:00:00Z","flags":[],"notes":null,"displayed_publication":"2020-01-15 10:03","evidence_status":"INDEX_HINT_ONLY","source_id":"360038833831"}
@@ -2285,10 +2698,31 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LAUNCH_ANNOUNCED","effective_at":null,"effective_date":null,"flags":[],"notes":"The source says trading began on the publication day. PDF displays 2019-11-29 and the browser tab displays 2019-11-28. Exact UTC onboard day unresolved","displayed_publication":"2019-11-29","evidence_status":"OPERATOR_COPY_CONFIRMED","source_id":"OPERATOR_ETH"},
         {"kind":"LISTING","effective_at":null,"flags":[],"notes":null,"displayed_publication":"2019-11-29 00:29","evidence_status":"INDEX_HINT_ONLY","source_id":"360036964392"}
       ]
+    },
+    {
+      "candidate_id": "ETHWUSDT@trading-rules-2023-11-28T12:30:00.000Z",
+      "symbol": "ETHWUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": [],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-11-28T12:30:00.000Z"}
+      ],
+      "events": []
     },
     {
       "candidate_id": "FARTCOINUSDT@2024-12-20",
@@ -2321,6 +2755,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-01-15T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-01-15T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-01-15T07:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-01-17T02:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-01-13 06:00","evidence_status":"INDEX_HINT_ONLY","source_id":"92f8c95638d94627961641c0e6a9edef"}
       ]
@@ -2340,6 +2778,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": []
     },
@@ -2375,6 +2817,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2020-09-29T07:00:00Z","flags":[],"notes":null,"displayed_publication":"2020-09-29 03:00","evidence_status":"INDEX_HINT_ONLY","source_id":"db52b02ccf0845dfb81ef44059310bb8"}
       ]
@@ -2394,6 +2840,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-02-09T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-02-09T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-02-09T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2022-02-09T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2022-02-10T03:30:00Z","flags":["SYMBOL_FORMAT_INFERRED"],"notes":"Base and USDT margin are explicit; archive symbol spelling is inferred","displayed_publication":"2022-02-09 07:50","evidence_status":"INDEX_HINT_ONLY","source_id":"4792aec2fe53444f87734e57bbb3038f"}
@@ -2431,6 +2881,9 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-08-31T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-08-31T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-08-31T07:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2022-09-01T03:00:00Z","flags":["INDEX"],"notes":"Launch notice indicates an index underlying","displayed_publication":"2022-08-31 06:20","evidence_status":"INDEX_HINT_ONLY","source_id":"645a4b2808bd497dbb28d433a3134a89"},
         {"kind":"CLOSE_ONLY","effective_at":"2024-03-26T08:30:00Z","flags":[],"notes":null,"displayed_publication":"2024-03-19 05:05","evidence_status":"INDEX_HINT_ONLY","source_id":"673183dd8eea4e3cba1596dcec7565d1"},
@@ -2451,6 +2904,9 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-09-22T14:30:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-09-22T14:30:00.000Z"}
       ],
       "events": [
         {"kind":"CLOSE_ONLY","effective_at":"2024-08-23T08:30:00Z","flags":[],"notes":null,"displayed_publication":"2024-08-19 11:00","evidence_status":"INDEX_HINT_ONLY","source_id":"3ab5488a00e04d4fb338c77ea28326a8"},
@@ -2473,6 +2929,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2020-09-24T07:00:00Z","flags":[],"notes":null,"displayed_publication":"2020-09-23 06:40","evidence_status":"INDEX_HINT_ONLY","source_id":"886d722f5f5449538336e21be599aa80"}
@@ -2511,6 +2971,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-01-19T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-01-19T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-01-19T07:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-01-20T03:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-01-19 06:20","evidence_status":"INDEX_HINT_ONLY","source_id":"8d0a29d6363e450db93e27f03287e81a"}
       ]
@@ -2531,6 +2995,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-09-17T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-09-17T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-09-17T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-09-17T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -2548,6 +3016,9 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-05-05T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-05-05T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-05-05T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2022-05-05T14:00:00Z","flags":["SYMBOL_FORMAT_INFERRED"],"notes":"Base and USDT margin are explicit; archive symbol spelling is inferred","displayed_publication":"2022-05-05 06:00","evidence_status":"INDEX_HINT_ONLY","source_id":"ee776592d1714f4cb6a53db72350ac63"}
@@ -2568,6 +3039,9 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-10-25T02:45:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-10-25T02:45:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-10-25T02:45:00Z","flags":[],"notes":null,"displayed_publication":"2023-10-24 12:52","evidence_status":"INDEX_HINT_ONLY","source_id":"d8b596b131b64130940798961d73a8b5"}
       ]
@@ -2587,10 +3061,30 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-09-26T01:30:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-09-26T01:30:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-09-26T01:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-09-25 12:38","evidence_status":"INDEX_HINT_ONLY","source_id":"155dd1d3b26d48918d75d263833a5d1d"},
         {"kind":"SCHEDULED_SETTLEMENT_AND_DELISTING","effective_at":"2024-05-15T09:00:00Z","flags":[],"notes":"Scheduled settlement; exact delisting completion is not stated","displayed_publication":"2024-05-08 05:00","evidence_status":"INDEX_HINT_ONLY","source_id":"cb525a5fbb954935afc77630fc5bd0cc"}
       ]
+    },
+    {
+      "candidate_id": "GLMUSDT@trading-rules-2024-02-22T10:00:00.000Z",
+      "symbol": "GLMUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": [],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2024-02-22T10:00:00.000Z"}
+      ],
+      "events": []
     },
     {
       "candidate_id": "GMTUSDT@2022-03-15",
@@ -2607,6 +3101,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-03-14T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-03-14T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-03-14T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2022-03-14T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2022-03-15T04:00:00Z","flags":["SYMBOL_FORMAT_INFERRED"],"notes":"Base and USDT margin are explicit; archive symbol spelling is inferred","displayed_publication":"2022-03-14 04:10","evidence_status":"INDEX_HINT_ONLY","source_id":"b76223a20c604f718b1e124d1d049d0d"}
@@ -2626,6 +3124,10 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-02-16T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-02-16T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-02-16T07:00:00.000Z"}
       ],
       "events": []
     },
@@ -2677,6 +3179,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2020-12-18T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2020-12-18T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2020-12-18T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2020-12-18T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -2694,6 +3200,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-03-15T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-03-15T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-03-15T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-03-15T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2021-06-11T03:30:00Z","flags":["SYMBOL_FORMAT_INFERRED"],"notes":"Base and USDT margin are explicit; archive symbol spelling is inferred","displayed_publication":"2021-06-10 11:31","evidence_status":"INDEX_HINT_ONLY","source_id":"c1a900363bd04ffd94032322f10de8ab"}
@@ -2731,6 +3241,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-03-17T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-03-17T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-03-17T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-03-17T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -2747,6 +3261,10 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-04-05T00:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-04-05T00:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-04-05T00:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-04-06T12:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-04-05 08:15","evidence_status":"INDEX_HINT_ONLY","source_id":"8a9f1c722e8c4a91830cd84d29ee5e3e"}
@@ -2767,6 +3285,9 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-09-16T14:30:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-09-16T14:30:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -2783,6 +3304,10 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-02-03T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-02-03T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-02-03T07:00:00.000Z"}
       ],
       "events": []
     },
@@ -2867,6 +3392,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-01-19T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-01-19T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-01-19T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -2885,6 +3414,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-03-30T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-03-30T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-03-30T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-03-30T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -2902,6 +3435,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-07-30T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-07-30T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-07-30T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-07-30T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2022-09-27T02:30:00Z","flags":[],"notes":null,"displayed_publication":"2022-09-26 04:20","evidence_status":"INDEX_HINT_ONLY","source_id":"adabdfbc53344094808a7bea464f101b"}
@@ -2923,6 +3460,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -2939,6 +3480,9 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-05-02T00:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-05-02T00:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-05-03T12:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-05-02 06:31","evidence_status":"INDEX_HINT_ONLY","source_id":"c43f0ab6145d47ce832234cb4be13816"},
@@ -2960,6 +3504,27 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-03-23T00:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-03-23T00:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-03-23T00:00:00.000Z"}
+      ],
+      "events": []
+    },
+    {
+      "candidate_id": "ILVUSDT@trading-rules-2023-11-10T16:30:00.000Z",
+      "symbol": "ILVUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": [],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-11-10T16:30:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -2977,6 +3542,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-02-10T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-02-10T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-02-10T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2022-02-10T07:00:00.000Z"}
       ],
       "events": []
     },
@@ -2996,6 +3565,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-08-16T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-08-16T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-08-16T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2022-08-16T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -3013,6 +3586,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": []
     },
@@ -3032,6 +3609,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -3049,6 +3630,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-08-11T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-08-11T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-08-11T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-08-11T07:00:00.000Z"}
       ],
       "events": []
     },
@@ -3068,6 +3653,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-04-19T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-04-19T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-04-19T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2022-04-19T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -3085,9 +3674,47 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-03-28T00:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-03-28T00:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-03-28T00:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-03-29T12:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-03-28 08:00","evidence_status":"INDEX_HINT_ONLY","source_id":"e9113e48b61a46ca93632920de9b0d19"}
       ]
+    },
+    {
+      "candidate_id": "JTOUSDT@trading-rules-2023-12-08T10:00:00.000Z",
+      "symbol": "JTOUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": [],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-12-08T10:00:00.000Z"}
+      ],
+      "events": []
+    },
+    {
+      "candidate_id": "JUPUSDT@trading-rules-2024-01-31T18:30:00.000Z",
+      "symbol": "JUPUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": [],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2024-01-31T18:30:00.000Z"}
+      ],
+      "events": []
     },
     {
       "candidate_id": "KASUSDT@2023-11-17",
@@ -3101,6 +3728,9 @@
       "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10"],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-11-17T02:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-11-17T02:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-11-16 13:38","evidence_status":"INDEX_HINT_ONLY","source_id":"7cda5be3429d4e1da2ad8e23c120a7fb"}
       ]
@@ -3120,6 +3750,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": []
     },
@@ -3154,6 +3788,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-05-23T00:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-05-23T00:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-05-23T00:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-05-24T12:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-05-23 10:45","evidence_status":"INDEX_HINT_ONLY","source_id":"90d4d1d939444d73b88309ea656a57ef"}
       ]
@@ -3173,6 +3811,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-10-11T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-10-11T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-10-11T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-10-11T07:00:00.000Z"}
       ],
       "events": []
     },
@@ -3207,6 +3849,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2020-06-22T09:00:00Z","flags":[],"notes":null,"displayed_publication":"2020-06-22 03:15","evidence_status":"INDEX_HINT_ONLY","source_id":"a6f4712fbf404bc995768730b7438646"}
@@ -3244,6 +3890,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2020-10-14T07:00:00Z","flags":[],"notes":null,"displayed_publication":"2020-10-13 04:00","evidence_status":"INDEX_HINT_ONLY","source_id":"32fd012c4d174dc8b86ed89ac26b31d5"}
       ]
@@ -3263,6 +3913,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-09-21T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-09-21T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-09-21T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2022-09-21T07:00:00.000Z"}
       ],
       "events": []
     },
@@ -3297,6 +3951,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-03-29T00:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-03-29T00:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-03-29T00:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-03-30T12:15:00Z","flags":[],"notes":null,"displayed_publication":"2023-03-29 11:00","evidence_status":"INDEX_HINT_ONLY","source_id":"bd18df283ead40d09fd60c8eab984e41"}
       ]
@@ -3317,6 +3975,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-03-17T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-03-17T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-03-17T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-03-17T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -3334,6 +3996,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": []
     },
@@ -3353,6 +4019,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-02-17T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-02-17T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-02-17T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-02-17T07:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":null,"flags":["SYMBOL_FORMAT_INFERRED"],"notes":"Base and USDT margin are explicit; archive symbol spelling is inferred","displayed_publication":"2021-02-18 03:53","evidence_status":"INDEX_HINT_ONLY","source_id":"ff7f8d8788df4389aab5eb59a0f0a665"}
       ]
@@ -3371,6 +4041,9 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-10-11T14:30:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-10-11T14:30:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-10-11T14:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-10-11 04:06","evidence_status":"INDEX_HINT_ONLY","source_id":"59cba52c3bab4059897ae88d9bbb31cf"},
@@ -3394,6 +4067,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-11-10T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-11-10T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-11-10T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-11-10T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -3410,6 +4087,10 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-03-08T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-03-08T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-03-08T07:00:00.000Z"}
       ],
       "events": []
     },
@@ -3429,6 +4110,27 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "events": []
+    },
+    {
+      "candidate_id": "LSKUSDT@trading-rules-2024-01-25T14:15:00.000Z",
+      "symbol": "LSKUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": [],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2024-01-25T14:15:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -3446,6 +4148,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": []
     },
@@ -3481,6 +4187,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-09-09T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-09-09T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-09-09T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2022-09-09T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -3514,6 +4224,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-01-23T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-01-23T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-01-23T07:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-01-25T03:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-01-23 08:30","evidence_status":"INDEX_HINT_ONLY","source_id":"5d5f7e0d340a4a5699c80b0f5231ceb4"}
       ]
@@ -3534,6 +4248,27 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-03-14T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-03-14T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-03-14T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-03-14T07:00:00.000Z"}
+      ],
+      "events": []
+    },
+    {
+      "candidate_id": "MANTAUSDT@trading-rules-2024-01-18T14:00:00.000Z",
+      "symbol": "MANTAUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": [],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2024-01-18T14:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -3551,6 +4286,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-07-16T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-07-16T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-07-16T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-07-16T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2021-08-27T03:30:00Z","flags":["SYMBOL_FORMAT_INFERRED"],"notes":"Base and USDT margin are explicit; archive symbol spelling is inferred","displayed_publication":"2021-08-25 11:13","evidence_status":"INDEX_HINT_ONLY","source_id":"5565b25d808942288a450d979cd302a6"}
@@ -3572,6 +4311,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -3586,6 +4329,9 @@
       "possible_additional_months": [],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2024-02-21T10:00:00.000Z"}
+      ],
       "events": [
         {"kind":"CLOSE_ONLY","effective_at":"2024-12-16T08:30:00Z","flags":[],"notes":null,"displayed_publication":"2024-12-06 03:00","evidence_status":"INDEX_HINT_ONLY","source_id":"27eac260521b4f40ab331e1a345887a7"},
         {"kind":"SCHEDULED_SETTLEMENT_AND_DELISTING","effective_at":"2024-12-16T09:00:00Z","flags":[],"notes":"Settlement is scheduled; the notice may put delisting after settlement","displayed_publication":"2024-12-06 03:00","evidence_status":"INDEX_HINT_ONLY","source_id":"27eac260521b4f40ab331e1a345887a7"}
@@ -3606,6 +4352,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-06-29T12:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-06-29T12:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-06-29T12:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-06-29T12:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-06-28 08:15","evidence_status":"INDEX_HINT_ONLY","source_id":"cd356f940975408a8931e4768206a82e"}
       ]
@@ -3622,6 +4372,9 @@
       "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-11-14T15:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-11-14T15:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-11-14 10:04","evidence_status":"INDEX_HINT_ONLY","source_id":"d7e84d0cbade4525bd55e61e7ee0f83a"},
         {"kind":"SCHEDULED_SETTLEMENT_AND_DELISTING","effective_at":"2024-05-13T09:00:00Z","flags":[],"notes":"Settlement is scheduled; the notice may put delisting after settlement","displayed_publication":"2024-05-06 05:00","evidence_status":"INDEX_HINT_ONLY","source_id":"a58cc13f78a34fbba11f00ff7144e9ee"}
@@ -3642,6 +4395,9 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-06-30T12:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-06-30T12:00:00.000Z"}
+      ],
       "events": [
         {"kind":"SCHEDULED_SETTLEMENT_AND_DELISTING","effective_at":"2024-05-16T09:00:00Z","flags":[],"notes":"Scheduled settlement; exact delisting completion is not stated","displayed_publication":"2024-05-08 05:00","evidence_status":"INDEX_HINT_ONLY","source_id":"cb525a5fbb954935afc77630fc5bd0cc"}
       ]
@@ -3658,6 +4414,9 @@
       "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10"],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-11-03T12:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-11-03T12:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-11-03 09:20","evidence_status":"INDEX_HINT_ONLY","source_id":"afcf1ccc7978458d8474f500da91a00d"}
       ]
@@ -3693,6 +4452,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-02-03T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-02-03T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-02-03T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -3710,6 +4473,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2020-08-13T07:00:00Z","flags":[],"notes":null,"displayed_publication":"2020-08-12 06:13","evidence_status":"INDEX_HINT_ONLY","source_id":"f8ef944feed147b3b9e08e328ac09066"}
@@ -3764,6 +4531,23 @@
       ]
     },
     {
+      "candidate_id": "MOVRUSDT@trading-rules-2023-12-26T12:30:00.000Z",
+      "symbol": "MOVRUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": [],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-12-26T12:30:00.000Z"}
+      ],
+      "events": []
+    },
+    {
       "candidate_id": "MTLUSDT@snapshot-2021-03-31T07:00:00.000Z",
       "symbol": "MTLUSDT",
       "contract_type": "USD_M_PERPETUAL",
@@ -3778,6 +4562,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-03-31T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-03-31T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-03-31T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-03-31T07:00:00.000Z"}
       ],
       "events": []
     },
@@ -3812,6 +4600,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": []
     },
@@ -3863,6 +4655,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2020-02-17T08:00:00Z","flags":[],"notes":null,"displayed_publication":"2020-02-16 08:59","evidence_status":"INDEX_HINT_ONLY","source_id":"360039470132"}
       ]
@@ -3879,6 +4675,9 @@
       "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11"],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-12-27T12:30:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-12-27T12:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-12-27 10:35","evidence_status":"INDEX_HINT_ONLY","source_id":"c4617b2b970b46e5ad70c9c44cb0f6f2"}
       ]
@@ -3899,6 +4698,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-04-08T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-04-08T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-04-08T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-04-08T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -3916,9 +4719,30 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-06-22T12:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-06-22T12:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-06-22T12:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-06-22T12:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-06-21 08:00","evidence_status":"INDEX_HINT_ONLY","source_id":"3e95295a2c554f87b27e7ecf544e1e61"}
       ]
+    },
+    {
+      "candidate_id": "NTRNUSDT@trading-rules-2023-11-14T12:00:00.000Z",
+      "symbol": "NTRNUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": [],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-11-14T12:00:00.000Z"}
+      ],
+      "events": []
     },
     {
       "candidate_id": "NULSUSDT@2024-08-26",
@@ -3952,6 +4776,9 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2020-11-03T07:00:00Z","flags":[],"notes":null,"displayed_publication":"2020-11-02 04:18","evidence_status":"INDEX_HINT_ONLY","source_id":"047798bf9a7a48fe921ae3091049e539"}
       ]
@@ -3972,6 +4799,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-03-31T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-03-31T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-03-31T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-03-31T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -3989,6 +4820,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": [
         {"kind":"CLOSE_ONLY","effective_at":"2024-12-16T08:30:00Z","flags":[],"notes":null,"displayed_publication":"2024-12-06 03:00","evidence_status":"INDEX_HINT_ONLY","source_id":"27eac260521b4f40ab331e1a345887a7"},
@@ -4009,6 +4844,9 @@
       "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01"],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2024-02-13T14:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2024-02-13T14:00:00Z","flags":[],"notes":null,"displayed_publication":"2024-02-13 05:15","evidence_status":"INDEX_HINT_ONLY","source_id":"8a72fa2ab4cd474f8e5d62c6158eaeef"}
       ]
@@ -4025,6 +4863,9 @@
       "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12"],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2024-01-20T13:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2024-01-20T13:00:00Z","flags":[],"notes":null,"displayed_publication":"2024-01-20 11:05","evidence_status":"INDEX_HINT_ONLY","source_id":"af6c1bbbe6ec406c8b2d087fe47c5554"}
       ]
@@ -4045,6 +4886,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-03-17T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-03-17T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-03-17T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-03-17T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -4059,6 +4904,9 @@
       "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10"],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-11-27T13:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-11-27T13:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-11-27 10:45","evidence_status":"INDEX_HINT_ONLY","source_id":"fc5b48ff9a6f4d01abd2acff0eee0c83"}
       ]
@@ -4079,6 +4927,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -4097,6 +4949,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-06-01T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-06-01T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-06-01T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2022-06-01T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -4113,6 +4969,9 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-10-17T06:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-10-17T06:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-10-17T06:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-10-17 01:33","evidence_status":"INDEX_HINT_ONLY","source_id":"93710257326b4f33aed7d8b7b73746d1"},
@@ -4132,6 +4991,9 @@
       "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10"],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-11-07T12:30:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-11-07T12:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-11-07 07:30","evidence_status":"INDEX_HINT_ONLY","source_id":"5b64c7eaf295445584f222adfbf8d723"}
       ]
@@ -4151,6 +5013,9 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-08-11T12:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-08-11T12:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-08-11T12:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-08-10 09:50","evidence_status":"INDEX_HINT_ONLY","source_id":"9d9f7625bf284091a590aff1e308f3d9"}
       ]
@@ -4169,6 +5034,9 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-07-28T02:30:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-07-28T02:30:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-07-28T02:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-07-27 02:20","evidence_status":"INDEX_HINT_ONLY","source_id":"abd47df1217646639b297b8b9850d7db"}
@@ -4190,6 +5058,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-12-23T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-12-23T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-12-23T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-12-23T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -4206,6 +5078,10 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-03-05T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-03-05T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-03-05T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-03-06T12:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-03-03 09:08","evidence_status":"INDEX_HINT_ONLY","source_id":"e970674b8a4048f69088d21d53a11cb4"}
@@ -4242,9 +5118,30 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-02-15T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-02-15T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-02-15T07:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-02-16T14:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-02-15 11:00","evidence_status":"INDEX_HINT_ONLY","source_id":"5f499de4a4d845adb7a8e472f151fa1a"}
       ]
+    },
+    {
+      "candidate_id": "PIXELUSDT@trading-rules-2024-02-19T15:00:00.000Z",
+      "symbol": "PIXELUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": [],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2024-02-19T15:00:00.000Z"}
+      ],
+      "events": []
     },
     {
       "candidate_id": "POLYXUSDT@2023-10-25",
@@ -4260,6 +5157,9 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-10-25T02:30:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-10-25T02:30:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-10-25T02:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-10-24 12:52","evidence_status":"INDEX_HINT_ONLY","source_id":"d8b596b131b64130940798961d73a8b5"}
@@ -4296,6 +5196,26 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-10-27T02:30:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-10-27T02:30:00.000Z"}
+      ],
+      "events": []
+    },
+    {
+      "candidate_id": "PYTHUSDT@trading-rules-2023-11-22T14:30:00.000Z",
+      "symbol": "PYTHUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": [],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-11-22T14:30:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -4314,6 +5234,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-10-18T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-10-18T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-10-18T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2022-10-18T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -4331,6 +5255,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": []
     },
@@ -4364,6 +5292,9 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-05-09T00:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-05-09T00:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-05-10T12:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-05-09 06:50","evidence_status":"INDEX_HINT_ONLY","source_id":"81c80244a5fb4bfab3cea51cd2ed325b"},
@@ -4437,6 +5368,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-04-04T00:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-04-04T00:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-04-04T00:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-04-05T12:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-04-04 07:25","evidence_status":"INDEX_HINT_ONLY","source_id":"264deffb7b1a4606867c760af485e81e"}
       ]
@@ -4456,6 +5391,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-01-25T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-01-25T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-01-25T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-01-25T07:00:00.000Z"}
       ],
       "events": []
     },
@@ -4507,6 +5446,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2020-10-13T07:00:00Z","flags":[],"notes":null,"displayed_publication":"2020-10-12 04:00","evidence_status":"INDEX_HINT_ONLY","source_id":"0cdf375d1e604a54ac75c995fa430816"}
       ]
@@ -4525,6 +5468,9 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-10-21T12:30:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-10-21T12:30:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-10-21T12:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-10-21 04:20","evidence_status":"INDEX_HINT_ONLY","source_id":"cdeaa008a1484ba0974f4359a31d29c3"}
@@ -4546,6 +5492,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -4563,9 +5513,30 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-02-02T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-02-02T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-02-02T07:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-02-03T02:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-02-02 04:50","evidence_status":"INDEX_HINT_ONLY","source_id":"499af13827e04741999c15f9139ff3de"}
       ]
+    },
+    {
+      "candidate_id": "RONINUSDT@trading-rules-2024-02-06T04:30:00.000Z",
+      "symbol": "RONINUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": [],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2024-02-06T04:30:00.000Z"}
+      ],
+      "events": []
     },
     {
       "candidate_id": "ROSEUSDT@2021-12-31",
@@ -4582,6 +5553,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-12-31T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-12-31T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-12-31T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-12-31T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2021-12-31T03:30:00Z","flags":["SYMBOL_FORMAT_INFERRED"],"notes":"Base and USDT margin are explicit; archive symbol spelling is inferred","displayed_publication":"2021-12-29 10:59","evidence_status":"INDEX_HINT_ONLY","source_id":"ccbdacbe197945b4a062ca0e3c830c4a"}
@@ -4603,6 +5578,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -4621,6 +5600,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -4638,6 +5621,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-02-23T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-02-23T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-02-23T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-02-23T07:00:00.000Z"}
       ],
       "events": []
     },
@@ -4672,6 +5659,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-01-18T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-01-18T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-01-18T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-01-18T07:00:00.000Z"}
       ],
       "events": []
     },
@@ -4740,6 +5731,9 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-08-17T02:30:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-08-17T02:30:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -4758,6 +5752,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-02-24T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-02-24T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-02-24T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-02-24T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -4775,6 +5773,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2020-08-24T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2020-08-24T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2020-08-24T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2020-08-24T07:00:00.000Z"}
       ],
       "events": []
     },
@@ -4809,6 +5811,9 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-10-31T14:30:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-10-31T14:30:00.000Z"}
+      ],
       "events": [
         {"kind":"SCHEDULED_SETTLEMENT_AND_DELISTING","effective_at":"2024-05-15T09:00:00Z","flags":[],"notes":"Scheduled settlement; exact delisting completion is not stated","displayed_publication":"2024-05-08 05:00","evidence_status":"INDEX_HINT_ONLY","source_id":"cb525a5fbb954935afc77630fc5bd0cc"}
       ]
@@ -4825,6 +5830,9 @@
       "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-11-02T12:30:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-11-02T12:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-11-02 02:35","evidence_status":"INDEX_HINT_ONLY","source_id":"2e53db8e7af34d7dae7310e4a4336cdd"},
         {"kind":"SCHEDULED_SETTLEMENT_AND_DELISTING","effective_at":"2024-05-13T09:00:00Z","flags":[],"notes":"Settlement is scheduled; the notice may put delisting after settlement","displayed_publication":"2024-05-06 05:00","evidence_status":"INDEX_HINT_ONLY","source_id":"a58cc13f78a34fbba11f00ff7144e9ee"}
@@ -4846,6 +5854,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2020-08-14T07:00:00Z","flags":[],"notes":null,"displayed_publication":"2020-08-13 04:00","evidence_status":"INDEX_HINT_ONLY","source_id":"bd6b0718117c4c4bb2ea54886a83ffbd"}
       ]
@@ -4866,6 +5878,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -4883,6 +5899,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-09-05T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-09-05T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-09-05T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2022-09-05T07:00:00.000Z"}
       ],
       "events": []
     },
@@ -4937,6 +5957,27 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-02-23T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-02-23T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-02-23T07:00:00.000Z"}
+      ],
+      "events": []
+    },
+    {
+      "candidate_id": "STEEMUSDT@trading-rules-2023-11-08T14:30:00.000Z",
+      "symbol": "STEEMUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": [],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-11-08T14:30:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -4954,6 +5995,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-08-24T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-08-24T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-08-24T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2022-08-24T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2022-08-25T12:00:00Z","flags":["SYMBOL_FORMAT_INFERRED"],"notes":"Base and USDT margin are explicit; archive symbol spelling is inferred","displayed_publication":"2022-08-25 04:20","evidence_status":"INDEX_HINT_ONLY","source_id":"6d14423aa0034ae992c49f8b7340570b"}
@@ -4975,6 +6020,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-03-17T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-03-17T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-03-17T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-03-17T07:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -4993,6 +6042,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -5009,6 +6062,9 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-10-18T14:30:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-10-18T14:30:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-10-18T14:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-10-18 05:27","evidence_status":"INDEX_HINT_ONLY","source_id":"5d2d3a74fe6c4c89ac8eaac2959383d6"},
@@ -5030,6 +6086,26 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-10-11T02:30:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-10-11T02:30:00.000Z"}
+      ],
+      "events": []
+    },
+    {
+      "candidate_id": "STRKUSDT@trading-rules-2024-02-20T17:00:00.000Z",
+      "symbol": "STRKUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": [],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2024-02-20T17:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -5046,6 +6122,10 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-02-20T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-02-20T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-02-20T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-02-21T14:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-02-21 02:45","evidence_status":"INDEX_HINT_ONLY","source_id":"e0aa73262d384ed3a616a4a66f59c9b5"}
@@ -5065,6 +6145,10 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-05-03T00:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-05-03T00:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-05-03T00:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-05-03T16:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-05-03 15:30","evidence_status":"INDEX_HINT_ONLY","source_id":"ac46aeff860747119efefe75df9854a1"}
@@ -5098,6 +6182,9 @@
       "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10"],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-11-26T13:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-11-26T13:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-11-26 08:45","evidence_status":"INDEX_HINT_ONLY","source_id":"0712d23fc1934e17996a8c7a58716d30"}
       ]
@@ -5117,6 +6204,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": []
     },
@@ -5151,6 +6242,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": []
     },
@@ -5202,6 +6297,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -5218,6 +6317,9 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-10-31T16:30:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-10-31T16:30:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-10-31T18:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-10-31 16:08","evidence_status":"INDEX_HINT_ONLY","source_id":"5e5eab2a19d444898e6961ba33d04849"}
@@ -5237,6 +6339,10 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-03-29T00:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-03-29T00:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-03-29T00:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-03-30T12:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-03-29 11:00","evidence_status":"INDEX_HINT_ONLY","source_id":"bd18df283ead40d09fd60c8eab984e41"}
@@ -5271,6 +6377,9 @@
       "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10"],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-11-03T15:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-11-03T15:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-11-03 10:50","evidence_status":"INDEX_HINT_ONLY","source_id":"d047f1923f8a40be8aedcc74387f09dc"}
       ]
@@ -5325,6 +6434,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -5341,6 +6454,10 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-03-06T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-03-06T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-03-06T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-03-07T12:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-03-06 03:06","evidence_status":"INDEX_HINT_ONLY","source_id":"19b802c37d4946b1bba1c0e7b4b5a922"}
@@ -5361,6 +6478,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": []
     },
@@ -5395,6 +6516,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-01-31T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-01-31T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-01-31T07:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-02-01T13:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-01-31 08:50","evidence_status":"INDEX_HINT_ONLY","source_id":"8d0cc44cc5094586aacd30791e55dd97"}
       ]
@@ -5411,6 +6536,9 @@
       "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10"],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-11-03T14:30:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-11-03T14:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-11-03 05:10","evidence_status":"INDEX_HINT_ONLY","source_id":"a45e7c4a2ca44921b13da66f291e22b8"}
       ]
@@ -5430,6 +6558,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-05-09T00:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-05-09T00:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-05-09T00:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -5447,6 +6579,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-02-09T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-02-09T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-02-09T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-02-09T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":null,"flags":["SYMBOL_FORMAT_INFERRED"],"notes":"Base and USDT margin are explicit; archive symbol spelling is inferred","displayed_publication":"2021-02-18 03:53","evidence_status":"INDEX_HINT_ONLY","source_id":"ff7f8d8788df4389aab5eb59a0f0a665"}
@@ -5468,6 +6604,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -5485,6 +6625,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-03-12T00:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-03-12T00:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-03-12T00:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-03-12T17:00:00Z","flags":["STABLECOIN_PAIR"],"notes":null,"displayed_publication":"2023-03-12 15:00","evidence_status":"INDEX_HINT_ONLY","source_id":"b742a879db4e4e93aa24a11693ae8fc1"}
       ]
@@ -5501,6 +6645,9 @@
       "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10"],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-11-27T12:30:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-11-27T12:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-11-27 06:35","evidence_status":"INDEX_HINT_ONLY","source_id":"91deccb2e146483383617db8b8fcaba1"}
       ]
@@ -5520,6 +6667,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": []
     },
@@ -5571,6 +6722,9 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2020-08-12T07:00:00Z","flags":[],"notes":null,"displayed_publication":"2020-08-11 08:11","evidence_status":"INDEX_HINT_ONLY","source_id":"cf810a2217a64f53a4c7f60d867f7320"}
       ]
@@ -5590,6 +6744,9 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-10-18T14:45:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-10-18T14:45:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-10-18T14:45:00Z","flags":[],"notes":null,"displayed_publication":"2023-10-18 05:27","evidence_status":"INDEX_HINT_ONLY","source_id":"5d2d3a74fe6c4c89ac8eaac2959383d6"}
       ]
@@ -5606,6 +6763,9 @@
       "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12"],
       "outside_active_months": [],
       "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2024-01-18T14:15:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2024-01-18T14:15:00Z","flags":[],"notes":null,"displayed_publication":"2024-01-18 07:25","evidence_status":"INDEX_HINT_ONLY","source_id":"5c6cb594550247aea7c93a47c0156b17"}
       ]
@@ -5624,6 +6784,9 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-07-24T12:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-07-24T12:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-07-24T12:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-07-24 10:00","evidence_status":"INDEX_HINT_ONLY","source_id":"cb44d15ae417474ab97cbdb37072f39f"}
@@ -5645,6 +6808,27 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2022-04-07T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2022-04-07T07:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2022-04-07T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2022-04-07T07:00:00.000Z"}
+      ],
+      "events": []
+    },
+    {
+      "candidate_id": "XAIUSDT@trading-rules-2024-01-09T14:00:00.000Z",
+      "symbol": "XAIUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": [],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2024-01-09T14:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -5662,6 +6846,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2021-03-02T07:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2021-03-02T07:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2021-03-02T07:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2021-03-02T07:00:00.000Z"}
       ],
       "events": [
         {"kind":"CLOSE_ONLY","effective_at":"2024-12-09T08:30:00Z","flags":[],"notes":null,"displayed_publication":"2024-11-29 04:00","evidence_status":"INDEX_HINT_ONLY","source_id":"cfe97d52a8c840d3ba631835b637e9e7"},
@@ -5684,6 +6872,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -5701,6 +6893,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": []
     },
@@ -5720,6 +6916,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -5737,6 +6937,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2020-02-06T08:00:00Z","flags":[],"notes":null,"displayed_publication":"2020-02-05 10:14","evidence_status":"INDEX_HINT_ONLY","source_id":"360039529911"}
@@ -5757,6 +6961,9 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-07-05T12:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-07-05T12:00:00.000Z"}
+      ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-07-05T12:00:00Z","flags":[],"notes":null,"displayed_publication":"2023-07-04 11:00","evidence_status":"INDEX_HINT_ONLY","source_id":"673af51d78494b5c945dadba6e5072b3"}
       ]
@@ -5775,6 +6982,10 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-04-12T00:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-04-12T00:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2023-04-12T00:00:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-04-13T02:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-04-12 03:25","evidence_status":"INDEX_HINT_ONLY","source_id":"7d5bc005a0ab4a82a6a4c08d5cee15ed"}
@@ -5796,6 +7007,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -5812,6 +7027,9 @@
       "m1_observed_months": [],
       "snapshot_observations": [
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2023-08-05T03:30:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2023-08-05T03:30:00.000Z"}
       ],
       "events": [
         {"kind":"LISTING","effective_at":"2023-08-05T03:30:00Z","flags":[],"notes":null,"displayed_publication":"2023-08-04 12:30","evidence_status":"INDEX_HINT_ONLY","source_id":"41f762a6369445e9ae67b3766447552e"}
@@ -5833,6 +7051,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -5850,6 +7072,27 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "events": []
+    },
+    {
+      "candidate_id": "ZETAUSDT@trading-rules-2024-02-02T08:30:00.000Z",
+      "symbol": "ZETAUSDT",
+      "contract_type": "USD_M_PERPETUAL",
+      "quote_asset": "USDT",
+      "evidence_status": "TRADING_RULES_OBSERVED",
+      "flags": [],
+      "review_reasons": ["LIFECYCLE_BOUNDS_UNRESOLVED","WINDOW_TRADING_UNVERIFIED"],
+      "planned_active_months": [],
+      "possible_additional_months": ["2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12"],
+      "outside_active_months": [],
+      "m1_observed_months": [],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2024-02-02T08:30:00.000Z"}
       ],
       "events": []
     },
@@ -5869,6 +7112,10 @@
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
       "events": []
     },
     {
@@ -5886,6 +7133,10 @@
       "snapshot_observations": [
         {"source_id":"WAYBACK_20221127174756","as_of":"2022-11-27T17:47:56Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"},
         {"source_id":"WAYBACK_20231102093209","as_of":"2023-11-02T09:32:09Z","status":"TRADING","onboard_at":"2019-09-25T08:00:00.000Z"}
+      ],
+      "trading_rules_observations": [
+        {"source_id":"WAYBACK_RULES_20240301072349","as_of":"2024-03-01T07:23:49Z","onboard_at":"2019-09-25T08:00:00.000Z"},
+        {"source_id":"WAYBACK_RULES_20240715172835","as_of":"2024-07-15T17:28:35Z","onboard_at":"2019-09-25T08:00:00.000Z"}
       ],
       "events": []
     }

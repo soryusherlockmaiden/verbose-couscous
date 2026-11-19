@@ -1,8 +1,8 @@
 # O2 expansion Stage A operator save list
 
-Stage A now contains 321 provisional epoch candidates across 319 symbols. The candidate list is pending operator review. This short list prioritizes notices that resolve multiple boundaries or material epoch ambiguity. It reuses the existing BTCUSDT, ETHUSDT and DGBUSDT evidence ledger. [Candidates](o2-candidates.json) · [Discovery log](o2-discovery-expansion.json) · [Existing notices](o2-notices.json)
+Stage A now contains 342 provisional epoch candidates across 340 symbols. The candidate list is pending operator review. This short list prioritizes notices that resolve multiple boundaries or material epoch ambiguity. It reuses the existing BTCUSDT, ETHUSDT and DGBUSDT evidence ledger. [Candidates](o2-candidates.json) · [Discovery log](o2-discovery-expansion.json) · [Existing notices](o2-notices.json)
 
-The candidate statuses are 148 `INDEX_HINT_ONLY`, 3 `OPERATOR_COPY_CONFIRMED`, 121 `SNAPSHOT_OBSERVED` and 49 `UNVERIFIED`. The candidate list retains the two index contracts and the stablecoin pair identified by the notices. Other unresolved lifecycle records include COCOS, DAR, FRONT and OMG. Uncertain openings, endings and symbol spellings are identified in the JSON review reasons.
+The candidate statuses are 148 `INDEX_HINT_ONLY`, 3 `OPERATOR_COPY_CONFIRMED`, 121 `SNAPSHOT_OBSERVED`, 21 `TRADING_RULES_OBSERVED` and 49 `UNVERIFIED`. The candidate list retains the two index contracts and the stablecoin pair identified by the notices. Other unresolved lifecycle records include COCOS, DAR, FRONT and OMG. Uncertain openings, endings and symbol spellings are identified in the JSON review reasons.
 
 ## Historical exchangeInfo evidence
 
@@ -27,6 +27,23 @@ uv run --locked python evidence/m2/extract_exchangeinfo.py --output data/o2-inve
 ```
 
 Coverage between snapshots and throughout 2024 remains `INCONCLUSIVE`. The directory completeness check is `BLOCKED` pending a source that enforces the cutoff before returning names. The current Binance Vision prefix may mix pre-cutoff and later symbols, and folder names lack listing dates. `INDEX_GAP` and discarded-name counts remain unknown.
+
+## Historical archive listing check
+
+A1 found zero usable S3 XML responses for the monthly USD-M kline prefix. The historically reconstructed exact request returned no CDX match. The May 22, 2024 capture contained the HTML file browser, and its archived script constructs a separate S3 request for the listing. The offline check pinned these bytes without executing JavaScript. Several broader CDX checks timed out, so the archive search cannot establish absence beyond the successful queries. `INDEX_GAP` remains unknown. [A1 query and replay evidence](o2-a1-wayback.json)
+
+The additional 2024 `exchangeInfo` checks found no usable capture. The exact path returned 26 CDX rows with original HTTP `451`, while a query-variant prefix search timed out. Two captured Binance trading-rules pages did contain embedded USD-M product records. [Trading-rules evidence](o2-trading-rules-snapshots.json)
+
+| Wayback capture (UTC) | Embedded product records read | USDT perpetual names | Completeness of the embedded array |
+|---|---:|---:|---|
+| 2024-03-01 07:23:49 | 273 | 259 | Complete in the captured data |
+| 2024-07-15 17:28:35 | 174 | 173 | Partial. The archived bytes end inside the array |
+
+The 173 July names also occur in March with the same reported onboard dates. March adds 21 provisional names to the prior candidate list. Only names and reported `onboardDate` values are retained from the pages. The candidate file records these observations separately from the `exchangeInfo` status and filter evidence. New names enter the possible-month estimate. Active months and coverage throughout 2024 still require independent evidence. The raw HTML bodies remain under ignored `data/o2-inventory/a1-wayback-review/`.
+
+```text
+uv run --locked python evidence/m2/extract_trading_rules.py --output data/o2-inventory/o2-trading-rules-snapshots-recheck.json
+```
 
 ## Priority notices
 
@@ -62,9 +79,9 @@ An archive key is unique by symbol, period and series. The seven series are thre
 | Monthly scenario | Symbol–months | HEAD | CHECKSUM GET if every HEAD succeeds | Requests if all found | Serial time at probe averages |
 |---|---:|---:|---:|---:|---:|
 | Tentative plan | 1,835 | 12,845 | 12,845 | 25,690 | 132.2 min |
-| Tentative plus all possible months | 7,648 | 53,536 | 53,536 | 107,072 | 551.2 min |
+| Tentative plus all possible months | 8,152 | 57,064 | 57,064 | 114,128 | 587.5 min |
 
-The pacing component alone is 2,055 seconds for the tentative monthly scenario and 8,566 seconds for the wider monthly scenario. The timing calculation adds the collector's 0.08-second post-request pause to the mean observed request times from the accepted three-symbol archive log. The log has 455 HEADs averaging 0.2000 seconds and 454 CHECKSUM GETs averaging 0.2577 seconds. The local log SHA-256 is `0cb22f50393b85ef8959e6ffdd0883af1cd6faea81dae92770190140b5e2045b`. The timestamps were recorded at whole-second precision. The 12-second socket timeout, service latency changes, local overhead and a blocked host can alter wall time.
+The pacing component alone is 2,055 seconds for the tentative monthly scenario and 9,130 seconds for the wider monthly scenario. The timing calculation adds the collector's 0.08-second post-request pause to the mean observed request times from the accepted three-symbol archive log. The log has 455 HEADs averaging 0.2000 seconds and 454 CHECKSUM GETs averaging 0.2577 seconds. The local log SHA-256 is `0cb22f50393b85ef8959e6ffdd0883af1cd6faea81dae92770190140b5e2045b`. The timestamps were recorded at whole-second precision. The 12-second socket timeout, service latency changes, local overhead and a blocked host can alter wall time.
 
 Targeted daily probes are separate. The current plan has 160 unique dated boundary symbol-days, corresponding to at most 1,120 HEADs and 1,120 CHECKSUM GETs, or about 11.5 additional minutes at the same probe averages if all those keys exist. For each missing monthly key, a full-month daily fallback adds 28–31 HEADs and up to as many CHECKSUM GETs. Restrict fallback to eligible dates using the approved lifecycle evidence. The number of missing keys and final daily cost remain unresolved before Stage B.
 

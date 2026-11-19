@@ -1,0 +1,1050 @@
+{
+  "version": "m2-o2-a1-wayback-v1",
+  "cutoff_exclusive": "2025-01-01T00:00:00Z",
+  "target": {
+    "prefix": "data/futures/um/monthly/klines/",
+    "delimiter": "/",
+    "response": "Archived raw S3 ListBucketResult with CommonPrefixes"
+  },
+  "selection": {
+    "required": "Original and replay HTTP 200, bounded capture timestamp, matching CDX digest and raw XML. An XML page chain is incomplete until every continuation is covered.",
+    "replay_network": "Wayback only, id_ replay, no redirects, byte inspection without executing JavaScript.",
+    "cdx_limit_per_query": 120,
+    "cdx_time_windows": {
+      "a1_from_utc": "2019-12-01T00:00:00Z",
+      "fallback_from_utc": "2024-01-01T00:00:00Z"
+    },
+    "requests": "curl.exe GET. CDX timeout 16 seconds, maximum body 1000000 bytes. HTML reference replay timeout 22 seconds, maximum body 500000 bytes. Four follow-up replays timeout 30 seconds, maximum body 2500000 bytes. --max-redirs 0 on every request."
+  },
+  "request_attempts": {
+    "wayback_cdx": 42,
+    "wayback_replay": 5,
+    "direct_binance_hosts": 0,
+    "direct_s3": 0,
+    "market_payload_bytes": 0
+  },
+  "a1": {
+    "outcome": "NO_USABLE_S3_CAPTURE_FOUND",
+    "coverage_conclusion": "INCONCLUSIVE",
+    "usable_xml_responses": 0,
+    "historically_reconstructed_query": "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision?delimiter=/&prefix=data/futures/um/monthly/klines/",
+    "historically_reconstructed_query_result": "NO_CDX_MATCH",
+    "index_gap_count": null
+  },
+  "fallback": {
+    "exchangeinfo_2024": "NO_USABLE_CAPTURE_FOUND_IN_TESTED_VARIANTS",
+    "trading_rules_evidence": "evidence/m2/o2-trading-rules-snapshots.json",
+    "span_coverage": "INCONCLUSIVE",
+    "use": "Discovery names and reported onboard dates only. Missing or truncated rows provide no negative evidence."
+  },
+  "queries": [
+    {
+      "id": "s3-dash-v1",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fs3-ap-northeast-1.amazonaws.com%2Fdata.binance.vision%2F%3Fdelimiter%3D%2F%26prefix%3Ddata%2Ffutures%2Fum%2Fmonthly%2Fklines%2F&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision/?delimiter=/&prefix=data/futures/um/monthly/klines/",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:07:00Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "s3-dash-v2",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fs3-ap-northeast-1.amazonaws.com%2Fdata.binance.vision%2F%3Fdelimiter%3D%2F%26prefix%3Ddata%2Ffutures%2Fum%2Fmonthly%2Fklines%2F%26list-type%3D2&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision/?delimiter=/&prefix=data/futures/um/monthly/klines/&list-type=2",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:06:59Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "s3-dot-v1",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fs3.ap-northeast-1.amazonaws.com%2Fdata.binance.vision%2F%3Fdelimiter%3D%2F%26prefix%3Ddata%2Ffutures%2Fum%2Fmonthly%2Fklines%2F&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://s3.ap-northeast-1.amazonaws.com/data.binance.vision/?delimiter=/&prefix=data/futures/um/monthly/klines/",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:06:59Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "s3-dot-v2",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fs3.ap-northeast-1.amazonaws.com%2Fdata.binance.vision%2F%3Fdelimiter%3D%2F%26prefix%3Ddata%2Ffutures%2Fum%2Fmonthly%2Fklines%2F%26list-type%3D2&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://s3.ap-northeast-1.amazonaws.com/data.binance.vision/?delimiter=/&prefix=data/futures/um/monthly/klines/&list-type=2",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:06:59Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "s3-virtual-dash-v1",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fdata.binance.vision.s3-ap-northeast-1.amazonaws.com%2F%3Fdelimiter%3D%2F%26prefix%3Ddata%2Ffutures%2Fum%2Fmonthly%2Fklines%2F&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://data.binance.vision.s3-ap-northeast-1.amazonaws.com/?delimiter=/&prefix=data/futures/um/monthly/klines/",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:07:01Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "s3-virtual-dash-v2",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fdata.binance.vision.s3-ap-northeast-1.amazonaws.com%2F%3Fdelimiter%3D%2F%26prefix%3Ddata%2Ffutures%2Fum%2Fmonthly%2Fklines%2F%26list-type%3D2&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://data.binance.vision.s3-ap-northeast-1.amazonaws.com/?delimiter=/&prefix=data/futures/um/monthly/klines/&list-type=2",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:07:00Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "s3-virtual-dot-v1",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fdata.binance.vision.s3.ap-northeast-1.amazonaws.com%2F%3Fdelimiter%3D%2F%26prefix%3Ddata%2Ffutures%2Fum%2Fmonthly%2Fklines%2F&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://data.binance.vision.s3.ap-northeast-1.amazonaws.com/?delimiter=/&prefix=data/futures/um/monthly/klines/",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:07:02Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "s3-virtual-dot-v2",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fdata.binance.vision.s3.ap-northeast-1.amazonaws.com%2F%3Fdelimiter%3D%2F%26prefix%3Ddata%2Ffutures%2Fum%2Fmonthly%2Fklines%2F%26list-type%3D2&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://data.binance.vision.s3.ap-northeast-1.amazonaws.com/?delimiter=/&prefix=data/futures/um/monthly/klines/&list-type=2",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:07:01Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "s3-global-v1",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fs3.amazonaws.com%2Fdata.binance.vision%2F%3Fdelimiter%3D%2F%26prefix%3Ddata%2Ffutures%2Fum%2Fmonthly%2Fklines%2F&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://s3.amazonaws.com/data.binance.vision/?delimiter=/&prefix=data/futures/um/monthly/klines/",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:07:02Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "s3-global-v2",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fs3.amazonaws.com%2Fdata.binance.vision%2F%3Fdelimiter%3D%2F%26prefix%3Ddata%2Ffutures%2Fum%2Fmonthly%2Fklines%2F%26list-type%3D2&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://s3.amazonaws.com/data.binance.vision/?delimiter=/&prefix=data/futures/um/monthly/klines/&list-type=2",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:07:03Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "s3-virtual-global-v1",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fdata.binance.vision.s3.amazonaws.com%2F%3Fdelimiter%3D%2F%26prefix%3Ddata%2Ffutures%2Fum%2Fmonthly%2Fklines%2F&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://data.binance.vision.s3.amazonaws.com/?delimiter=/&prefix=data/futures/um/monthly/klines/",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:07:03Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "s3-virtual-global-v2",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fdata.binance.vision.s3.amazonaws.com%2F%3Fdelimiter%3D%2F%26prefix%3Ddata%2Ffutures%2Fum%2Fmonthly%2Fklines%2F%26list-type%3D2&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://data.binance.vision.s3.amazonaws.com/?delimiter=/&prefix=data/futures/um/monthly/klines/&list-type=2",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:07:04Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "vision-v1",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fdata.binance.vision%2F%3Fdelimiter%3D%2F%26prefix%3Ddata%2Ffutures%2Fum%2Fmonthly%2Fklines%2F&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://data.binance.vision/?delimiter=/&prefix=data/futures/um/monthly/klines/",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:07:03Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "vision-v2",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fdata.binance.vision%2F%3Fdelimiter%3D%2F%26prefix%3Ddata%2Ffutures%2Fum%2Fmonthly%2Fklines%2F%26list-type%3D2&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://data.binance.vision/?delimiter=/&prefix=data/futures/um/monthly/klines/&list-type=2",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:07:04Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "s3-dash-prefix",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fs3-ap-northeast-1.amazonaws.com%2Fdata.binance.vision%2F&matchType=prefix&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120&filter=original%3A.%2A%5B%3F%26%5D.%2Adata%28%3F%3A%2F%7C%252%5BfF%5D%29futures%28%3F%3A%2F%7C%252%5BfF%5D%29um%28%3F%3A%2F%7C%252%5BfF%5D%29monthly%28%3F%3A%2F%7C%252%5BfF%5D%29klines.%2A",
+      "target": "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision/",
+      "match": "prefix",
+      "queried_at_utc": "2026-11-19T16:07:19Z",
+      "http_status": null,
+      "curl_exit": 28,
+      "capture_count": null,
+      "captures": [],
+      "outcome": "TRANSPORT_ERROR"
+    },
+    {
+      "id": "s3-dot-prefix",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fs3.ap-northeast-1.amazonaws.com%2Fdata.binance.vision%2F&matchType=prefix&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120&filter=original%3A.%2A%5B%3F%26%5D.%2Adata%28%3F%3A%2F%7C%252%5BfF%5D%29futures%28%3F%3A%2F%7C%252%5BfF%5D%29um%28%3F%3A%2F%7C%252%5BfF%5D%29monthly%28%3F%3A%2F%7C%252%5BfF%5D%29klines.%2A",
+      "target": "https://s3.ap-northeast-1.amazonaws.com/data.binance.vision/",
+      "match": "prefix",
+      "queried_at_utc": "2026-11-19T16:07:19Z",
+      "http_status": null,
+      "curl_exit": 28,
+      "capture_count": null,
+      "captures": [],
+      "outcome": "TRANSPORT_ERROR"
+    },
+    {
+      "id": "s3-virtual-dash-prefix",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fdata.binance.vision.s3-ap-northeast-1.amazonaws.com%2F&matchType=prefix&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120&filter=original%3A.%2A%5B%3F%26%5D.%2Adata%28%3F%3A%2F%7C%252%5BfF%5D%29futures%28%3F%3A%2F%7C%252%5BfF%5D%29um%28%3F%3A%2F%7C%252%5BfF%5D%29monthly%28%3F%3A%2F%7C%252%5BfF%5D%29klines.%2A",
+      "target": "https://data.binance.vision.s3-ap-northeast-1.amazonaws.com/",
+      "match": "prefix",
+      "queried_at_utc": "2026-11-19T16:07:20Z",
+      "http_status": null,
+      "curl_exit": 28,
+      "capture_count": null,
+      "captures": [],
+      "outcome": "TRANSPORT_ERROR"
+    },
+    {
+      "id": "s3-virtual-dot-prefix",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fdata.binance.vision.s3.ap-northeast-1.amazonaws.com%2F&matchType=prefix&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120&filter=original%3A.%2A%5B%3F%26%5D.%2Adata%28%3F%3A%2F%7C%252%5BfF%5D%29futures%28%3F%3A%2F%7C%252%5BfF%5D%29um%28%3F%3A%2F%7C%252%5BfF%5D%29monthly%28%3F%3A%2F%7C%252%5BfF%5D%29klines.%2A",
+      "target": "https://data.binance.vision.s3.ap-northeast-1.amazonaws.com/",
+      "match": "prefix",
+      "queried_at_utc": "2026-11-19T16:07:10Z",
+      "http_status": 503,
+      "curl_exit": 0,
+      "capture_count": null,
+      "captures": [],
+      "outcome": "HTTP_ERROR"
+    },
+    {
+      "id": "vision-index-reference",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fdata.binance.vision%2F%3Fprefix%3Ddata%2Ffutures%2Fum%2Fmonthly%2Fklines%2F&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://data.binance.vision/?prefix=data/futures/um/monthly/klines/",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:07:11Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 1,
+      "captures": [
+        {
+          "timestamp": "20240522192332",
+          "original": "https://data.binance.vision/?prefix=data/futures/um/monthly/klines/",
+          "statuscode": "200",
+          "mimetype": "text/html",
+          "digest": "7OMENBVG4PZE3Q4SIH35SYK62K6DXTSI",
+          "length": "1420"
+        }
+      ],
+      "outcome": "CAPTURES_FOUND",
+      "response_sha256": "647cffdee242ff511d8f01f08e1512f8e5f4db26ac1d62f8c47f969c7c4adfa3"
+    },
+    {
+      "id": "s3-literal-slashless",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fs3-ap-northeast-1.amazonaws.com%2Fdata.binance.vision%3Fdelimiter%3D%2F%26prefix%3Ddata%2Ffutures%2Fum%2Fmonthly%2Fklines%2F&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision?delimiter=/&prefix=data/futures/um/monthly/klines/",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:17Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "s3-encoded-slashless",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fs3-ap-northeast-1.amazonaws.com%2Fdata.binance.vision%3Fdelimiter%3D%252F%26prefix%3Ddata%252Ffutures%252Fum%252Fmonthly%252Fklines%252F&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision?delimiter=%2F&prefix=data%2Ffutures%2Fum%2Fmonthly%2Fklines%2F",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:18Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "s3-v2-slashless",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fs3-ap-northeast-1.amazonaws.com%2Fdata.binance.vision%3Flist-type%3D2%26delimiter%3D%252F%26prefix%3Ddata%252Ffutures%252Fum%252Fmonthly%252Fklines%252F&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision?list-type=2&delimiter=%2F&prefix=data%2Ffutures%2Fum%2Fmonthly%2Fklines%2F",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:17Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "s3-max-1000",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fs3-ap-northeast-1.amazonaws.com%2Fdata.binance.vision%3Fdelimiter%3D%2F%26prefix%3Ddata%2Ffutures%2Fum%2Fmonthly%2Fklines%2F%26max-keys%3D1000&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision?delimiter=/&prefix=data/futures/um/monthly/klines/&max-keys=1000",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:18Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "s3-max-1000-encoded",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fs3-ap-northeast-1.amazonaws.com%2Fdata.binance.vision%3Fdelimiter%3D%252F%26prefix%3Ddata%252Ffutures%252Fum%252Fmonthly%252Fklines%252F%26max-keys%3D1000&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision?delimiter=%2F&prefix=data%2Ffutures%2Fum%2Fmonthly%2Fklines%2F&max-keys=1000",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:18Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "s3-blank-marker",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fs3-ap-northeast-1.amazonaws.com%2Fdata.binance.vision%3Fdelimiter%3D%2F%26prefix%3Ddata%2Ffutures%2Fum%2Fmonthly%2Fklines%2F%26marker%3D&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision?delimiter=/&prefix=data/futures/um/monthly/klines/&marker=",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:18Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "s3-encoded-path-slash",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fs3-ap-northeast-1.amazonaws.com%2Fdata.binance.vision%2F%3Fdelimiter%3D%252F%26prefix%3Ddata%252Ffutures%252Fum%252Fmonthly%252Fklines%252F&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision/?delimiter=%2F&prefix=data%2Ffutures%2Fum%2Fmonthly%2Fklines%2F",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:18Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "s3-bucket-query-prefix",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fs3-ap-northeast-1.amazonaws.com%2Fdata.binance.vision%3F&matchType=prefix&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120&filter=original%3A.%2A%5B%3F%26%5D.%2Adata%28%3F%3A%2F%7C%252%5BfF%5D%29futures%28%3F%3A%2F%7C%252%5BfF%5D%29um%28%3F%3A%2F%7C%252%5BfF%5D%29monthly%28%3F%3A%2F%7C%252%5BfF%5D%29klines.%2A",
+      "target": "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision?",
+      "match": "prefix",
+      "queried_at_utc": "2026-11-19T16:09:34Z",
+      "http_status": null,
+      "curl_exit": 28,
+      "capture_count": null,
+      "captures": [],
+      "outcome": "TRANSPORT_ERROR"
+    },
+    {
+      "id": "vision-list-script",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fdata.binance.vision%2Flist.js&matchType=exact&from=20191201&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://data.binance.vision/list.js",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:20Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 19,
+      "captures": [
+        {
+          "timestamp": "20211016004230",
+          "original": "https://data.binance.vision/list.js",
+          "statuscode": "200",
+          "mimetype": "application/javascript",
+          "digest": "BY2AHNDVARK3N6AYBD6DL4WXCY2WQQOG",
+          "length": "3645"
+        },
+        {
+          "timestamp": "20211107004450",
+          "original": "https://data.binance.vision/list.js",
+          "statuscode": "-",
+          "mimetype": "warc/revisit",
+          "digest": "BY2AHNDVARK3N6AYBD6DL4WXCY2WQQOG",
+          "length": "742"
+        },
+        {
+          "timestamp": "20211201004255",
+          "original": "https://data.binance.vision/list.js",
+          "statuscode": "-",
+          "mimetype": "warc/revisit",
+          "digest": "BY2AHNDVARK3N6AYBD6DL4WXCY2WQQOG",
+          "length": "652"
+        },
+        {
+          "timestamp": "20220504061539",
+          "original": "https://data.binance.vision/list.js",
+          "statuscode": "200",
+          "mimetype": "application/javascript",
+          "digest": "RFL2R63KH4UKBPIIKNDLOQIMRJVUQ6XV",
+          "length": "4040"
+        },
+        {
+          "timestamp": "20220913163534",
+          "original": "https://data.binance.vision/list.js",
+          "statuscode": "200",
+          "mimetype": "application/javascript",
+          "digest": "4ITXWIFEPYTRYP6RFEGEC44NQTIXMQXH",
+          "length": "4179"
+        },
+        {
+          "timestamp": "20220929063224",
+          "original": "https://data.binance.vision/list.js",
+          "statuscode": "-",
+          "mimetype": "warc/revisit",
+          "digest": "4ITXWIFEPYTRYP6RFEGEC44NQTIXMQXH",
+          "length": "741"
+        },
+        {
+          "timestamp": "20220929063239",
+          "original": "https://data.binance.vision/list.js",
+          "statuscode": "-",
+          "mimetype": "warc/revisit",
+          "digest": "4ITXWIFEPYTRYP6RFEGEC44NQTIXMQXH",
+          "length": "650"
+        },
+        {
+          "timestamp": "20221206044503",
+          "original": "https://data.binance.vision/list.js",
+          "statuscode": "200",
+          "mimetype": "application/javascript",
+          "digest": "4ITXWIFEPYTRYP6RFEGEC44NQTIXMQXH",
+          "length": "4249"
+        },
+        {
+          "timestamp": "20230317122112",
+          "original": "https://data.binance.vision/list.js",
+          "statuscode": "-",
+          "mimetype": "warc/revisit",
+          "digest": "4ITXWIFEPYTRYP6RFEGEC44NQTIXMQXH",
+          "length": "772"
+        },
+        {
+          "timestamp": "20230323011227",
+          "original": "https://data.binance.vision/list.js",
+          "statuscode": "200",
+          "mimetype": "application/javascript",
+          "digest": "4ITXWIFEPYTRYP6RFEGEC44NQTIXMQXH",
+          "length": "4202"
+        },
+        {
+          "timestamp": "20230402073252",
+          "original": "https://data.binance.vision/list.js",
+          "statuscode": "-",
+          "mimetype": "warc/revisit",
+          "digest": "4ITXWIFEPYTRYP6RFEGEC44NQTIXMQXH",
+          "length": "680"
+        },
+        {
+          "timestamp": "20230509160440",
+          "original": "https://data.binance.vision/list.js",
+          "statuscode": "-",
+          "mimetype": "warc/revisit",
+          "digest": "4ITXWIFEPYTRYP6RFEGEC44NQTIXMQXH",
+          "length": "769"
+        },
+        {
+          "timestamp": "20230519193446",
+          "original": "https://data.binance.vision/list.js",
+          "statuscode": "200",
+          "mimetype": "application/javascript",
+          "digest": "4ITXWIFEPYTRYP6RFEGEC44NQTIXMQXH",
+          "length": "4319"
+        },
+        {
+          "timestamp": "20240828001655",
+          "original": "https://data.binance.vision/list.js",
+          "statuscode": "200",
+          "mimetype": "application/javascript",
+          "digest": "EQWFL5GIM2E7IFIXCDOOBFFXZC6KKSGP",
+          "length": "4329"
+        },
+        {
+          "timestamp": "20240914121452",
+          "original": "https://data.binance.vision/list.js",
+          "statuscode": "-",
+          "mimetype": "warc/revisit",
+          "digest": "EQWFL5GIM2E7IFIXCDOOBFFXZC6KKSGP",
+          "length": "770"
+        },
+        {
+          "timestamp": "20241104044250",
+          "original": "https://data.binance.vision/list.js",
+          "statuscode": "200",
+          "mimetype": "application/javascript",
+          "digest": "EQWFL5GIM2E7IFIXCDOOBFFXZC6KKSGP",
+          "length": "4218"
+        },
+        {
+          "timestamp": "20241124235558",
+          "original": "https://data.binance.vision/list.js",
+          "statuscode": "200",
+          "mimetype": "application/javascript",
+          "digest": "EQWFL5GIM2E7IFIXCDOOBFFXZC6KKSGP",
+          "length": "4303"
+        },
+        {
+          "timestamp": "20241226001242",
+          "original": "https://data.binance.vision/list.js",
+          "statuscode": "200",
+          "mimetype": "application/javascript",
+          "digest": "EQWFL5GIM2E7IFIXCDOOBFFXZC6KKSGP",
+          "length": "4319"
+        },
+        {
+          "timestamp": "20241229021727",
+          "original": "https://data.binance.vision/list.js",
+          "statuscode": "200",
+          "mimetype": "application/javascript",
+          "digest": "EQWFL5GIM2E7IFIXCDOOBFFXZC6KKSGP",
+          "length": "4116"
+        }
+      ],
+      "outcome": "CAPTURES_FOUND",
+      "response_sha256": "6002caffc301f1f655c7f3e0d75036ac28296ec76d7f4f8bc2a1df345ffb3635"
+    },
+    {
+      "id": "fallback-fapi-query-prefix",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Ffapi.binance.com%2Ffapi%2Fv1%2FexchangeInfo&matchType=prefix&from=20240101&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120&filter=original%3A.%2AexchangeInfo%5C%3F.%2A",
+      "target": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+      "match": "prefix",
+      "queried_at_utc": "2026-11-19T16:09:34Z",
+      "http_status": null,
+      "curl_exit": 28,
+      "capture_count": null,
+      "captures": [],
+      "outcome": "TRANSPORT_ERROR"
+    },
+    {
+      "id": "fallback-fapi-btc-query",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Ffapi.binance.com%2Ffapi%2Fv1%2FexchangeInfo%3Fsymbol%3DBTCUSDT&matchType=exact&from=20240101&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://fapi.binance.com/fapi/v1/exchangeInfo?symbol=BTCUSDT",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:20Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "fallback-fapi-trailing-slash",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Ffapi.binance.com%2Ffapi%2Fv1%2FexchangeInfo%2F&matchType=exact&from=20240101&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://fapi.binance.com/fapi/v1/exchangeInfo/",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:21Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 26,
+      "captures": [
+        {
+          "timestamp": "20240108115316",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "624"
+        },
+        {
+          "timestamp": "20240112183206",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "628"
+        },
+        {
+          "timestamp": "20240130185315",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "599"
+        },
+        {
+          "timestamp": "20240209103551",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "601"
+        },
+        {
+          "timestamp": "20240216004325",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "601"
+        },
+        {
+          "timestamp": "20240228024516",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "601"
+        },
+        {
+          "timestamp": "20240305175328",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "599"
+        },
+        {
+          "timestamp": "20240315021151",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "602"
+        },
+        {
+          "timestamp": "20240413235655",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "600"
+        },
+        {
+          "timestamp": "20240613001328",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "604"
+        },
+        {
+          "timestamp": "20240614130014",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "601"
+        },
+        {
+          "timestamp": "20240629125942",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "601"
+        },
+        {
+          "timestamp": "20240713005119",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "611"
+        },
+        {
+          "timestamp": "20240729130153",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "610"
+        },
+        {
+          "timestamp": "20240813171243",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "750"
+        },
+        {
+          "timestamp": "20240814113656",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "613"
+        },
+        {
+          "timestamp": "20240816034713",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "614"
+        },
+        {
+          "timestamp": "20240817103429",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "612"
+        },
+        {
+          "timestamp": "20240828130353",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "611"
+        },
+        {
+          "timestamp": "20240911021350",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "612"
+        },
+        {
+          "timestamp": "20240912130332",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "751"
+        },
+        {
+          "timestamp": "20240930214815",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "613"
+        },
+        {
+          "timestamp": "20241121012147",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "603"
+        },
+        {
+          "timestamp": "20241122005158",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "744"
+        },
+        {
+          "timestamp": "20241123004638",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "738"
+        },
+        {
+          "timestamp": "20241124002732",
+          "original": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+          "statuscode": "451",
+          "mimetype": "application/json",
+          "digest": "Z6TAJO5AWTRL7FN4MKSR3IN3OLOLJNEH",
+          "length": "739"
+        }
+      ],
+      "outcome": "CAPTURES_FOUND",
+      "response_sha256": "38878c87c745598169eb3680dbeade947ad808d79477d749618bf7d71a20fbd6"
+    },
+    {
+      "id": "fallback-fapi1",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Ffapi1.binance.com%2Ffapi%2Fv1%2FexchangeInfo&matchType=exact&from=20240101&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://fapi1.binance.com/fapi/v1/exchangeInfo",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:21Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "fallback-fapi2",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Ffapi2.binance.com%2Ffapi%2Fv1%2FexchangeInfo&matchType=exact&from=20240101&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://fapi2.binance.com/fapi/v1/exchangeInfo",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:23Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "fallback-fapi-me",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Ffapi.binance.me%2Ffapi%2Fv1%2FexchangeInfo&matchType=exact&from=20240101&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://fapi.binance.me/fapi/v1/exchangeInfo",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:22Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "fallback-api-host",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapi.binance.com%2Ffapi%2Fv1%2FexchangeInfo&matchType=exact&from=20240101&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://api.binance.com/fapi/v1/exchangeInfo",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:23Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 0,
+      "captures": [],
+      "outcome": "NO_CDX_MATCH",
+      "response_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "id": "fallback-rules",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fwww.binance.com%2Fen%2Ffutures%2Ftrading-rules&matchType=exact&from=20240101&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://www.binance.com/en/futures/trading-rules",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:24Z",
+      "http_status": 200,
+      "curl_exit": 0,
+      "capture_count": 2,
+      "captures": [
+        {
+          "timestamp": "20240301072349",
+          "original": "https://www.binance.com/en/futures/trading-rules/",
+          "statuscode": "200",
+          "mimetype": "text/html",
+          "digest": "6UCZ2NGLJHHKYHSB75UXYRQQ3ALOFTQT",
+          "length": "190142"
+        },
+        {
+          "timestamp": "20240715172835",
+          "original": "https://www.binance.com/en/futures/trading-rules",
+          "statuscode": "200",
+          "mimetype": "text/html",
+          "digest": "HMQ4FPTJ4YAYAR7F3XY73FERP2DHC5KB",
+          "length": "206139"
+        }
+      ],
+      "outcome": "CAPTURES_FOUND",
+      "response_sha256": "ba1f95e3352fb7270ee18de543b705523a6704b6f20630fa04b921b9ad6596c7"
+    },
+    {
+      "id": "fallback-rules-perpetual",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fwww.binance.com%2Fen%2Ffutures%2Ftrading-rules%2Fperpetual&matchType=exact&from=20240101&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://www.binance.com/en/futures/trading-rules/perpetual",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:39Z",
+      "http_status": null,
+      "curl_exit": 28,
+      "capture_count": null,
+      "captures": [],
+      "outcome": "TRANSPORT_ERROR"
+    },
+    {
+      "id": "fallback-rules-usdt",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fwww.binance.com%2Fen%2Ffutures%2Ftrading-rules%2Fusdt&matchType=exact&from=20240101&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://www.binance.com/en/futures/trading-rules/usdt",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:40Z",
+      "http_status": null,
+      "curl_exit": 28,
+      "capture_count": null,
+      "captures": [],
+      "outcome": "TRANSPORT_ERROR"
+    },
+    {
+      "id": "fallback-rules-leverage",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fwww.binance.com%2Fen%2Ffutures%2Ftrading-rules%2Fperpetual-leverage-margin&matchType=exact&from=20240101&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://www.binance.com/en/futures/trading-rules/perpetual-leverage-margin",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:50Z",
+      "http_status": null,
+      "curl_exit": 28,
+      "capture_count": null,
+      "captures": [],
+      "outcome": "TRANSPORT_ERROR"
+    },
+    {
+      "id": "fallback-futures-markets",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fwww.binance.com%2Fen%2Ffutures%2Fmarkets&matchType=exact&from=20240101&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://www.binance.com/en/futures/markets",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:50Z",
+      "http_status": null,
+      "curl_exit": 28,
+      "capture_count": null,
+      "captures": [],
+      "outcome": "TRANSPORT_ERROR"
+    },
+    {
+      "id": "fallback-markets-futures",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fwww.binance.com%2Fen%2Fmarkets%2Ffutures&matchType=exact&from=20240101&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://www.binance.com/en/markets/futures",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:55Z",
+      "http_status": null,
+      "curl_exit": 28,
+      "capture_count": null,
+      "captures": [],
+      "outcome": "TRANSPORT_ERROR"
+    },
+    {
+      "id": "fallback-contract-specifications",
+      "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fwww.binance.com%2Fen%2Fsupport%2Ffaq%2Fdetail%2F360033162192&matchType=exact&from=20240101&to=20241231235959&fl=timestamp%2Coriginal%2Cstatuscode%2Cmimetype%2Cdigest%2Clength&output=json&limit=120",
+      "target": "https://www.binance.com/en/support/faq/detail/360033162192",
+      "match": "exact",
+      "queried_at_utc": "2026-11-19T16:09:56Z",
+      "http_status": null,
+      "curl_exit": 28,
+      "capture_count": null,
+      "captures": [],
+      "outcome": "TRANSPORT_ERROR"
+    }
+  ],
+  "replays": [
+    {
+      "capture_url": "https://web.archive.org/web/20240522192332id_/https://data.binance.vision/?prefix=data/futures/um/monthly/klines/",
+      "timestamp": "20240522192332",
+      "http_status": 200,
+      "mime": "text/html",
+      "raw_sha256": "1720a7aa676b46b588d531d092fb2d0a70a1e9225e6bb32d1d0a06ef93454215",
+      "cdx_digest": "7OMENBVG4PZE3Q4SIH35SYK62K6DXTSI",
+      "bytes": 2591,
+      "is_xml_list_result": false,
+      "script_src": [
+        "jquery.min.js",
+        "bootstrap.bundle.min.js",
+        "xss.js",
+        "list.js"
+      ],
+      "outcome": "HTML_SHELL_REJECTED",
+      "bucket_url": "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision"
+    },
+    {
+      "capture_url": "https://web.archive.org/web/20230519193446id_/https://data.binance.vision/list.js",
+      "timestamp": "20230519193446",
+      "replay_status": 200,
+      "curl_exit": 0,
+      "mime": "application/javascript",
+      "cdx_digest": "4ITXWIFEPYTRYP6RFEGEC44NQTIXMQXH",
+      "raw_sha256": "c7ae649b4b3442b90e33a3bc7790080e1dc34c3e529c8273b6a1d0be799e0c74",
+      "raw_size_bytes": 10429,
+      "decoded_size_bytes": 10429,
+      "raw_path": "data/o2-inventory/a1-wayback-review/20230519193446.bin",
+      "outcome": "DYNAMIC_LISTING_SCRIPT"
+    },
+    {
+      "capture_url": "https://web.archive.org/web/20241229021727id_/https://data.binance.vision/list.js",
+      "timestamp": "20241229021727",
+      "replay_status": 200,
+      "curl_exit": 0,
+      "mime": "application/javascript",
+      "cdx_digest": "EQWFL5GIM2E7IFIXCDOOBFFXZC6KKSGP",
+      "raw_sha256": "a07b42c1cdc0652c97fb5d0a12a6c549de1b8a5d5d6aefcc4d0ff59e3dc5b8fe",
+      "raw_size_bytes": 10474,
+      "decoded_size_bytes": 10474,
+      "raw_path": "data/o2-inventory/a1-wayback-review/20241229021727.bin",
+      "outcome": "DYNAMIC_LISTING_SCRIPT"
+    },
+    {
+      "capture_url": "https://web.archive.org/web/20240301072349id_/https://www.binance.com/en/futures/trading-rules/",
+      "timestamp": "20240301072349",
+      "replay_status": 200,
+      "curl_exit": 0,
+      "mime": "text/html; charset=utf-8",
+      "cdx_digest": "6UCZ2NGLJHHKYHSB75UXYRQQ3ALOFTQT",
+      "raw_sha256": "88fb7c425fd7e2f9cd981674fffa16eebab94955e269a8f43966312f28edfca3",
+      "raw_size_bytes": 1048576,
+      "decoded_size_bytes": 1048576,
+      "raw_path": "data/o2-inventory/a1-wayback-review/20240301072349.bin",
+      "outcome": "DISCOVERY_PRODUCT_ARRAY_COMPLETE",
+      "title": "Trading Rules of Futures Contracts | Binance Futures",
+      "table_elements": 0,
+      "distinct_usdt_symbol_tokens": 260,
+      "embedded_state_markers": [
+        "__APP_DATA"
+      ],
+      "usdt_perpetual_rows": 259
+    },
+    {
+      "capture_url": "https://web.archive.org/web/20240715172835id_/https://www.binance.com/en/futures/trading-rules",
+      "timestamp": "20240715172835",
+      "replay_status": 200,
+      "curl_exit": 0,
+      "mime": "text/html; charset=utf-8",
+      "cdx_digest": "HMQ4FPTJ4YAYAR7F3XY73FERP2DHC5KB",
+      "raw_sha256": "9997c73e4a555ed51f9a2d09d39de04b02b53eb3383e9a3389758048e07eed1a",
+      "raw_size_bytes": 1048576,
+      "decoded_size_bytes": 1048576,
+      "raw_path": "data/o2-inventory/a1-wayback-review/20240715172835.bin",
+      "outcome": "DISCOVERY_PRODUCT_ARRAY_PARTIAL",
+      "title": "Trading Rules of Futures Contracts | Binance Futures",
+      "table_elements": 1,
+      "distinct_usdt_symbol_tokens": 175,
+      "embedded_state_markers": [
+        "__APP_DATA"
+      ],
+      "usdt_perpetual_rows": 173
+    }
+  ]
+}
