@@ -42,6 +42,18 @@
     },
     "majors": ["BTCUSDT", "ETHUSDT"],
     "coverage_probe": ["BTCUSDT", "ETHUSDT", "DGBUSDT"],
+    "o3_evidence_policy": {
+      "operator_approved_at_utc_date": "2026-11-19",
+      "option": "a_causal_reconstruction_may_support_primary_50_usdt_evidence",
+      "rules": [
+        "declared causal RECONSTRUCTED inputs, robust to plausible error",
+        "maintenance deduction derived from a complete bracket sequence, tagged RECONSTRUCTED",
+        "sizing uses decision-time rules; liquidation uses the rules applicable to the position",
+        "stricter liquidation schedules run as separate stress scenarios"
+      ],
+      "numeric_settings_status": "OPEN",
+      "policy": "evidence/m2/protocol.md#o3-evidence-policy"
+    },
     "o2_inventory": {
       "operator_approved_at_utc_date": "2026-11-18",
       "scope": "metadata_only",
