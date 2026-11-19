@@ -1,0 +1,1762 @@
+{
+  "version": "m2-o2-trading-rules-snapshots-v1",
+  "cutoff_exclusive": "2025-01-01T00:00:00Z",
+  "provenance": "third-party archive copy of exchange trading-rules HTML",
+  "use_limit": "Discovery names and reported onboard dates. An archived product row carries no approved trading status or filter validity.",
+  "snapshots": [
+    {
+      "source_id": "WAYBACK_RULES_20240301072349",
+      "capture_url": "https://web.archive.org/web/20240301072349id_/https://www.binance.com/en/futures/trading-rules/",
+      "as_of": "2024-03-01T07:23:49Z",
+      "raw_path": "data/o2-inventory/a1-wayback-review/20240301072349.bin",
+      "raw_size_bytes": 1048576,
+      "raw_sha256": "88fb7c425fd7e2f9cd981674fffa16eebab94955e269a8f43966312f28edfca3",
+      "cdx_digest": "6UCZ2NGLJHHKYHSB75UXYRQQ3ALOFTQT",
+      "embedded_product_array_complete": true,
+      "complete_product_rows": 273,
+      "usdt_perpetual_rows": [
+        {
+          "symbol": "1000BONKUSDT",
+          "onboard_at": "2023-11-22T14:00:00.000Z"
+        },
+        {
+          "symbol": "1000FLOKIUSDT",
+          "onboard_at": "2023-05-06T00:00:00.000Z"
+        },
+        {
+          "symbol": "1000LUNCUSDT",
+          "onboard_at": "2022-09-08T07:00:00.000Z"
+        },
+        {
+          "symbol": "1000PEPEUSDT",
+          "onboard_at": "2023-05-05T00:00:00.000Z"
+        },
+        {
+          "symbol": "1000RATSUSDT",
+          "onboard_at": "2023-12-15T14:00:00.000Z"
+        },
+        {
+          "symbol": "1000SATSUSDT",
+          "onboard_at": "2023-12-12T14:00:00.000Z"
+        },
+        {
+          "symbol": "1000SHIBUSDT",
+          "onboard_at": "2021-05-10T07:00:00.000Z"
+        },
+        {
+          "symbol": "1000XECUSDT",
+          "onboard_at": "2021-09-16T07:00:00.000Z"
+        },
+        {
+          "symbol": "1INCHUSDT",
+          "onboard_at": "2020-12-25T07:00:00.000Z"
+        },
+        {
+          "symbol": "AAVEUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ACEUSDT",
+          "onboard_at": "2023-12-18T10:00:00.000Z"
+        },
+        {
+          "symbol": "ACHUSDT",
+          "onboard_at": "2023-02-21T07:00:00.000Z"
+        },
+        {
+          "symbol": "ADAUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "AGIXUSDT",
+          "onboard_at": "2023-02-15T07:00:00.000Z"
+        },
+        {
+          "symbol": "AGLDUSDT",
+          "onboard_at": "2023-07-29T02:30:00.000Z"
+        },
+        {
+          "symbol": "AIUSDT",
+          "onboard_at": "2024-01-08T12:30:00.000Z"
+        },
+        {
+          "symbol": "ALGOUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ALICEUSDT",
+          "onboard_at": "2021-03-15T07:00:00.000Z"
+        },
+        {
+          "symbol": "ALPHAUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ALTUSDT",
+          "onboard_at": "2024-01-25T14:00:00.000Z"
+        },
+        {
+          "symbol": "AMBUSDT",
+          "onboard_at": "2023-03-29T00:00:00.000Z"
+        },
+        {
+          "symbol": "ANKRUSDT",
+          "onboard_at": "2021-01-25T07:00:00.000Z"
+        },
+        {
+          "symbol": "ANTUSDT",
+          "onboard_at": "2021-12-24T07:00:00.000Z"
+        },
+        {
+          "symbol": "APEUSDT",
+          "onboard_at": "2022-03-17T07:00:00.000Z"
+        },
+        {
+          "symbol": "API3USDT",
+          "onboard_at": "2022-02-21T07:00:00.000Z"
+        },
+        {
+          "symbol": "APTUSDT",
+          "onboard_at": "2022-10-18T07:00:00.000Z"
+        },
+        {
+          "symbol": "ARBUSDT",
+          "onboard_at": "2023-03-23T07:00:00.000Z"
+        },
+        {
+          "symbol": "ARKMUSDT",
+          "onboard_at": "2023-07-28T02:45:00.000Z"
+        },
+        {
+          "symbol": "ARKUSDT",
+          "onboard_at": "2023-09-19T14:30:00.000Z"
+        },
+        {
+          "symbol": "ARPAUSDT",
+          "onboard_at": "2021-10-18T07:00:00.000Z"
+        },
+        {
+          "symbol": "ARUSDT",
+          "onboard_at": "2021-09-28T07:00:00.000Z"
+        },
+        {
+          "symbol": "ASTRUSDT",
+          "onboard_at": "2023-02-13T07:00:00.000Z"
+        },
+        {
+          "symbol": "ATAUSDT",
+          "onboard_at": "2021-08-30T07:00:00.000Z"
+        },
+        {
+          "symbol": "ATOMUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "AUCTIONUSDT",
+          "onboard_at": "2023-12-15T13:00:00.000Z"
+        },
+        {
+          "symbol": "AUDIOUSDT",
+          "onboard_at": "2021-08-18T07:00:00.000Z"
+        },
+        {
+          "symbol": "AVAXUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "AXSUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "BADGERUSDT",
+          "onboard_at": "2023-11-09T12:30:00.000Z"
+        },
+        {
+          "symbol": "BAKEUSDT",
+          "onboard_at": "2021-05-18T07:00:00.000Z"
+        },
+        {
+          "symbol": "BALUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "BANDUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "BATUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "BCHUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "BEAMXUSDT",
+          "onboard_at": "2023-11-17T13:30:00.000Z"
+        },
+        {
+          "symbol": "BELUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "BICOUSDT",
+          "onboard_at": "2023-09-28T12:30:00.000Z"
+        },
+        {
+          "symbol": "BIGTIMEUSDT",
+          "onboard_at": "2023-10-12T14:30:00.000Z"
+        },
+        {
+          "symbol": "BLUEBIRDUSDT",
+          "onboard_at": "2022-11-01T07:00:00.000Z"
+        },
+        {
+          "symbol": "BLURUSDT",
+          "onboard_at": "2023-04-27T00:00:00.000Z"
+        },
+        {
+          "symbol": "BLZUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "BNBUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "BNTUSDT",
+          "onboard_at": "2023-08-10T12:00:00.000Z"
+        },
+        {
+          "symbol": "BNXUSDT",
+          "onboard_at": "2023-02-22T07:00:00.000Z"
+        },
+        {
+          "symbol": "BONDUSDT",
+          "onboard_at": "2023-10-15T14:30:00.000Z"
+        },
+        {
+          "symbol": "BSVUSDT",
+          "onboard_at": "2023-10-20T12:30:00.000Z"
+        },
+        {
+          "symbol": "BTCDOMUSDT",
+          "onboard_at": "2021-06-17T07:00:00.000Z"
+        },
+        {
+          "symbol": "BTCUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "C98USDT",
+          "onboard_at": "2021-08-23T07:00:00.000Z"
+        },
+        {
+          "symbol": "CAKEUSDT",
+          "onboard_at": "2023-11-02T12:45:00.000Z"
+        },
+        {
+          "symbol": "CELOUSDT",
+          "onboard_at": "2021-09-26T07:00:00.000Z"
+        },
+        {
+          "symbol": "CELRUSDT",
+          "onboard_at": "2021-03-29T07:00:00.000Z"
+        },
+        {
+          "symbol": "CFXUSDT",
+          "onboard_at": "2023-02-19T07:00:00.000Z"
+        },
+        {
+          "symbol": "CHRUSDT",
+          "onboard_at": "2021-03-12T07:00:00.000Z"
+        },
+        {
+          "symbol": "CHZUSDT",
+          "onboard_at": "2021-01-21T07:00:00.000Z"
+        },
+        {
+          "symbol": "CKBUSDT",
+          "onboard_at": "2023-02-27T07:00:00.000Z"
+        },
+        {
+          "symbol": "COMBOUSDT",
+          "onboard_at": "2023-06-02T12:00:00.000Z"
+        },
+        {
+          "symbol": "COMPUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "COTIUSDT",
+          "onboard_at": "2021-03-09T07:00:00.000Z"
+        },
+        {
+          "symbol": "CRVUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "CTKUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "CTSIUSDT",
+          "onboard_at": "2021-10-25T07:00:00.000Z"
+        },
+        {
+          "symbol": "CVXUSDT",
+          "onboard_at": "2022-09-21T07:00:00.000Z"
+        },
+        {
+          "symbol": "CYBERUSDT",
+          "onboard_at": "2023-08-21T12:00:00.000Z"
+        },
+        {
+          "symbol": "DARUSDT",
+          "onboard_at": "2022-04-28T07:00:00.000Z"
+        },
+        {
+          "symbol": "DASHUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "DEFIUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "DENTUSDT",
+          "onboard_at": "2021-03-23T07:00:00.000Z"
+        },
+        {
+          "symbol": "DGBUSDT",
+          "onboard_at": "2021-04-19T07:00:00.000Z"
+        },
+        {
+          "symbol": "DODOXUSDT",
+          "onboard_at": "2023-08-08T12:00:00.000Z"
+        },
+        {
+          "symbol": "DOGEUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "DOTUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "DUSKUSDT",
+          "onboard_at": "2022-01-06T07:00:00.000Z"
+        },
+        {
+          "symbol": "DYDXUSDT",
+          "onboard_at": "2021-09-09T07:00:00.000Z"
+        },
+        {
+          "symbol": "DYMUSDT",
+          "onboard_at": "2024-02-07T07:00:00.000Z"
+        },
+        {
+          "symbol": "EDUUSDT",
+          "onboard_at": "2023-04-28T00:00:00.000Z"
+        },
+        {
+          "symbol": "EGLDUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ENJUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ENSUSDT",
+          "onboard_at": "2021-11-29T07:00:00.000Z"
+        },
+        {
+          "symbol": "EOSUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ETCUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ETHUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ETHWUSDT",
+          "onboard_at": "2023-11-28T12:30:00.000Z"
+        },
+        {
+          "symbol": "FETUSDT",
+          "onboard_at": "2023-01-15T07:00:00.000Z"
+        },
+        {
+          "symbol": "FILUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "FLMUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "FLOWUSDT",
+          "onboard_at": "2022-02-09T07:00:00.000Z"
+        },
+        {
+          "symbol": "FOOTBALLUSDT",
+          "onboard_at": "2022-08-31T07:00:00.000Z"
+        },
+        {
+          "symbol": "FRONTUSDT",
+          "onboard_at": "2023-09-22T14:30:00.000Z"
+        },
+        {
+          "symbol": "FTMUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "FXSUSDT",
+          "onboard_at": "2023-01-19T07:00:00.000Z"
+        },
+        {
+          "symbol": "GALAUSDT",
+          "onboard_at": "2021-09-17T07:00:00.000Z"
+        },
+        {
+          "symbol": "GALUSDT",
+          "onboard_at": "2022-05-05T07:00:00.000Z"
+        },
+        {
+          "symbol": "GASUSDT",
+          "onboard_at": "2023-10-25T02:45:00.000Z"
+        },
+        {
+          "symbol": "GLMRUSDT",
+          "onboard_at": "2023-09-26T01:30:00.000Z"
+        },
+        {
+          "symbol": "GLMUSDT",
+          "onboard_at": "2024-02-22T10:00:00.000Z"
+        },
+        {
+          "symbol": "GMTUSDT",
+          "onboard_at": "2022-03-14T07:00:00.000Z"
+        },
+        {
+          "symbol": "GMXUSDT",
+          "onboard_at": "2023-02-16T07:00:00.000Z"
+        },
+        {
+          "symbol": "GRTUSDT",
+          "onboard_at": "2020-12-18T07:00:00.000Z"
+        },
+        {
+          "symbol": "GTCUSDT",
+          "onboard_at": "2021-03-15T07:00:00.000Z"
+        },
+        {
+          "symbol": "HBARUSDT",
+          "onboard_at": "2021-03-17T07:00:00.000Z"
+        },
+        {
+          "symbol": "HFTUSDT",
+          "onboard_at": "2023-04-05T00:00:00.000Z"
+        },
+        {
+          "symbol": "HIFIUSDT",
+          "onboard_at": "2023-09-16T14:30:00.000Z"
+        },
+        {
+          "symbol": "HIGHUSDT",
+          "onboard_at": "2023-02-03T07:00:00.000Z"
+        },
+        {
+          "symbol": "HOOKUSDT",
+          "onboard_at": "2023-01-19T07:00:00.000Z"
+        },
+        {
+          "symbol": "HOTUSDT",
+          "onboard_at": "2021-03-30T07:00:00.000Z"
+        },
+        {
+          "symbol": "ICPUSDT",
+          "onboard_at": "2021-07-30T07:00:00.000Z"
+        },
+        {
+          "symbol": "ICXUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "IDEXUSDT",
+          "onboard_at": "2023-05-02T00:00:00.000Z"
+        },
+        {
+          "symbol": "IDUSDT",
+          "onboard_at": "2023-03-23T00:00:00.000Z"
+        },
+        {
+          "symbol": "ILVUSDT",
+          "onboard_at": "2023-11-10T16:30:00.000Z"
+        },
+        {
+          "symbol": "IMXUSDT",
+          "onboard_at": "2022-02-10T07:00:00.000Z"
+        },
+        {
+          "symbol": "INJUSDT",
+          "onboard_at": "2022-08-16T07:00:00.000Z"
+        },
+        {
+          "symbol": "IOSTUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "IOTAUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "IOTXUSDT",
+          "onboard_at": "2021-08-11T07:00:00.000Z"
+        },
+        {
+          "symbol": "JASMYUSDT",
+          "onboard_at": "2022-04-19T07:00:00.000Z"
+        },
+        {
+          "symbol": "JOEUSDT",
+          "onboard_at": "2023-03-28T00:00:00.000Z"
+        },
+        {
+          "symbol": "JTOUSDT",
+          "onboard_at": "2023-12-08T10:00:00.000Z"
+        },
+        {
+          "symbol": "JUPUSDT",
+          "onboard_at": "2024-01-31T18:30:00.000Z"
+        },
+        {
+          "symbol": "KASUSDT",
+          "onboard_at": "2023-11-17T02:00:00.000Z"
+        },
+        {
+          "symbol": "KAVAUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "KEYUSDT",
+          "onboard_at": "2023-05-23T00:00:00.000Z"
+        },
+        {
+          "symbol": "KLAYUSDT",
+          "onboard_at": "2021-10-11T07:00:00.000Z"
+        },
+        {
+          "symbol": "KNCUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "KSMUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "LDOUSDT",
+          "onboard_at": "2022-09-21T07:00:00.000Z"
+        },
+        {
+          "symbol": "LEVERUSDT",
+          "onboard_at": "2023-03-29T00:00:00.000Z"
+        },
+        {
+          "symbol": "LINAUSDT",
+          "onboard_at": "2021-03-17T07:00:00.000Z"
+        },
+        {
+          "symbol": "LINKUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "LITUSDT",
+          "onboard_at": "2021-02-17T07:00:00.000Z"
+        },
+        {
+          "symbol": "LOOMUSDT",
+          "onboard_at": "2023-10-11T14:30:00.000Z"
+        },
+        {
+          "symbol": "LPTUSDT",
+          "onboard_at": "2021-11-10T07:00:00.000Z"
+        },
+        {
+          "symbol": "LQTYUSDT",
+          "onboard_at": "2023-03-08T07:00:00.000Z"
+        },
+        {
+          "symbol": "LRCUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "LSKUSDT",
+          "onboard_at": "2024-01-25T14:15:00.000Z"
+        },
+        {
+          "symbol": "LTCUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "LUNA2USDT",
+          "onboard_at": "2022-09-09T07:00:00.000Z"
+        },
+        {
+          "symbol": "MAGICUSDT",
+          "onboard_at": "2023-01-23T07:00:00.000Z"
+        },
+        {
+          "symbol": "MANAUSDT",
+          "onboard_at": "2021-03-14T07:00:00.000Z"
+        },
+        {
+          "symbol": "MANTAUSDT",
+          "onboard_at": "2024-01-18T14:00:00.000Z"
+        },
+        {
+          "symbol": "MASKUSDT",
+          "onboard_at": "2021-07-16T07:00:00.000Z"
+        },
+        {
+          "symbol": "MATICUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "MAVIAUSDT",
+          "onboard_at": "2024-02-21T10:00:00.000Z"
+        },
+        {
+          "symbol": "MAVUSDT",
+          "onboard_at": "2023-06-29T12:00:00.000Z"
+        },
+        {
+          "symbol": "MBLUSDT",
+          "onboard_at": "2023-11-14T15:00:00.000Z"
+        },
+        {
+          "symbol": "MDTUSDT",
+          "onboard_at": "2023-06-30T12:00:00.000Z"
+        },
+        {
+          "symbol": "MEMEUSDT",
+          "onboard_at": "2023-11-03T12:00:00.000Z"
+        },
+        {
+          "symbol": "MINAUSDT",
+          "onboard_at": "2023-02-03T07:00:00.000Z"
+        },
+        {
+          "symbol": "MKRUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "MOVRUSDT",
+          "onboard_at": "2023-12-26T12:30:00.000Z"
+        },
+        {
+          "symbol": "MTLUSDT",
+          "onboard_at": "2021-03-31T07:00:00.000Z"
+        },
+        {
+          "symbol": "NEARUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "NEOUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "NFPUSDT",
+          "onboard_at": "2023-12-27T12:30:00.000Z"
+        },
+        {
+          "symbol": "NKNUSDT",
+          "onboard_at": "2021-04-08T07:00:00.000Z"
+        },
+        {
+          "symbol": "NMRUSDT",
+          "onboard_at": "2023-06-22T12:00:00.000Z"
+        },
+        {
+          "symbol": "NTRNUSDT",
+          "onboard_at": "2023-11-14T12:00:00.000Z"
+        },
+        {
+          "symbol": "OCEANUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "OGNUSDT",
+          "onboard_at": "2021-03-31T07:00:00.000Z"
+        },
+        {
+          "symbol": "OMGUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "OMUSDT",
+          "onboard_at": "2024-02-13T14:00:00.000Z"
+        },
+        {
+          "symbol": "ONDOUSDT",
+          "onboard_at": "2024-01-20T13:00:00.000Z"
+        },
+        {
+          "symbol": "ONEUSDT",
+          "onboard_at": "2021-03-17T07:00:00.000Z"
+        },
+        {
+          "symbol": "ONGUSDT",
+          "onboard_at": "2023-11-27T13:00:00.000Z"
+        },
+        {
+          "symbol": "ONTUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "OPUSDT",
+          "onboard_at": "2022-06-01T07:00:00.000Z"
+        },
+        {
+          "symbol": "ORBSUSDT",
+          "onboard_at": "2023-10-17T06:00:00.000Z"
+        },
+        {
+          "symbol": "ORDIUSDT",
+          "onboard_at": "2023-11-07T12:30:00.000Z"
+        },
+        {
+          "symbol": "OXTUSDT",
+          "onboard_at": "2023-08-11T12:00:00.000Z"
+        },
+        {
+          "symbol": "PENDLEUSDT",
+          "onboard_at": "2023-07-28T02:30:00.000Z"
+        },
+        {
+          "symbol": "PEOPLEUSDT",
+          "onboard_at": "2021-12-23T07:00:00.000Z"
+        },
+        {
+          "symbol": "PERPUSDT",
+          "onboard_at": "2023-03-05T07:00:00.000Z"
+        },
+        {
+          "symbol": "PHBUSDT",
+          "onboard_at": "2023-02-15T07:00:00.000Z"
+        },
+        {
+          "symbol": "PIXELUSDT",
+          "onboard_at": "2024-02-19T15:00:00.000Z"
+        },
+        {
+          "symbol": "POLYXUSDT",
+          "onboard_at": "2023-10-25T02:30:00.000Z"
+        },
+        {
+          "symbol": "POWRUSDT",
+          "onboard_at": "2023-10-27T02:30:00.000Z"
+        },
+        {
+          "symbol": "PYTHUSDT",
+          "onboard_at": "2023-11-22T14:30:00.000Z"
+        },
+        {
+          "symbol": "QNTUSDT",
+          "onboard_at": "2022-10-18T07:00:00.000Z"
+        },
+        {
+          "symbol": "QTUMUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "RADUSDT",
+          "onboard_at": "2023-05-09T00:00:00.000Z"
+        },
+        {
+          "symbol": "RDNTUSDT",
+          "onboard_at": "2023-04-04T00:00:00.000Z"
+        },
+        {
+          "symbol": "REEFUSDT",
+          "onboard_at": "2021-01-25T07:00:00.000Z"
+        },
+        {
+          "symbol": "RENUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "RIFUSDT",
+          "onboard_at": "2023-10-21T12:30:00.000Z"
+        },
+        {
+          "symbol": "RLCUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "RNDRUSDT",
+          "onboard_at": "2023-02-02T07:00:00.000Z"
+        },
+        {
+          "symbol": "RONINUSDT",
+          "onboard_at": "2024-02-06T04:30:00.000Z"
+        },
+        {
+          "symbol": "ROSEUSDT",
+          "onboard_at": "2021-12-31T07:00:00.000Z"
+        },
+        {
+          "symbol": "RSRUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "RUNEUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "RVNUSDT",
+          "onboard_at": "2021-02-23T07:00:00.000Z"
+        },
+        {
+          "symbol": "SANDUSDT",
+          "onboard_at": "2021-01-18T07:00:00.000Z"
+        },
+        {
+          "symbol": "SEIUSDT",
+          "onboard_at": "2023-08-17T02:30:00.000Z"
+        },
+        {
+          "symbol": "SFPUSDT",
+          "onboard_at": "2021-02-24T07:00:00.000Z"
+        },
+        {
+          "symbol": "SKLUSDT",
+          "onboard_at": "2020-08-24T07:00:00.000Z"
+        },
+        {
+          "symbol": "SLPUSDT",
+          "onboard_at": "2023-10-31T14:30:00.000Z"
+        },
+        {
+          "symbol": "SNTUSDT",
+          "onboard_at": "2023-11-02T12:30:00.000Z"
+        },
+        {
+          "symbol": "SNXUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "SOLUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "SPELLUSDT",
+          "onboard_at": "2022-09-05T07:00:00.000Z"
+        },
+        {
+          "symbol": "SSVUSDT",
+          "onboard_at": "2023-02-23T07:00:00.000Z"
+        },
+        {
+          "symbol": "STEEMUSDT",
+          "onboard_at": "2023-11-08T14:30:00.000Z"
+        },
+        {
+          "symbol": "STGUSDT",
+          "onboard_at": "2022-08-24T07:00:00.000Z"
+        },
+        {
+          "symbol": "STMXUSDT",
+          "onboard_at": "2021-03-17T07:00:00.000Z"
+        },
+        {
+          "symbol": "STORJUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "STPTUSDT",
+          "onboard_at": "2023-10-18T14:30:00.000Z"
+        },
+        {
+          "symbol": "STRAXUSDT",
+          "onboard_at": "2023-10-11T02:30:00.000Z"
+        },
+        {
+          "symbol": "STRKUSDT",
+          "onboard_at": "2024-02-20T17:00:00.000Z"
+        },
+        {
+          "symbol": "STXUSDT",
+          "onboard_at": "2023-02-20T07:00:00.000Z"
+        },
+        {
+          "symbol": "SUIUSDT",
+          "onboard_at": "2023-05-03T00:00:00.000Z"
+        },
+        {
+          "symbol": "SUPERUSDT",
+          "onboard_at": "2023-11-26T13:00:00.000Z"
+        },
+        {
+          "symbol": "SUSHIUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "SXPUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "THETAUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "TIAUSDT",
+          "onboard_at": "2023-10-31T16:30:00.000Z"
+        },
+        {
+          "symbol": "TLMUSDT",
+          "onboard_at": "2023-03-29T00:00:00.000Z"
+        },
+        {
+          "symbol": "TOKENUSDT",
+          "onboard_at": "2023-11-03T15:00:00.000Z"
+        },
+        {
+          "symbol": "TRBUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "TRUUSDT",
+          "onboard_at": "2023-03-06T07:00:00.000Z"
+        },
+        {
+          "symbol": "TRXUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "TUSDT",
+          "onboard_at": "2023-01-31T07:00:00.000Z"
+        },
+        {
+          "symbol": "TWTUSDT",
+          "onboard_at": "2023-11-03T14:30:00.000Z"
+        },
+        {
+          "symbol": "UMAUSDT",
+          "onboard_at": "2023-05-09T00:00:00.000Z"
+        },
+        {
+          "symbol": "UNFIUSDT",
+          "onboard_at": "2021-02-09T07:00:00.000Z"
+        },
+        {
+          "symbol": "UNIUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "USDCUSDT",
+          "onboard_at": "2023-03-12T00:00:00.000Z"
+        },
+        {
+          "symbol": "USTCUSDT",
+          "onboard_at": "2023-11-27T12:30:00.000Z"
+        },
+        {
+          "symbol": "VETUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "WAVESUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "WAXPUSDT",
+          "onboard_at": "2023-10-18T14:45:00.000Z"
+        },
+        {
+          "symbol": "WIFUSDT",
+          "onboard_at": "2024-01-18T14:15:00.000Z"
+        },
+        {
+          "symbol": "WLDUSDT",
+          "onboard_at": "2023-07-24T12:00:00.000Z"
+        },
+        {
+          "symbol": "WOOUSDT",
+          "onboard_at": "2022-04-07T07:00:00.000Z"
+        },
+        {
+          "symbol": "XAIUSDT",
+          "onboard_at": "2024-01-09T14:00:00.000Z"
+        },
+        {
+          "symbol": "XEMUSDT",
+          "onboard_at": "2021-03-02T07:00:00.000Z"
+        },
+        {
+          "symbol": "XLMUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "XMRUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "XRPUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "XTZUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "XVGUSDT",
+          "onboard_at": "2023-07-05T12:00:00.000Z"
+        },
+        {
+          "symbol": "XVSUSDT",
+          "onboard_at": "2023-04-12T00:00:00.000Z"
+        },
+        {
+          "symbol": "YFIUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "YGGUSDT",
+          "onboard_at": "2023-08-05T03:30:00.000Z"
+        },
+        {
+          "symbol": "ZECUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ZENUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ZETAUSDT",
+          "onboard_at": "2024-02-02T08:30:00.000Z"
+        },
+        {
+          "symbol": "ZILUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ZRXUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "source_id": "WAYBACK_RULES_20240715172835",
+      "capture_url": "https://web.archive.org/web/20240715172835id_/https://www.binance.com/en/futures/trading-rules",
+      "as_of": "2024-07-15T17:28:35Z",
+      "raw_path": "data/o2-inventory/a1-wayback-review/20240715172835.bin",
+      "raw_size_bytes": 1048576,
+      "raw_sha256": "9997c73e4a555ed51f9a2d09d39de04b02b53eb3383e9a3389758048e07eed1a",
+      "cdx_digest": "HMQ4FPTJ4YAYAR7F3XY73FERP2DHC5KB",
+      "embedded_product_array_complete": false,
+      "complete_product_rows": 174,
+      "usdt_perpetual_rows": [
+        {
+          "symbol": "1000FLOKIUSDT",
+          "onboard_at": "2023-05-06T00:00:00.000Z"
+        },
+        {
+          "symbol": "1000LUNCUSDT",
+          "onboard_at": "2022-09-08T07:00:00.000Z"
+        },
+        {
+          "symbol": "1000PEPEUSDT",
+          "onboard_at": "2023-05-05T00:00:00.000Z"
+        },
+        {
+          "symbol": "1000SHIBUSDT",
+          "onboard_at": "2021-05-10T07:00:00.000Z"
+        },
+        {
+          "symbol": "1000XECUSDT",
+          "onboard_at": "2021-09-16T07:00:00.000Z"
+        },
+        {
+          "symbol": "1INCHUSDT",
+          "onboard_at": "2020-12-25T07:00:00.000Z"
+        },
+        {
+          "symbol": "AAVEUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ACHUSDT",
+          "onboard_at": "2023-02-21T07:00:00.000Z"
+        },
+        {
+          "symbol": "ADAUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ALGOUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ALICEUSDT",
+          "onboard_at": "2021-03-15T07:00:00.000Z"
+        },
+        {
+          "symbol": "ALPHAUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "AMBUSDT",
+          "onboard_at": "2023-03-29T00:00:00.000Z"
+        },
+        {
+          "symbol": "ANKRUSDT",
+          "onboard_at": "2021-01-25T07:00:00.000Z"
+        },
+        {
+          "symbol": "APEUSDT",
+          "onboard_at": "2022-03-17T07:00:00.000Z"
+        },
+        {
+          "symbol": "API3USDT",
+          "onboard_at": "2022-02-21T07:00:00.000Z"
+        },
+        {
+          "symbol": "APTUSDT",
+          "onboard_at": "2022-10-18T07:00:00.000Z"
+        },
+        {
+          "symbol": "ARBUSDT",
+          "onboard_at": "2023-03-23T07:00:00.000Z"
+        },
+        {
+          "symbol": "ARPAUSDT",
+          "onboard_at": "2021-10-18T07:00:00.000Z"
+        },
+        {
+          "symbol": "ARUSDT",
+          "onboard_at": "2021-09-28T07:00:00.000Z"
+        },
+        {
+          "symbol": "ASTRUSDT",
+          "onboard_at": "2023-02-13T07:00:00.000Z"
+        },
+        {
+          "symbol": "ATAUSDT",
+          "onboard_at": "2021-08-30T07:00:00.000Z"
+        },
+        {
+          "symbol": "ATOMUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "AVAXUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "AXSUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "BAKEUSDT",
+          "onboard_at": "2021-05-18T07:00:00.000Z"
+        },
+        {
+          "symbol": "BALUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "BANDUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "BATUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "BCHUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "BELUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "BLURUSDT",
+          "onboard_at": "2023-04-27T00:00:00.000Z"
+        },
+        {
+          "symbol": "BLZUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "BNBUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "BNXUSDT",
+          "onboard_at": "2023-02-22T07:00:00.000Z"
+        },
+        {
+          "symbol": "BTCDOMUSDT",
+          "onboard_at": "2021-06-17T07:00:00.000Z"
+        },
+        {
+          "symbol": "BTCUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "C98USDT",
+          "onboard_at": "2021-08-23T07:00:00.000Z"
+        },
+        {
+          "symbol": "CELOUSDT",
+          "onboard_at": "2021-09-26T07:00:00.000Z"
+        },
+        {
+          "symbol": "CELRUSDT",
+          "onboard_at": "2021-03-29T07:00:00.000Z"
+        },
+        {
+          "symbol": "CFXUSDT",
+          "onboard_at": "2023-02-19T07:00:00.000Z"
+        },
+        {
+          "symbol": "CHRUSDT",
+          "onboard_at": "2021-03-12T07:00:00.000Z"
+        },
+        {
+          "symbol": "CHZUSDT",
+          "onboard_at": "2021-01-21T07:00:00.000Z"
+        },
+        {
+          "symbol": "CKBUSDT",
+          "onboard_at": "2023-02-27T07:00:00.000Z"
+        },
+        {
+          "symbol": "COMBOUSDT",
+          "onboard_at": "2023-06-02T12:00:00.000Z"
+        },
+        {
+          "symbol": "COMPUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "COTIUSDT",
+          "onboard_at": "2021-03-09T07:00:00.000Z"
+        },
+        {
+          "symbol": "CRVUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "CTSIUSDT",
+          "onboard_at": "2021-10-25T07:00:00.000Z"
+        },
+        {
+          "symbol": "DARUSDT",
+          "onboard_at": "2022-04-28T07:00:00.000Z"
+        },
+        {
+          "symbol": "DASHUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "DEFIUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "DENTUSDT",
+          "onboard_at": "2021-03-23T07:00:00.000Z"
+        },
+        {
+          "symbol": "DOGEUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "DOTUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "DUSKUSDT",
+          "onboard_at": "2022-01-06T07:00:00.000Z"
+        },
+        {
+          "symbol": "DYDXUSDT",
+          "onboard_at": "2021-09-09T07:00:00.000Z"
+        },
+        {
+          "symbol": "EDUUSDT",
+          "onboard_at": "2023-04-28T00:00:00.000Z"
+        },
+        {
+          "symbol": "EGLDUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ENJUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ENSUSDT",
+          "onboard_at": "2021-11-29T07:00:00.000Z"
+        },
+        {
+          "symbol": "EOSUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ETCUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ETHUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "FETUSDT",
+          "onboard_at": "2023-01-15T07:00:00.000Z"
+        },
+        {
+          "symbol": "FILUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "FLMUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "FLOWUSDT",
+          "onboard_at": "2022-02-09T07:00:00.000Z"
+        },
+        {
+          "symbol": "FTMUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "FXSUSDT",
+          "onboard_at": "2023-01-19T07:00:00.000Z"
+        },
+        {
+          "symbol": "GALAUSDT",
+          "onboard_at": "2021-09-17T07:00:00.000Z"
+        },
+        {
+          "symbol": "GMTUSDT",
+          "onboard_at": "2022-03-14T07:00:00.000Z"
+        },
+        {
+          "symbol": "GMXUSDT",
+          "onboard_at": "2023-02-16T07:00:00.000Z"
+        },
+        {
+          "symbol": "GRTUSDT",
+          "onboard_at": "2020-12-18T07:00:00.000Z"
+        },
+        {
+          "symbol": "GTCUSDT",
+          "onboard_at": "2021-03-15T07:00:00.000Z"
+        },
+        {
+          "symbol": "HBARUSDT",
+          "onboard_at": "2021-03-17T07:00:00.000Z"
+        },
+        {
+          "symbol": "HFTUSDT",
+          "onboard_at": "2023-04-05T00:00:00.000Z"
+        },
+        {
+          "symbol": "HIGHUSDT",
+          "onboard_at": "2023-02-03T07:00:00.000Z"
+        },
+        {
+          "symbol": "HOOKUSDT",
+          "onboard_at": "2023-01-19T07:00:00.000Z"
+        },
+        {
+          "symbol": "HOTUSDT",
+          "onboard_at": "2021-03-30T07:00:00.000Z"
+        },
+        {
+          "symbol": "ICPUSDT",
+          "onboard_at": "2021-07-30T07:00:00.000Z"
+        },
+        {
+          "symbol": "ICXUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "IDUSDT",
+          "onboard_at": "2023-03-23T00:00:00.000Z"
+        },
+        {
+          "symbol": "IMXUSDT",
+          "onboard_at": "2022-02-10T07:00:00.000Z"
+        },
+        {
+          "symbol": "INJUSDT",
+          "onboard_at": "2022-08-16T07:00:00.000Z"
+        },
+        {
+          "symbol": "IOSTUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "IOTAUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "IOTXUSDT",
+          "onboard_at": "2021-08-11T07:00:00.000Z"
+        },
+        {
+          "symbol": "JASMYUSDT",
+          "onboard_at": "2022-04-19T07:00:00.000Z"
+        },
+        {
+          "symbol": "JOEUSDT",
+          "onboard_at": "2023-03-28T00:00:00.000Z"
+        },
+        {
+          "symbol": "KAVAUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "KEYUSDT",
+          "onboard_at": "2023-05-23T00:00:00.000Z"
+        },
+        {
+          "symbol": "KLAYUSDT",
+          "onboard_at": "2021-10-11T07:00:00.000Z"
+        },
+        {
+          "symbol": "KNCUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "KSMUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "LDOUSDT",
+          "onboard_at": "2022-09-21T07:00:00.000Z"
+        },
+        {
+          "symbol": "LEVERUSDT",
+          "onboard_at": "2023-03-29T00:00:00.000Z"
+        },
+        {
+          "symbol": "LINAUSDT",
+          "onboard_at": "2021-03-17T07:00:00.000Z"
+        },
+        {
+          "symbol": "LINKUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "LITUSDT",
+          "onboard_at": "2021-02-17T07:00:00.000Z"
+        },
+        {
+          "symbol": "LPTUSDT",
+          "onboard_at": "2021-11-10T07:00:00.000Z"
+        },
+        {
+          "symbol": "LQTYUSDT",
+          "onboard_at": "2023-03-08T07:00:00.000Z"
+        },
+        {
+          "symbol": "LRCUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "LTCUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "LUNA2USDT",
+          "onboard_at": "2022-09-09T07:00:00.000Z"
+        },
+        {
+          "symbol": "MAGICUSDT",
+          "onboard_at": "2023-01-23T07:00:00.000Z"
+        },
+        {
+          "symbol": "MANAUSDT",
+          "onboard_at": "2021-03-14T07:00:00.000Z"
+        },
+        {
+          "symbol": "MASKUSDT",
+          "onboard_at": "2021-07-16T07:00:00.000Z"
+        },
+        {
+          "symbol": "MATICUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "MAVUSDT",
+          "onboard_at": "2023-06-29T12:00:00.000Z"
+        },
+        {
+          "symbol": "MINAUSDT",
+          "onboard_at": "2023-02-03T07:00:00.000Z"
+        },
+        {
+          "symbol": "MKRUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "MTLUSDT",
+          "onboard_at": "2021-03-31T07:00:00.000Z"
+        },
+        {
+          "symbol": "NEARUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "NEOUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "NKNUSDT",
+          "onboard_at": "2021-04-08T07:00:00.000Z"
+        },
+        {
+          "symbol": "NMRUSDT",
+          "onboard_at": "2023-06-22T12:00:00.000Z"
+        },
+        {
+          "symbol": "OGNUSDT",
+          "onboard_at": "2021-03-31T07:00:00.000Z"
+        },
+        {
+          "symbol": "OMGUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ONEUSDT",
+          "onboard_at": "2021-03-17T07:00:00.000Z"
+        },
+        {
+          "symbol": "ONTUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "OPUSDT",
+          "onboard_at": "2022-06-01T07:00:00.000Z"
+        },
+        {
+          "symbol": "PEOPLEUSDT",
+          "onboard_at": "2021-12-23T07:00:00.000Z"
+        },
+        {
+          "symbol": "PERPUSDT",
+          "onboard_at": "2023-03-05T07:00:00.000Z"
+        },
+        {
+          "symbol": "PHBUSDT",
+          "onboard_at": "2023-02-15T07:00:00.000Z"
+        },
+        {
+          "symbol": "QNTUSDT",
+          "onboard_at": "2022-10-18T07:00:00.000Z"
+        },
+        {
+          "symbol": "QTUMUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "RDNTUSDT",
+          "onboard_at": "2023-04-04T00:00:00.000Z"
+        },
+        {
+          "symbol": "REEFUSDT",
+          "onboard_at": "2021-01-25T07:00:00.000Z"
+        },
+        {
+          "symbol": "RENUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "RLCUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "RNDRUSDT",
+          "onboard_at": "2023-02-02T07:00:00.000Z"
+        },
+        {
+          "symbol": "ROSEUSDT",
+          "onboard_at": "2021-12-31T07:00:00.000Z"
+        },
+        {
+          "symbol": "RSRUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "RUNEUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "RVNUSDT",
+          "onboard_at": "2021-02-23T07:00:00.000Z"
+        },
+        {
+          "symbol": "SANDUSDT",
+          "onboard_at": "2021-01-18T07:00:00.000Z"
+        },
+        {
+          "symbol": "SFPUSDT",
+          "onboard_at": "2021-02-24T07:00:00.000Z"
+        },
+        {
+          "symbol": "SKLUSDT",
+          "onboard_at": "2020-08-24T07:00:00.000Z"
+        },
+        {
+          "symbol": "SNXUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "SOLUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "SPELLUSDT",
+          "onboard_at": "2022-09-05T07:00:00.000Z"
+        },
+        {
+          "symbol": "SSVUSDT",
+          "onboard_at": "2023-02-23T07:00:00.000Z"
+        },
+        {
+          "symbol": "STGUSDT",
+          "onboard_at": "2022-08-24T07:00:00.000Z"
+        },
+        {
+          "symbol": "STMXUSDT",
+          "onboard_at": "2021-03-17T07:00:00.000Z"
+        },
+        {
+          "symbol": "STORJUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "STXUSDT",
+          "onboard_at": "2023-02-20T07:00:00.000Z"
+        },
+        {
+          "symbol": "SUIUSDT",
+          "onboard_at": "2023-05-03T00:00:00.000Z"
+        },
+        {
+          "symbol": "SUSHIUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "SXPUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "THETAUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "TLMUSDT",
+          "onboard_at": "2023-03-29T00:00:00.000Z"
+        },
+        {
+          "symbol": "TRBUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "TRUUSDT",
+          "onboard_at": "2023-03-06T07:00:00.000Z"
+        },
+        {
+          "symbol": "TRXUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "TUSDT",
+          "onboard_at": "2023-01-31T07:00:00.000Z"
+        },
+        {
+          "symbol": "UMAUSDT",
+          "onboard_at": "2023-05-09T00:00:00.000Z"
+        },
+        {
+          "symbol": "UNFIUSDT",
+          "onboard_at": "2021-02-09T07:00:00.000Z"
+        },
+        {
+          "symbol": "UNIUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "USDCUSDT",
+          "onboard_at": "2023-03-12T00:00:00.000Z"
+        },
+        {
+          "symbol": "VETUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "WOOUSDT",
+          "onboard_at": "2022-04-07T07:00:00.000Z"
+        },
+        {
+          "symbol": "XEMUSDT",
+          "onboard_at": "2021-03-02T07:00:00.000Z"
+        },
+        {
+          "symbol": "XLMUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "XMRUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "XRPUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "XTZUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "XVSUSDT",
+          "onboard_at": "2023-04-12T00:00:00.000Z"
+        },
+        {
+          "symbol": "YFIUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ZECUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ZENUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ZILUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        },
+        {
+          "symbol": "ZRXUSDT",
+          "onboard_at": "2019-09-25T08:00:00.000Z"
+        }
+      ]
+    }
+  ]
+}
