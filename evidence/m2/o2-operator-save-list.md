@@ -1,8 +1,32 @@
 # O2 expansion Stage A operator save list
 
-Stage A produced 200 provisional epoch candidates across 199 symbols. The candidate list is pending operator review. This short list prioritizes notices that resolve multiple boundaries or material epoch ambiguity. It reuses the existing BTCUSDT, ETHUSDT and DGBUSDT evidence ledger. The search index returned incomplete coverage, particularly for pre-2023 openings and changes between announcements. [Candidates](o2-candidates.json) · [Discovery log](o2-discovery-expansion.json) · [Existing notices](o2-notices.json)
+Stage A now contains 321 provisional epoch candidates across 319 symbols. The candidate list is pending operator review. This short list prioritizes notices that resolve multiple boundaries or material epoch ambiguity. It reuses the existing BTCUSDT, ETHUSDT and DGBUSDT evidence ledger. [Candidates](o2-candidates.json) · [Discovery log](o2-discovery-expansion.json) · [Existing notices](o2-notices.json)
 
-The candidate statuses are 148 `INDEX_HINT_ONLY`, 3 `OPERATOR_COPY_CONFIRMED` and 49 `UNVERIFIED`. The candidate list retains the two index contracts and the stablecoin pair identified by the notices. No in-scope pre-market perpetual was established by the selected sources. The index-only BNX relaunch gets a separate provisional epoch. Other unresolved lifecycle records include COCOS, DAR, FRONT and OMG. Uncertain openings, endings and symbol spellings are identified in the JSON review reasons.
+The candidate statuses are 148 `INDEX_HINT_ONLY`, 3 `OPERATOR_COPY_CONFIRMED`, 121 `SNAPSHOT_OBSERVED` and 49 `UNVERIFIED`. The candidate list retains the two index contracts and the stablecoin pair identified by the notices. Other unresolved lifecycle records include COCOS, DAR, FRONT and OMG. Uncertain openings, endings and symbol spellings are identified in the JSON review reasons.
+
+## Historical exchangeInfo evidence
+
+Two Wayback copies of the Binance USD-M exchange JSON supply dated observations. The compressed bodies are stored locally under `data/o2-inventory/snapshots-wayback/`. Their raw SHA-256 hashes and Wayback CDX digests, capture and retrieval times, original HTTP dates and separate `serverTime` values are pinned in the [snapshot evidence ledger](o2-exchangeinfo-snapshots.json).
+
+| Capture (UTC) | USDT perpetual rows | `TRADING` | `SETTLING` |
+|---|---:|---:|---:|
+| 2022-11-27 17:47:56 | 153 | 147 | 6 |
+| 2023-11-02 09:32:09 | 226 | 218 | 8 |
+
+The 379 symbol observations retain `PRICE_FILTER`, `LOT_SIZE`, `MARKET_LOT_SIZE`, `MIN_NOTIONAL` and `PERCENT_PRICE` without changing decimal strings. The Wayback capture time supplies `as_of`. Both JSON `serverTime` values precede capture. Filter validity beyond the observation needs an approved O3 rule. Earlier decisions require independently admissible evidence. [O3 evidence policy](protocol.md#o3-evidence-policy)
+
+The archive contributes 120 new symbols, including 117 observed `TRADING` at least once and three observed only `SETTLING`. The three settling-only symbols are provisional leads. Among the new symbols, 116 are observed `TRADING` inside the window. Each new in-window `TRADING` observation adds its capture month to the tentative plan. Other months remain possible until evidence resolves them. Existing evidence labels are retained for lifecycle claims, with snapshot statuses recorded separately.
+
+- **BNXUSDT.** `onboardDate` is `2022-03-31T07:00:00.000Z` in the 2022 copy and `2023-02-22T07:00:00.000Z` in the 2023 copy. The relaunch notice instead schedules trading at `2023-02-22T14:45:00Z`. Keep both timestamps and the two epoch rows.
+- **TLMUSDT.** The first copy shows `SETTLING` with `onboardDate` `2021-07-15T07:00:00.000Z`. The second shows `TRADING` with `onboardDate` `2023-03-29T00:00:00.000Z`. The indexed launch notice schedules `2023-03-30T12:30:00Z`. Keep the older observation in a separate provisional epoch and preserve the later notice time.
+
+Reproduce the ledger offline from the pinned raw bodies with this command. Compare the generated file with the committed ledger.
+
+```text
+uv run --locked python evidence/m2/extract_exchangeinfo.py --output data/o2-inventory/o2-exchangeinfo-snapshots-recheck.json
+```
+
+Coverage between snapshots and throughout 2024 remains `INCONCLUSIVE`. The directory completeness check is `BLOCKED` pending a source that enforces the cutoff before returning names. The current Binance Vision prefix may mix pre-cutoff and later symbols, and folder names lack listing dates. `INDEX_GAP` and discarded-name counts remain unknown.
 
 ## Priority notices
 
@@ -37,10 +61,10 @@ An archive key is unique by symbol, period and series. The seven series are thre
 
 | Monthly scenario | Symbol–months | HEAD | CHECKSUM GET if every HEAD succeeds | Requests if all found | Serial time at probe averages |
 |---|---:|---:|---:|---:|---:|
-| Tentative plan | 1,679 | 11,753 | 11,753 | 23,506 | 121.0 min |
-| Tentative plus all possible months | 4,768 | 33,376 | 33,376 | 66,752 | 343.6 min |
+| Tentative plan | 1,835 | 12,845 | 12,845 | 25,690 | 132.2 min |
+| Tentative plus all possible months | 7,648 | 53,536 | 53,536 | 107,072 | 551.2 min |
 
-The pacing component alone is 1,880 seconds for the tentative monthly scenario and 5,340 seconds for the wider monthly scenario. The timing calculation adds the collector's 0.08-second post-request pause to the mean observed request times from the accepted three-symbol archive log. The log has 455 HEADs averaging 0.2000 seconds and 454 CHECKSUM GETs averaging 0.2577 seconds. The local log SHA-256 is `0cb22f50393b85ef8959e6ffdd0883af1cd6faea81dae92770190140b5e2045b`. The timestamps were recorded at whole-second precision. The 12-second socket timeout, service latency changes, local overhead and a blocked host can alter wall time.
+The pacing component alone is 2,055 seconds for the tentative monthly scenario and 8,566 seconds for the wider monthly scenario. The timing calculation adds the collector's 0.08-second post-request pause to the mean observed request times from the accepted three-symbol archive log. The log has 455 HEADs averaging 0.2000 seconds and 454 CHECKSUM GETs averaging 0.2577 seconds. The local log SHA-256 is `0cb22f50393b85ef8959e6ffdd0883af1cd6faea81dae92770190140b5e2045b`. The timestamps were recorded at whole-second precision. The 12-second socket timeout, service latency changes, local overhead and a blocked host can alter wall time.
 
 Targeted daily probes are separate. The current plan has 160 unique dated boundary symbol-days, corresponding to at most 1,120 HEADs and 1,120 CHECKSUM GETs, or about 11.5 additional minutes at the same probe averages if all those keys exist. For each missing monthly key, a full-month daily fallback adds 28–31 HEADs and up to as many CHECKSUM GETs. Restrict fallback to eligible dates using the approved lifecycle evidence. The number of missing keys and final daily cost remain unresolved before Stage B.
 
