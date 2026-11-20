@@ -175,6 +175,139 @@
       "exclusions": "predeclared_before_evaluation_not_selected_after_trade_outcomes",
       "M1_semantics": "unchanged"
     },
+    "o4_strategy_policy": {
+      "version": "m2-o4-strategy-policy-v1",
+      "operator_approved_at_utc_date": "2026-11-20",
+      "status": "POLICY_APPROVED_IMPLEMENTATION_PENDING",
+      "policy": "evidence/m2/protocol.md#sc-04-strategy-and-capital-observation-semantics",
+      "universe_ref": "proposed.o2_universe_policy",
+      "evidence_ref": "proposed.o3_evidence_policy",
+      "M1_event_and_accounting_semantics": "unchanged",
+      "numeric_status": "PRD_research_candidates_not_optima_or_live_authorization",
+      "profiles": {
+        "intervals_ref": "proposed.intervals",
+        "execution": "separate_experiments_one_shared_wallet_across_symbols_per_profile",
+        "combined_signals": false,
+        "primary_and_comparison_family": "O8_OPEN_include_both_if_both_are_promotion_candidates",
+        "exploratory_secondary": "declare_with_development_selected_primary_before_evaluation",
+        "multiplicity_method": "OPEN_Holm_is_proposal_only"
+      },
+      "signal": {
+        "decision_time": "when_all_required_inputs_are_observable",
+        "computation_delay_ms": 0,
+        "delay_basis": "model_assumption",
+        "universe_snapshot": "latest_available_at_decision_record_ID_and_source_bars",
+        "arithmetic": "Decimal_strict_comparisons_equality_never_signals",
+        "long": ["O2_momentum_positive", "close_above_prior_Donchian_upper", "close_above_EMA", "ADX_above_threshold", "volume_filter_pass"],
+        "short": ["O2_momentum_negative", "close_below_prior_Donchian_lower", "close_below_EMA", "ADX_above_threshold", "volume_filter_pass"],
+        "output": "candidate_and_evidence_not_final_quantity_or_real_order"
+      },
+      "indexing_and_seeds": {
+        "parameters_ref": ["proposed.donchian_period", "proposed.ema_period", "proposed.atr_period", "proposed.adx_period", "proposed.adx_threshold", "proposed.volume_period", "proposed.volume_multiple"],
+        "Donchian": "max_high_or_min_low_i_minus_20_through_i_minus_1_exclude_signal_bar",
+        "EMA_ATR_ADX_endpoint": "completed_bar_i",
+        "volume_field": "contract_base_volume_quote_volume_only_for_O2_ranking",
+        "volume_test": "V[i-1] > 1.5 * mean(V[i-21..i-2])_nonoverlapping",
+        "EMA_seed": "mean_first_200_closes_then_standard_EMA_recurrence",
+        "ATR_DM_seed": "first_14_changes_with_previous_bar_no_invented_previous_close",
+        "Wilder": "14_observation_mean_then_(13*previous+current)/14",
+        "ADX_seed": "mean_first_14_valid_DX_values",
+        "equal_directional_moves": "both_DM_zero",
+        "zero_DI_sum": "DX_zero",
+        "zero_ATR": "not_executable"
+      },
+      "warmup": {
+        "minimum_full_contiguous_signal_bars": 200,
+        "source_bar_included": true,
+        "additional_history": "O2_daily_and_funding_requirements",
+        "state": "chronological_from_pinned_prefix_not_rolling_reseed",
+        "gap_or_relisting": "reset_and_rewarm_no_interpolation_or_epoch_stitching",
+        "stability": "seed_minimum_only_longer_warmups_require_O8_registration"
+      },
+      "entry_intent": {
+        "order_type": "MODELED_MARKET",
+        "target": "first_open_at_or_after_availability_and_submission",
+        "fill_price": "M1_target_open_model_not_signal_close",
+        "zero_lag": "following_bar_open_may_share_source_close_timestamp",
+        "validity": "single_target_open_only",
+        "rejection_cancellation_or_missing_data": "no_rollover_new_entry_requires_new_signal_M1_failure_rules_unchanged",
+        "frozen_at_decision": ["pool", "O2_candidate_order"],
+        "target_open_rechecks": ["current_status", "current_O2_membership", "current_direction", "feasibility"],
+        "no_longer_eligible": "cancel_candidate",
+        "later_snapshot_names_or_reordering": "prohibited",
+        "midnight_fixture": "00:00:01_signal_uses_previous_day_snapshot_revalidate_after_00:01_without_pool_expansion"
+      },
+      "fallback_and_positions": {
+        "fallback": "pre_authorization_rejections_only_same_O2_pool_and_opportunity",
+        "after_one_entry_authorized": "fill_outcome_cannot_select_another_symbol_at_that_opportunity",
+        "partial_fills_and_remainder": "M1_unchanged",
+        "pyramiding_or_automatic_refill_or_reversal": "prohibited",
+        "reuse_old_signal_after_exit": false,
+        "rank_removal_momentum_reversal_opposite_signal": "hold_otherwise_eligible_position_per_O2",
+        "delisting_exit_ref": "proposed.o4_delisting_exit_requirement"
+      },
+      "initial_stop": {
+        "distance": "2.5 * ATR_i_frozen_at_signal_bar",
+        "anchor_rounding_validation": "M1_actual_fill_and_SPEC_5_2_unchanged",
+        "baseline_basis": "CONTRACT_PRICE",
+        "registered_sensitivity_basis": "MARK_PRICE",
+        "live_basis": "SC13_must_match_researched_basis_CONTRACT_PRICE_evidence_not_automatic_MARK_PRICE_support",
+        "valuation_and_liquidation": "genuine_mark_klines_per_O2_O3"
+      },
+      "trailing": {
+        "long_level": "highest_contract_high_since_entry_minus_2.5_ATR_latest_completed_source_bar",
+        "short_level": "lowest_contract_low_since_entry_plus_2.5_ATR_latest_completed_source_bar",
+        "extreme_seed": "actual_entry_fill",
+        "updates": "completed_bars_while_position_survives_safety_only_ratchet_same_position_ID",
+        "pre_entry_or_prior_position_extremes": "prohibited",
+        "intrabar_ATR_updates": false,
+        "M1_Intent_distance_long": "source_close_minus_candidate_level",
+        "M1_Intent_distance_short": "candidate_level_minus_source_close",
+        "nonpositive_or_invalid_at_source_close_or_target_open": "retain_old_stop_record_M1_reason_no_assumed_activation_or_retroactive_fill",
+        "positive_lag": "M1_deferred_update_old_stop_protects_intervening_bar_and_gap"
+      },
+      "capital_observations": {
+        "measure": "cycle_equity",
+        "threshold_refs": ["settled.observation_target_usdt", "settled.halt_usdt"],
+        "cadence": "every_eligible_M1_snapshot",
+        "availability": "trigger_available_at_and_actual_M1_stage",
+        "null_availability": "audit_only",
+        "order": ["trigger_available_at", "M1_stage", "shared_ledger_event_time", "shared_ledger_sequence"],
+        "deduplication": "process_snapshot_once",
+        "late_older_than_last_evaluated_event": "audit_only_never_backdate",
+        "batch": "same_availability_time_and_M1_stage",
+        "batch_priority": "halt_at_or_below_30_before_target_at_or_above_100",
+        "qualifying_event": "earliest_event_key_for_selected_threshold",
+        "latch": "first_decision_sticky_for_cycle_later_observations_never_rewrite",
+        "after_target_losses": "retain_in_accounting_and_shortfall",
+        "post_fill": "never_retroactively_authorize_or_cancel_its_own_fill",
+        "M1_sizing_cash_availability": "unchanged",
+        "audit": ["latch", "late_discarded_snapshot", "batch_conflict"]
+      },
+      "post_latch": {
+        "contracts": ["SC-04", "SC-05"],
+        "status": "APPROVED_LINKAGE_IMPLEMENTATION_AND_FIXTURES_PENDING",
+        "activation": "observable_latch_at_valid_stage",
+        "pending_entries": "cancel_all_unfilled_entries",
+        "new_entries_and_fallback": "blocked",
+        "flat": "no_exit_intent",
+        "exposed": "reduce_only_whole_position_at_first_availability_and_stage_permitted_open",
+        "exit_stage_already_passed": "next_M1_permitted_opportunity_no_retroactive_same_open_exit",
+        "continue_until_actually_flat": ["protective_stops", "liquidation", "funding", "fees", "accounting"],
+        "settlement_guaranteed_by_latch": false,
+        "after_target": "actual_reconciled_settlement_and_O7_reserve_for_recovery_feasibility",
+        "transfer_or_automatic_restart": "prohibited"
+      },
+      "sensitivity_and_parity": {
+        "registration": "O8_before_evaluation",
+        "cadences": ["bar_close_only_not_exchange_CLOSE_ONLY", "finer_cadence"],
+        "stop_basis": "MARK_PRICE",
+        "15m_1h_live_parity": "not_assumed_match_or_exceed_planned_live_cadence_before_promotion",
+        "finer_market_evidence": "separate_data_approval_required"
+      },
+      "resolution_evidence_required": ["indicator_indexing_and_seeds", "timing_and_expiry", "midnight_snapshot_boundary", "frozen_pool_revalidation_and_fallback", "trailing_translation_ratchets_and_gaps", "delisting_deadlines", "snapshot_stage_ordering", "latch_entry_cancel_position_close_chain", "future_data_independence", "horizon_extension_shared_semantic_prefix"],
+      "out_of_scope": ["risk", "leverage", "costs_and_reserves", "numeric_freshness", "primary_profile_and_comparison_method", "terminal_window_rules"]
+    },
     "intervals": ["15m", "1h"],
     "adx_period": 14,
     "adx_threshold": "25",
@@ -201,7 +334,11 @@
       "policy_ref": "proposed.o3_evidence_policy",
       "remaining": ["freshness_limits", "numeric_sensitivity_bounds", "liquidation_buffers"]
     },
-    "O4_strategy_and_trigger_semantics": null,
+    "O4_strategy_and_trigger_semantics": {
+      "status": "POLICY_APPROVED_IMPLEMENTATION_PENDING",
+      "policy_ref": "proposed.o4_strategy_policy",
+      "remaining": ["implementation", "required_SC04_fixtures", "shared_SC05_latch_cancel_close_fixtures", "registered_sensitivities_and_cadence_parity_evidence"]
+    },
     "O5_sizing_and_preventive_risk": {
       "halt_buffer": null,
       "liquidation_buffer_rate": null,
