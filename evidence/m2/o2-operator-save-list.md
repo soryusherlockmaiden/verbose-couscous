@@ -45,6 +45,17 @@ The 173 July names also occur in March with the same reported onboard dates. Mar
 uv run --locked python evidence/m2/extract_trading_rules.py --output data/o2-inventory/o2-trading-rules-snapshots-recheck.json
 ```
 
+### Independent replay size check
+
+On 2026-11-20, two fresh GETs to the pinned Wayback identity replay URLs returned HTTP 200. Each request used `curl.exe --fail --max-filesize 67108864 --max-time 90 -H "Accept-Encoding: identity"` (64 MiB maximum per response), without a Range header or redirect following. Both transfers exited successfully. The response headers and fresh bodies are under ignored `data/o2-inventory/a1-wayback-review/recheck/`. Each response's `Memento-Datetime` matched the requested capture.
+
+| Replay response time (UTC) | Capture | Content-Length | x-archive-orig-content-length | Received bytes | Computed SHA-1 (base32), matching the recorded CDX row |
+|---|---|---:|---:|---:|---|
+| 00:52:22 | March | 1,048,576 | 1,048,576 | 1,048,576 | `6UCZ2NGLJHHKYHSB75UXYRQQ3ALOFTQT` |
+| 00:52:25 | July | 1,048,576 | 1,048,576 | 1,048,576 | `HMQ4FPTJ4YAYAR7F3XY73FERP2DHC5KB` |
+
+The full CDX-matching July body ends inside the product array. These headers and digests establish the extent of the stored representation. They do not identify which upstream component imposed the size limit. Running the extractor against the fresh bodies reproduced the committed snapshot ledger byte for byte (SHA-256 `30f7233d98c3613b729123a1c8563429dc65c7d9a9ad52a9c9932282eeb078ce`). The recheck adds zero names or epochs, so the Stage B estimates below still apply. [Recorded CDX rows](o2-a1-wayback.json)
+
 ## Priority notices
 
 | Notice | Indexed publication day | Suggested PDF filename | What to verify |
