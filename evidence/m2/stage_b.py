@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sys
+import tempfile
 import time
 from calendar import monthrange
 from collections import Counter, defaultdict
@@ -47,10 +48,16 @@ def encoded(value: Any) -> bytes:
 
 
 def save_new(path: Path, raw: bytes) -> None:
-    with path.open("xb") as stream:
+    if path.exists():
+        raise FileExistsError(path)
+    # Publish only complete files. Interrupted temporary files remain auditable.
+    with tempfile.NamedTemporaryFile(dir=path.parent, prefix="." + path.name + ".",
+                                     suffix=".tmp", delete=False) as stream:
+        temporary = Path(stream.name)
         stream.write(raw)
         stream.flush()
         os.fsync(stream.fileno())
+    temporary.replace(path)
 
 
 @contextmanager
@@ -391,10 +398,15 @@ def collect_rows(client: Client, rows: list[dict[str, Any]]) -> None:
 
 def run(root: Path, resume: bool, phase: str = "all") -> None:
     with writer_lock(root):
-        check_approval()
-        if list(root.glob("journal-*.jsonl")) and not resume:
+        existing = list(root.glob("journal-*.jsonl"))
+        if existing and not resume:
             raise ValueError("Existing run requires --resume")
+        if resume and not existing:
+            raise ValueError("Resume requires an existing journal")
+        check_approval()
         plan = initialize(root)
+        if resume:
+            validate(root, root / "resume-audit.json")
         journal = Journal(root)
         allowed = {row["url"] for row in plan["monthly"] if not row["outside"]}
         client = Client(journal, allowed)
@@ -416,6 +428,7 @@ def run(root: Path, resume: bool, phase: str = "all") -> None:
                     raise ValueError("Daily plan changed during resume")
             else:
                 save_new(path, raw)
+            if not any(row["event"] == "daily_plan" for row in journal.records):
                 journal.append("daily_plan", sha256=digest(raw), head=len(daily),
                                maximum_checksum_get=len(daily))
             print(json.dumps({"daily_head": len(daily), "daily_maximum_checksum_get": len(daily),

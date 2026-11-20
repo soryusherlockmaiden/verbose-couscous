@@ -79,6 +79,20 @@ def plan(rows: list[dict[str, Any]]) -> Any:
                             "candidates": rows})
 
 
+def approve_fixture(root: Path, monkeypatch: Any) -> None:
+    source = root / "candidates.json"
+    raw = stage.encoded({"window_start": stage.START, "cutoff_exclusive": stage.CUTOFF,
+                         "candidates": [candidate()]})
+    source.write_bytes(raw)
+    config = root / "config.json"
+    config.write_bytes(stage.encoded({"access": {}, "proposed": {"o2_stage_b_inventory": {
+        "candidate_list_sha256": stage.digest(raw), "symbols": 1, "epochs": 1,
+        "start_inclusive": stage.START, "cutoff_exclusive": stage.CUTOFF,
+    }}}))
+    monkeypatch.setattr(stage, "CANDIDATES", source)
+    monkeypatch.setattr(stage, "CONFIG", config)
+
+
 @pytest.mark.parametrize("status", [401, 403, 418, 429, 451])
 def test_host_stop_survives_restart(tmp_path: Path, status: int) -> None:
     first, journal, conn = client(tmp_path, [Response(status)])
@@ -328,9 +342,7 @@ def test_validation_reproduces_summary_and_detects_body_corruption(tmp_path: Pat
 
 
 def test_run_monthly_then_daily_resume_skips_completed_keys(tmp_path: Path, monkeypatch: Any) -> None:
-    current = plan([candidate()])
-    monkeypatch.setattr(stage, "initialize", lambda _: current)
-    monkeypatch.setattr(stage, "check_approval", lambda: None)
+    approve_fixture(tmp_path, monkeypatch)
     real_client = stage.Client
     conn = Connection([Response(404) for _ in range(500)])
     monkeypatch.setattr(stage, "Client", lambda journal, keys: real_client(
@@ -347,9 +359,7 @@ def test_run_monthly_then_daily_resume_skips_completed_keys(tmp_path: Path, monk
 
 
 def test_run_blocked_exit_and_resume_never_connect(tmp_path: Path, monkeypatch: Any) -> None:
-    current = plan([candidate()])
-    monkeypatch.setattr(stage, "initialize", lambda _: current)
-    monkeypatch.setattr(stage, "check_approval", lambda: None)
+    approve_fixture(tmp_path, monkeypatch)
     real_client = stage.Client
     conn = Connection([Response(403)])
     monkeypatch.setattr(stage, "Client", lambda journal, keys: real_client(
@@ -363,9 +373,81 @@ def test_run_blocked_exit_and_resume_never_connect(tmp_path: Path, monkeypatch: 
 
 
 def test_new_run_cannot_self_approve_another_candidate_list(tmp_path: Path, monkeypatch: Any) -> None:
-    source = tmp_path / "other-candidates.json"
-    source.write_bytes(stage.encoded({"candidates": [candidate()]}))
-    monkeypatch.setattr(stage, "CANDIDATES", source)
+    approve_fixture(tmp_path, monkeypatch)
+    stage.CANDIDATES.write_bytes(stage.encoded({
+        "window_start": stage.START, "cutoff_exclusive": stage.CUTOFF,
+        "candidates": [candidate("ETHUSDT")],
+    }))
+    monkeypatch.setattr(stage.http.client, "HTTPSConnection", lambda *args, **kwargs: pytest.fail("Network"))
     with pytest.raises(ValueError, match="operator approval"):
         stage.run(tmp_path, False)
     assert not list(tmp_path.glob("journal-*.jsonl"))
+
+
+def test_resume_refuses_a_directory_without_a_journal(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="existing journal"):
+        stage.run(tmp_path, True)
+    assert not (tmp_path / "plan.json").exists()
+    assert not list(tmp_path.glob("journal-*.jsonl"))
+
+
+def test_atomic_plan_publication_survives_interruption(tmp_path: Path, monkeypatch: Any) -> None:
+    path = tmp_path / "plan.json"
+
+    def interrupt_fsync(descriptor: int) -> None:
+        raise KeyboardInterrupt
+
+    with monkeypatch.context() as patch:
+        patch.setattr(stage.os, "fsync", interrupt_fsync)
+        with pytest.raises(KeyboardInterrupt):
+            stage.save_new(path, b"test plan\n")
+    assert not path.exists()
+    saved = list(tmp_path.glob(".plan.json.*.tmp"))
+    assert len(saved) == 1 and saved[0].read_bytes() == b"test plan\n"
+    stage.save_new(path, b"test plan\n")
+    assert path.read_bytes() == b"test plan\n"
+    with pytest.raises(FileExistsError):
+        stage.save_new(path, b"replacement")
+
+
+def test_resume_recovers_daily_file_saved_before_journal_pin(tmp_path: Path, monkeypatch: Any) -> None:
+    approve_fixture(tmp_path, monkeypatch)
+    real_client = stage.Client
+    conn = Connection([Response(404) for _ in range(500)])
+    monkeypatch.setattr(stage, "Client", lambda journal, keys: real_client(
+        journal, keys, connect=lambda: conn, pause=lambda _: None,
+    ))
+    original_append = stage.Journal.append
+
+    def interrupt_plan(journal: Any, event: str, **fields: Any) -> Any:
+        if event == "daily_plan":
+            raise KeyboardInterrupt
+        return original_append(journal, event, **fields)
+
+    monkeypatch.setattr(stage.Journal, "append", interrupt_plan)
+    with pytest.raises(KeyboardInterrupt):
+        stage.run(tmp_path, False)
+    assert (tmp_path / "daily-plan.json").exists()
+    assert len(conn.requests) == 168
+    monkeypatch.setattr(stage.Journal, "append", original_append)
+    stage.run(tmp_path, True)
+    assert len(conn.requests) == 168 + 31 * 7
+    records, _ = stage.read_journal(tmp_path)
+    assert sum(r["event"] == "daily_plan" for r in records) == 1
+    assert stage.validate(tmp_path, tmp_path / "summary.json")["run_status"] == "FINISHED"
+
+
+def test_resume_validates_existing_log_before_connecting(tmp_path: Path, monkeypatch: Any) -> None:
+    approve_fixture(tmp_path, monkeypatch)
+    stage.initialize(tmp_path)
+    journal = stage.Journal(tmp_path)
+    intent = journal.append("intent", method="HEAD", url=URL, retry_of=None)
+    journal.append("response", attempt=intent["seq"], method="GET", url=URL + ".CHECKSUM",
+                   http_status=200, content_length="100")
+    journal.close()
+    original = journal.path.read_bytes()
+    monkeypatch.setattr(stage.http.client, "HTTPSConnection", lambda *args, **kwargs: pytest.fail("Network"))
+    with pytest.raises(ValueError, match="response linkage"):
+        stage.run(tmp_path, True)
+    assert journal.path.read_bytes() == original
+    assert len(list(tmp_path.glob("journal-*.jsonl"))) == 1
