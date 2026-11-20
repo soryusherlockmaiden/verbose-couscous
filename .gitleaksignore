@@ -1,0 +1,3 @@
+# Computed SHA-256 of the public config/m2.json access object, not a credential.
+# Verified against stage_b.encoded(config["access"]); scope is one commit/file/rule/line.
+055f440613ce8fba48a06d494e36481cfd4f7ed2:evidence/m2/o2-stage-b-summary.json:generic-api-key:6

@@ -198,9 +198,11 @@ The monthly review copied closed journal segments to a separate ignored audit di
 .venv/Scripts/python.exe evidence/m2/stage_b.py validate --work-dir data/o2-stage-b-20261120 --output evidence/m2/o2-stage-b-summary.json
 .venv/Scripts/python.exe evidence/m2/stage_b.py validate --work-dir data/o2-stage-b-20261120 --verify-summary evidence/m2/o2-stage-b-summary.json
 docker compose -p acgs-o2-stage-b --profile check config --quiet
-docker run --rm --env GIT_CONFIG_COUNT=1 --env GIT_CONFIG_KEY_0=safe.directory --env GIT_CONFIG_VALUE_0=/repo --volume "C:/dev/acgs:/repo:ro" ghcr.io/gitleaks/gitleaks:v8.24.3@sha256:e1b35e12a8c6fa8901f060459cfb6b2fc4c484d3afbe3b029733a3bbfab07055 git --redact --log-opts=--all /repo
+docker run --rm --env GIT_CONFIG_COUNT=1 --env GIT_CONFIG_KEY_0=safe.directory --env GIT_CONFIG_VALUE_0=/repo --volume "C:/dev/acgs:/repo:ro" ghcr.io/gitleaks/gitleaks:v8.24.3@sha256:e1b35e12a8c6fa8901f060459cfb6b2fc4c484d3afbe3b029733a3bbfab07055 git --redact --gitleaks-ignore-path=/repo/.gitleaksignore --log-opts=--all /repo
 git diff --check
 ```
+
+The initial full-history scan of evidence commit `055f440` flagged `generic-api-key` on summary line 6. Recomputing the value established that it is the SHA-256 of the public `config/m2.json` access object, serialized by `stage_b.encoded`. `.gitleaksignore` records only that commit/file/rule/line fingerprint. CI passes its absolute path explicitly. The standard rules, full-history scan and tool pin remain enabled. A synthetic credential detection check verifies that the generic rule remains active.
 
 ## Handoff
 

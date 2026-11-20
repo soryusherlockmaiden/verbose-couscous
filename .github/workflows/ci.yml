@@ -51,4 +51,4 @@ jobs:
           --env GIT_CONFIG_KEY_0=safe.directory
           --env GIT_CONFIG_VALUE_0=/repo
           --volume "${{ github.workspace }}:/repo:ro"
-          ghcr.io/gitleaks/gitleaks:v8.24.3@sha256:e1b35e12a8c6fa8901f060459cfb6b2fc4c484d3afbe3b029733a3bbfab07055 git --redact --log-opts=--all /repo
+          ghcr.io/gitleaks/gitleaks:v8.24.3@sha256:e1b35e12a8c6fa8901f060459cfb6b2fc4c484d3afbe3b029733a3bbfab07055 git --redact --gitleaks-ignore-path=/repo/.gitleaksignore --log-opts=--all /repo
