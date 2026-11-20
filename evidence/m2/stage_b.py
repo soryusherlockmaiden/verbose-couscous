@@ -439,10 +439,10 @@ def run(root: Path, resume: bool, phase: str = "all") -> None:
 def validate(root: Path, output: Path, expected: Path | None = None) -> dict[str, Any]:
     """Rebuild all observations from the pinned plan and durable journal."""
     plan = initialize(root)
-    records, torn = read_journal(root)
     monthly_allowed = {row["url"] for row in plan["monthly"] if not row["outside"]}
     # Constructing the offline reader opens no connections.
     reader = Journal(root, read_only=True)
+    records, torn = reader.records, reader.torn
     client = Client(reader, monthly_allowed)
     monthly = [result(row, client) for row in plan["monthly"]]
     daily = daily_plan(plan, monthly) if (root / "daily-plan.json").exists() else []
