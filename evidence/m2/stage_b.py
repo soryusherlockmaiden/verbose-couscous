@@ -329,11 +329,13 @@ def result(row: dict[str, Any], client: Client) -> dict[str, Any]:
         issue = "CHECKSUM_UNAVAILABLE"
         if checksum:
             outcome["checksum_http_status"] = checksum["http_status"]
-            if done:
+            if checksum["http_status"] != 200:
+                issue = f"CHECKSUM_HTTP_{checksum['http_status']}"
+            elif done:
                 body = base64.b64decode(done["body_base64"], validate=True)
                 match = re.fullmatch(rb"([a-fA-F0-9]{64})[ \t]+\*?([!-~]+)[ \t]*", body.strip())
                 issue = done["issue"] or "CHECKSUM_CONTENT_INVALID"
-                if checksum["http_status"] == 200 and not done["issue"] and match:
+                if not done["issue"] and match:
                     if match[2] == row["url"].rsplit("/", 1)[-1].encode("ascii"):
                         outcome["sha256"] = match[1].decode("ascii").lower()
                         issue = ""

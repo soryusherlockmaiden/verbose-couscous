@@ -214,6 +214,17 @@ def test_checksum_requires_head_and_caps_body(tmp_path: Path) -> None:
     assert outcome["checksum_issue"] == "CHECKSUM_RESPONSE_TOO_LARGE_OR_INVALID_LENGTH"
 
 
+@pytest.mark.parametrize("status", [302, 404, 500])
+def test_checksum_http_error_preserves_found_archive(tmp_path: Path, status: int) -> None:
+    current, journal, _ = client(tmp_path, [Response(), Response(status)])
+    current.check("HEAD", URL)
+    current.check("GET", URL + ".CHECKSUM")
+    outcome = stage.result({"url": URL}, current)
+    journal.close()
+    assert outcome["status"] == "FOUND" and outcome["sha256"] is None
+    assert outcome["checksum_issue"] == f"CHECKSUM_HTTP_{status}"
+
+
 def test_shared_epoch_bundle_is_requested_once() -> None:
     current = plan([candidate(epoch="old"), candidate(epoch="new")])
     assert len(current["monthly"]) == 168

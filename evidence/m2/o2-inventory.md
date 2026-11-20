@@ -133,13 +133,13 @@ The original three-probe `archives` and `notices` commands and `finalize.py` ret
 
 ### Stage B implementation checks
 
-Before the live monthly run, the mocked connection suite verified scope refusals, persistent host stops, CHECKSUM limits, final-response reuse and bounded retries. Follow-up integration cases verify the intentional monthly-to-daily pause, nonzero BLOCKED exit and the approved candidate-list hash. The final suite contains 342 tests, including 29 Stage B cases. Native Windows and Docker Linux passed. One intermediate Docker run failed because a test read a candidate artifact absent from the image. Replacing that test input with a synthetic candidate list preserved its rejection assertion, and the complete Docker suite then passed. Mypy checks all 32 files under `src` and `evidence/m2` in both environments.
+Before the live monthly run, the mocked connection suite verified scope refusals, persistent host stops, CHECKSUM limits, final-response reuse and bounded retries. Follow-up integration cases verify the intentional monthly-to-daily pause, nonzero BLOCKED exit and the approved candidate-list hash. HTTP failures retrieving CHECKSUM are distinguished from malformed CHECKSUM bytes while preserving FOUND for a successful ZIP HEAD. The final suite contains 345 tests, including 32 Stage B cases. Native Windows and Docker Linux passed. One intermediate Docker run failed because a test read a candidate artifact absent from the image. Replacing that test input with a synthetic candidate list preserved its rejection assertion, and the complete Docker suite then passed. Mypy checks all 32 files under `src` and `evidence/m2` in both environments.
 
 ```text
 uv sync --locked
 .venv/Scripts/python.exe -m ruff check .
 .venv/Scripts/python.exe -m mypy src evidence/m2
-.venv/Scripts/python.exe -m pytest -q --basetemp=data/o2-stage-b-pytest-approved
+.venv/Scripts/python.exe -m pytest -q --basetemp=data/o2-stage-b-pytest-checksum-final
 docker compose -p acgs-o2-stage-b --profile check build acgs check
 docker compose -p acgs-o2-stage-b --profile check build check
 docker compose -p acgs-o2-stage-b --profile check run --rm check
@@ -149,6 +149,12 @@ git diff --check
 ```
 
 The two smoke runs recorded and replayed `35be0f1204fa4a70ff517a6643703bfbc657ee64b8cd0827682a183d3db7bc34`. The existing `access` object and M1 semantic pin match the Stage B base commit. The pinned Gitleaks v8.24.3 image scanned 111 commits without leaks before the phase-resume follow-up. Final artifact pins and final-commit checks follow collection.
+
+The Compose entry point was also exercised offline with the checkout mounted read-only and a separate writable experiment directory under `data/`. It produced a plan byte-identical to the native Windows plan, SHA-256 `854f687ca6c1af3ecf8109c8119f1f5a9e0c86515085e6634d24c038d67288e2`. The following is the exact Windows-host command used. On Linux or WSL, substitute the checkout's absolute Linux path for `C:/dev/acgs` in both mounts. Use a separate run directory for concurrent experiments.
+
+```text
+docker compose -p acgs-o2-stage-b --profile check run --rm --volume "C:/dev/acgs:/workspace:ro" --volume "C:/dev/acgs/data:/workspace/data" --workdir /workspace check /app/.venv/bin/python evidence/m2/stage_b.py plan --work-dir data/o2-stage-b-docker-plan
+```
 
 ## Handoff
 
