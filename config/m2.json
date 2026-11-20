@@ -196,7 +196,11 @@
       "policy_ref": "proposed.o2_universe_policy",
       "remaining": ["implementation_and_regression_tests", "approved_manifest_and_payload_eligibility", "O3_numeric_and_O4_O5_dependencies"]
     },
-    "O3_provenance_policy": null,
+    "O3_provenance_policy": {
+      "status": "POLICY_APPROVED_NUMERIC_OPEN",
+      "policy_ref": "proposed.o3_evidence_policy",
+      "remaining": ["freshness_limits", "numeric_sensitivity_bounds", "liquidation_buffers"]
+    },
     "O4_strategy_and_trigger_semantics": null,
     "O5_sizing_and_preventive_risk": {
       "halt_buffer": null,
