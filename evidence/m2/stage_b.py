@@ -385,7 +385,7 @@ def run(root: Path, resume: bool, phase: str = "all") -> None:
             if client.stopped:
                 raise HostStopped("Resume refused by persistent host stop latch")
             lifecycle = [r for r in journal.records if r["event"] in
-                         ("start", "resume", "finish", "stop", "interruption")]
+                         ("start", "resume", "finish", "monthly_finished", "stop", "interruption")]
             if lifecycle and lifecycle[-1]["event"] in ("start", "resume"):
                 journal.append("unclean_termination", prior_session=lifecycle[-1]["seq"])
             journal.append("resume" if resume else "start", torn_segments=journal.torn)
@@ -412,6 +412,7 @@ def run(root: Path, resume: bool, phase: str = "all") -> None:
         except HostStopped as error:
             journal.append("stop", reason=str(error))
             print(str(error), flush=True)
+            raise SystemExit(2) from error
         except BaseException as error:
             journal.append("interruption", reason=type(error).__name__)
             raise
@@ -526,7 +527,8 @@ def validate(root: Path, output: Path, expected: Path | None = None) -> dict[str
         if path.exists():
             artifacts[name] = {"sha256": digest(path.read_bytes()), "bytes": path.stat().st_size}
     events = [row for row in records if row["event"] in
-              ("start", "resume", "finish", "stop", "interruption", "unclean_termination", "daily_plan")]
+              ("start", "resume", "finish", "monthly_finished", "stop", "interruption",
+               "unclean_termination", "daily_plan")]
     report = {
         "version": "m2-o2-stage-b-summary-v1", "pins": input_pins(),
         "exchange_wide_completeness": "INCONCLUSIVE", "market_payload_bytes_downloaded": 0,

@@ -309,3 +309,36 @@ def test_validation_reproduces_summary_and_detects_body_corruption(tmp_path: Pat
     journal.path.write_bytes(b"".join(stage.encoded(r) for r in data))
     with pytest.raises(ValueError, match="CHECKSUM bytes"):
         stage.validate(tmp_path, tmp_path / "summary.json")
+
+
+def test_run_monthly_then_daily_resume_skips_completed_keys(tmp_path: Path, monkeypatch: Any) -> None:
+    current = plan([candidate()])
+    monkeypatch.setattr(stage, "initialize", lambda _: current)
+    real_client = stage.Client
+    conn = Connection([Response(404) for _ in range(500)])
+    monkeypatch.setattr(stage, "Client", lambda journal, keys: real_client(
+        journal, keys, connect=lambda: conn, pause=lambda _: None,
+    ))
+    stage.run(tmp_path, False, "monthly")
+    assert len(conn.requests) == 168
+    stage.run(tmp_path, True)
+    assert len(conn.requests) == 168 + 31 * 7
+    assert len(set(conn.requests)) == len(conn.requests)
+    records, _ = stage.read_journal(tmp_path)
+    assert not any(r["event"] == "unclean_termination" for r in records)
+    assert records[-1]["event"] == "finish"
+
+
+def test_run_blocked_exit_and_resume_never_connect(tmp_path: Path, monkeypatch: Any) -> None:
+    current = plan([candidate()])
+    monkeypatch.setattr(stage, "initialize", lambda _: current)
+    real_client = stage.Client
+    conn = Connection([Response(403)])
+    monkeypatch.setattr(stage, "Client", lambda journal, keys: real_client(
+        journal, keys, connect=lambda: conn, pause=lambda _: None,
+    ))
+    for resume in (False, True):
+        with pytest.raises(SystemExit) as stopped:
+            stage.run(tmp_path, resume)
+        assert stopped.value.code == 2
+    assert len(conn.requests) == 1
