@@ -32,7 +32,7 @@ M1_REF = "evidence/m1/binance-2024.json"
 MAX_NOTICE_BYTES = 8 * 1024 * 1024
 ARCHIVE_KEY = re.compile(
     r"/data/futures/um/(monthly|daily)/(klines|markPriceKlines|fundingRate)/"
-    r"(BTCUSDT|ETHUSDT|DGBUSDT)/(?:([0-9]+[mhd])/)?[^/]+\.zip"
+    r"([A-Z0-9]+)/(?:([0-9]+[mhd])/)?[^/]+\.zip"
 )
 
 
@@ -54,7 +54,10 @@ def checksum_path(root: Path, zip_url: str) -> Path:
     return root / "checksums" / (urlsplit(zip_url).path.lstrip("/") + ".CHECKSUM")
 
 
-def request_path(host: str, method: str, url: str, limit: int, notice_urls: Collection[str] = ()) -> str:
+def request_path(
+    host: str, method: str, url: str, limit: int, notice_urls: Collection[str] = (),
+    inventory_keys: Collection[str] | None = None,
+) -> str:
     """Allow only direct keys from the approved inventory and the selected notices."""
     parsed = urlsplit(url)
     if parsed.scheme != "https" or parsed.netloc != host or parsed.query or parsed.fragment:
@@ -67,10 +70,14 @@ def request_path(host: str, method: str, url: str, limit: int, notice_urls: Coll
         else:
             raise ValueError("Archive requests permit only HEAD ZIP and GET CHECKSUM")
         path = urlsplit(zip_url).path
+        if inventory_keys is not None and zip_url not in inventory_keys:
+            raise ValueError("Archive key is absent from the approved plan")
         match = ARCHIVE_KEY.fullmatch(path)
         if match is None:
             raise ValueError("Expected an exact archive key")
         period, kind, symbol, interval = match.groups()
+        if inventory_keys is None and symbol not in SYMBOLS:
+            raise ValueError("Symbol is outside the original three probes")
         prefix = f"{symbol}-{interval or kind}-"
         filename = path.rsplit("/", 1)[-1]
         label = filename.removeprefix(prefix).removesuffix(".zip")
@@ -258,13 +265,22 @@ def collect_notices() -> None:
 def main() -> None:
     global ROOT
     parser = argparse.ArgumentParser(description=__doc__ or "Collect approved O2 metadata only")
-    parser.add_argument("source", choices=("archives", "notices"))
+    parser.add_argument("source", choices=("archives", "notices", "stage-b"))
     parser.add_argument("--work-dir", type=Path, required=True, help="New run directory under data/")
+    parser.add_argument("--resume", action="store_true", help="Resume a pinned Stage B run")
+    parser.add_argument("--phase", choices=("monthly", "all"), default="all")
     args = parser.parse_args()
     ROOT = args.work_dir.resolve()
     if not ROOT.is_relative_to(Path("data").resolve()) or ROOT == Path("data").resolve():
         parser.error("--work-dir must be below data/")
     ROOT.mkdir(parents=True, exist_ok=True)
+    if args.source == "stage-b":
+        from stage_b import run
+
+        run(ROOT, args.resume, args.phase)
+        return
+    if args.resume or args.phase != "all":
+        parser.error("--resume and --phase apply to stage-b only")
     (collect_archives if args.source == "archives" else collect_notices)()
 
 

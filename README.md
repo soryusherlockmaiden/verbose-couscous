@@ -140,6 +140,8 @@ For `TRAIL`, `time` is the source bar's closing boundary and `available` may fol
 
 The draft research protocol and data audit record the proposed windows and operator decisions. Approve the development and validation windows and research cutoff first. Set the prospective holdout dates after checking filter, maintenance-tier and spread coverage on approved research inputs. The Phase A entry point serves approved development and validation and keeps holdout sealed. [Draft research protocol](evidence/m2/protocol.md) · [Data audit](evidence/m2/data-audit.md)
 
+The approved O2 Stage B metadata inventory has a separate resumable collector. It checks exact archive keys and CHECKSUM sidecars within the pinned candidate scope. Its commands and offline validator are documented in the [inventory method](evidence/m2/o2-inventory.md#stage-b-expanded-metadata-inventory). Research manifests and evaluation retain their own approval gates.
+
 Generate and audit a synthetic manifest from the repository root.
 
 ```text

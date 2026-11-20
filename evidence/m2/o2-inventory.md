@@ -102,10 +102,140 @@ docker compose -p acgs-o2-notices-ci --profile check run --rm check
 git diff --check
 ```
 
+## Stage B expanded metadata inventory
+
+The operator approved the provisional 340 symbols / 342 epochs on 2026-11-20 UTC for metadata collection over [2023-01-01, 2025-01-01), including planned and all possibly active months. The initial physical plan has 57,064 monthly HEAD keys and at most 57,064 CHECKSUM GETs. Another 56 monthly keys are proven outside the DGBUSDT active period and skipped. Shared BNXUSDT and TLMUSDT keys are collected once and associated with each relevant provisional epoch. Their contents remain unallocated across epochs.
+
+The Stage B entry point extends `collect.py` through `stage_b.py`. It allows direct ZIP HEADs and CHECKSUM GETs up to 2 KB on `data.binance.vision`, preserves the existing 0.08-second pause and 12-second socket timeout, and checks the full source bundle against the registered seal before sending. Responses to HEAD carry no downloaded market payload. The collector follows no redirects and has no directory-listing operation. A final HTTP response is retained across resume, including errors. A 401/403/418/429/451 latches the host stop across restarts. Clearing that latch requires a separate operator decision.
+
+An OS lock permits one writer per run directory and releases after process death. The collector pins candidate, seal, access and generated-plan hashes. Complete plan and pin files are published by atomic rename after flushing their temporary files. An interrupted temporary file remains under `data/`, while the canonical path stays unpublished. Journal segments are append-only. Each request has a durable intent, a durable response-header record and, when available, a completion record with the raw CHECKSUM body encoded as base64 and its hash. CHECKSUM bytes in this journal remain under ignored `data/`. This representation also preserves malformed CHECKSUM evidence within the 2 KB cap. HEAD must succeed before its CHECKSUM can be requested. If a process dies after receiving a response but before the response record becomes durable, one retry is possible. Each unanswered operation has at most two attempts across all resumes. A recorded response with a missing body is reported without a repeated request. A torn final journal line is preserved, pinned and disclosed in the next segment. Corruption in a completed line fails validation.
+
+Resume requires an existing journal and audits its request linkage, scope, ordering, CHECKSUM bytes and plan pins before opening a connection. It recovers the interruption window between publication of the daily-plan file and recording its journal pin. An unclean-termination timestamp denotes detection at resume, with the last durable event bounding the prior stop. Interrupted temporary files and original journal bytes are preserved.
+
+An error writing or syncing a journal aborts its writer. The collector closes the affected stream and handles recovery from the persisted prefix on resume. Storage errors propagate separately from transport failures. This prevents a failed persistence operation from causing another network request or an overlapping record sequence.
+
+Run these commands from the repository root. `plan` performs no network requests. The monthly phase saves the daily plan and prints its request estimate. After reporting that estimate, resume with `--phase all` to execute the already-approved daily phase. A recorded host stop refuses resume before opening a connection. A normal return to the terminal does not establish complete coverage; inspect the validator's remaining operations and UNVERIFIED counts.
+
+```text
+uv run --locked python evidence/m2/stage_b.py plan --work-dir data/o2-stage-b-20261120
+uv run --locked python evidence/m2/collect.py stage-b --work-dir data/o2-stage-b-20261120 --phase monthly
+uv run --locked python evidence/m2/collect.py stage-b --work-dir data/o2-stage-b-20261120 --resume --phase all
+uv run --locked python evidence/m2/stage_b.py validate --work-dir data/o2-stage-b-20261120 --output data/o2-stage-b-20261120/summary.json
+```
+
+Daily fallback is limited to missing monthly keys in the tentative plan. Possibly active months with NOT_FOUND monthly keys retain that result. A dated notice's effective listing or settlement/delisting day can also select a boundary probe within the tentative plan. Indexed notices retain INDEX_HINT_ONLY status, and their probe dates supply no proven active-period bounds. Publication dates and disputed onboard observations do not supply boundary probes. The accepted DGBUSDT daily boundary excludes dates after 2024-04-01. Proven outside-active months are excluded before requests.
+
+FOUND establishes the presence of the physical archive for a symbol, month or day and series. CHECKSUM availability and validity are reported independently. NOT_FOUND establishes that the requested key was unavailable at observation. It supplies no inactivity decision. Listing and delisting instants, intra-month candle and funding continuity and epoch allocation require separate evidence. Exchange-wide completeness remains INCONCLUSIVE because Stage B cannot discover symbols absent from the approved list.
+
+The offline validator regenerates every expected key and observation from the pinned inputs and journal, checks retry linkage and final-response reuse, validates stop-latch enforcement, CHECKSUM bytes and request ordering, and writes per-key `results.jsonl` under the run directory. The committed summary pins artifact hashes, sizes and row counts and reports per-epoch series coverage, CHECKSUM issues, daily results, duration, interruptions and remaining operations. To compare a committed summary with local evidence, use the following command.
+
+```text
+uv run --locked python evidence/m2/stage_b.py validate --work-dir data/o2-stage-b-20261120 --verify-summary evidence/m2/o2-stage-b-summary.json
+```
+
+The original three-probe `archives` and `notices` commands and `finalize.py` retain their original scope. Stage B uses its dedicated offline validator. Research manifest approval, payload access, scoring windows, O2 step 2 and O3 numeric choices retain their separate gates.
+
+### Stage B implementation checks
+
+Before the live monthly run, the mocked connection suite verified scope refusals, persistent host stops, CHECKSUM limits, final-response reuse and bounded retries. Follow-up integration cases verify the intentional monthly-to-daily pause, nonzero BLOCKED exit, approved candidate-list hash, atomic publication, plan-pin crash window and pre-network resume audit. HTTP failures retrieving CHECKSUM are distinguished from malformed CHECKSUM bytes while preserving FOUND for a successful ZIP HEAD. At implementation commit `28fe13b`, the suite contained 353 tests, including 40 Stage B cases. Native Windows and Docker Linux passed. One intermediate Docker run failed because a test read a candidate artifact absent from the image. Replacing that test input with a synthetic candidate list preserved its rejection assertion, and the complete Docker suite then passed. Two fault-injection regressions initially failed when partial journal writes and sync failures were treated as transport failures. After separating fatal journal errors, both regressions passed and recovery preserved record sequences. An additional regression reproduced rejection of a valid close-delimited CHECKSUM without Content-Length. Short EOF-terminated responses now pass, while an oversized response is cut off at 2 KB and reported. Those mypy checks covered 32 files under `src` and `evidence/m2` in both environments. Stage B fixtures reject live connections. Supplemental-probe verification below adds one typed helper and fourteen test cases.
+
+```text
+uv sync --locked
+.venv/Scripts/python.exe -m ruff check .
+.venv/Scripts/python.exe -m mypy src evidence/m2
+.venv/Scripts/python.exe -m pytest -q --basetemp=data/o2-stage-b-pytest-http-final
+docker compose -p acgs-o2-stage-b --profile check build acgs check
+docker compose -p acgs-o2-stage-b --profile check build check
+docker compose -p acgs-o2-stage-b --profile check run --rm check
+docker compose -p acgs-o2-stage-b run --rm acgs smoke
+docker compose -p acgs-o2-stage-b run --rm acgs smoke
+git diff --check
+```
+
+The two smoke runs recorded and replayed `35be0f1204fa4a70ff517a6643703bfbc657ee64b8cd0827682a183d3db7bc34`. The existing `access` object and M1 semantic pin match the Stage B base commit. The pinned Gitleaks v8.24.3 image scanned 111 commits without leaks before the phase-resume follow-up. Hosted CI for implementation commit `28fe13b` passed all jobs: [run 44669156310](https://github.com/soryusherlockmaiden/verbose-couscous/actions/runs/44669156310). The final evidence commit changes documentation and generated metadata only; implementation checks are not repeated locally without a code change. Its hosted CI and full-history secret scan provide the final-commit checks.
+
+The monthly live process was launched from the working tree before commit `99e6a05`. Further hardening covers startup approval, resume auditing, plan publication and storage-failure handling. Resumed sessions load the branch code at invocation. The final offline validator reconstructs observations from the saved request and response records.
+
+The first process ended without a lifecycle stop record after the last durable completion at `2026-11-20T04:30:26.857532Z`. The journal does not establish the termination cause. Offline validation found 37,625 intents, responses and completions, no unanswered request, no retry and no torn line. Of 21,951 monthly HEAD responses, 15,674 were FOUND and 6,277 were NOT_FOUND; 35,113 monthly HEAD keys remained. There was no HTTP host-stop response. The original journal segment was preserved. Resume from commit `28fe13b` recorded detection of the unclean termination at `2026-11-20T05:57:18.854323Z`, then resumed the same run in a new append-only segment. Recorded final responses were reused without another network request.
+
+At the operator's request, the agent stopped its collector after the final response completion at `2026-11-20T06:18:20.987299Z`. One subsequent CHECKSUM intent had no recorded response. The operator resumed collection in their own terminal at `2026-11-20T06:20:14.404028Z`. That unanswered intent was retried once and completed. The agent performed offline validation without monitoring the operator's network process.
+
+```text
+.venv/Scripts/python.exe evidence/m2/stage_b.py validate --work-dir data/o2-stage-b-20261120 --output data/o2-stage-b-20261120/interruption-audit.json
+.venv/Scripts/python.exe evidence/m2/collect.py stage-b --work-dir data/o2-stage-b-20261120 --resume --phase monthly
+```
+
+The Compose entry point was also exercised offline with the checkout mounted read-only and a separate writable experiment directory under `data/`. It produced a plan byte-identical to the native Windows plan, SHA-256 `854f687ca6c1af3ecf8109c8119f1f5a9e0c86515085e6634d24c038d67288e2`. The following is the exact Windows-host command used. On Linux or WSL, substitute the checkout's absolute Linux path for `C:/dev/acgs` in both mounts. Use a separate run directory for concurrent experiments.
+
+```text
+docker compose -p acgs-o2-stage-b --profile check run --rm --volume "C:/dev/acgs:/workspace:ro" --volume "C:/dev/acgs/data:/workspace/data" --workdir /workspace check /app/.venv/bin/python evidence/m2/stage_b.py plan --work-dir data/o2-stage-b-docker-plan
+```
+
+### Stage B observed results (2026-11-20 UTC)
+
+**Assessment: INCONCLUSIVE.** The collector reached its terminal `finish` event with one monthly operation still UNVERIFIED after its retry allowance was exhausted. A separately approved supplemental probe subsequently resolved that key; the original run and summary remain unchanged. The provisional list's exchange-wide completeness remains INCONCLUSIVE. These metadata results do not authorize research manifests, market payload downloads or evaluation.
+
+The run started at `2026-11-20T01:29:16.288045Z`, closed the monthly phase at `2026-11-20T10:53:54.448615Z`, and recorded `finish` at `2026-11-20T11:56:10.552136Z`. Total wall time was 37,614.264091 seconds (10 h 26 min 54 s), including the interruptions and the monthly-to-daily handoff. The daily session resumed at `2026-11-20T11:02:52.432979Z`. Its pinned estimate was 9,376 HEADs and at most 9,376 CHECKSUM GETs, reported before the operator started that session.
+
+| Physical archive keys | FOUND | NOT_FOUND | UNVERIFIED | OUTSIDE_ACTIVE_PERIOD | Total |
+|---|---:|---:|---:|---:|---:|
+| Monthly | 40,667 | 16,396 | 1 | 56 | 57,120 |
+| Daily | 954 | 8,422 | 0 | 0 | 9,376 |
+
+All 41,621 FOUND keys have valid saved CHECKSUM evidence; there are no CHECKSUM issues. All 33 SHA-256 pins in the accepted M1 `binance-2024.json` match the monthly metadata. Presence and checksum agreement do not establish candle or funding continuity. NOT_FOUND remains an observation about the requested archive key rather than an inactivity decision. The 56 outside-active monthly keys were skipped before requests.
+
+There were 108,063 request intents to `data.binance.vision`: 66,441 HEADs and 41,622 CHECKSUM GETs. Of 108,060 recorded responses, 83,242 were HTTP 200 and 24,818 were HTTP 404. HEAD responses were 41,621 HTTP 200 and 24,818 HTTP 404; every one of the 41,621 GET responses was HTTP 200. No host-stop status or redirect was observed, and no journal segment was torn. Two retry intents were recorded. Three attempts have no response record: the interrupted CHECKSUM subsequently completed by retry, and both failed HEAD attempts described below. There are no repeated requests after recorded final responses. Downloaded market payload bytes: **0**.
+
+The remaining key in the original run is `monthly/markPriceKlines/HIGHUSDT/15m/HIGHUSDT-15m-2023-09.zip`. Its first HEAD failed with `RemoteDisconnected` at `2026-11-20T09:03:24.048361Z`; its one retry failed with `gaierror` at `2026-11-20T09:03:36.224481Z`. September is a possible additional month for this epoch, not a planned month. No daily fallback is authorized for that uncertainty. `--phase all` preserves the exhausted retry budget and does not retry it again. The separate approval and observation below retain this original uncertainty and its journal.
+
+The validator therefore reports `run_status=INTERRUPTED_OR_INCOMPLETE`, `remaining.head=1` and no outstanding CHECKSUM GET for FOUND keys, despite the terminal `finish` event. This status reflects unresolved evidence and does not mean the daily process is still running. Do not replace it with FINISHED or silently reset the retry budget.
+
+[Machine-readable summary](o2-stage-b-summary.json) pins the raw artifacts under ignored `data/o2-stage-b-20261120/`. The full matrix has 66,496 physical rows, 31,572,521 bytes and SHA-256 `a91c4ab5bcd67d79b54275667955beae65d3b3a1014e272027ac6ac100004933`. It exceeds the 5 MB commit limit and remains outside git. The summary records per-epoch series counts, found months, daily results, artifact hashes, request counts and lifecycle events. Shared BNXUSDT and TLMUSDT keys remain unallocated across epochs.
+
+The monthly review copied closed journal segments to a separate ignored audit directory while the operator continued daily collection. The final offline commands regenerate the complete evidence and compare the committed summary with the saved journal. Both checks perform no network requests.
+
+```text
+.venv/Scripts/python.exe evidence/m2/stage_b.py validate --work-dir data/o2-stage-b-20261120 --output evidence/m2/o2-stage-b-summary.json
+.venv/Scripts/python.exe evidence/m2/stage_b.py validate --work-dir data/o2-stage-b-20261120 --verify-summary evidence/m2/o2-stage-b-summary.json
+docker compose -p acgs-o2-stage-b --profile check config --quiet
+docker run --rm --env GIT_CONFIG_COUNT=1 --env GIT_CONFIG_KEY_0=safe.directory --env GIT_CONFIG_VALUE_0=/repo --volume "C:/dev/acgs:/repo:ro" ghcr.io/gitleaks/gitleaks:v8.24.3@sha256:e1b35e12a8c6fa8901f060459cfb6b2fc4c484d3afbe3b029733a3bbfab07055 git --redact --gitleaks-ignore-path=/repo/.gitleaksignore --log-opts=--all /repo
+git diff --check
+```
+
+The initial full-history scan of evidence commit `055f440` flagged `generic-api-key` on summary line 6. Recomputing the value established that it is the SHA-256 of the public `config/m2.json` access object, serialized by `stage_b.encoded`. `.gitleaksignore` records only that commit/file/rule/line fingerprint. CI passes its absolute path explicitly. The standard rules, full-history scan and tool pin remain enabled. A synthetic credential detection check verifies that the generic rule remains active.
+
+### Supplemental HIGHUSDT observation (2026-11-20 UTC)
+
+The operator separately approved at most one HEAD and one conditional CHECKSUM GET for the unresolved HIGHUSDT key. [Probe source](probe_highusdt.py) reuses the Stage B URL/seal guards, response-body cap, journal and host-stop handling. It checks every original artifact against the committed summary before requesting, then verifies all original hashes again afterwards. Its fixed exclusive output directory prevents another invocation from consuming this approval again. There is no automatic retry. Fourteen fixture cases exercise the request budget, stop statuses, transport errors, wrong-key refusal, original-artifact integrity and repeat-invocation refusal.
+
+The credential-free probe issued exactly one HEAD and one CHECKSUM GET to `data.binance.vision`. Both returned HTTP 200. The HEAD observation was received at `2026-11-20T12:39:29.923865Z`; request execution and journaling took 0.625 seconds. The archive is FOUND, its advertised size is 61,776 bytes, and the valid CHECKSUM records SHA-256 `184afad2fdadf0fcc4f3da1fcda50e7f095efde10707eb2688bb07e1d5e7cca1`. No market payload was downloaded.
+
+[Supplemental report](o2-stage-b-highusdt.json) pins its separate eight-row journal (1,632 bytes, SHA-256 `41d2757c8f99d2cbe126e56d0ffdb67cfea7fe6dedf9a13842b4abc182f56b80`) under ignored `data/o2-stage-b-highusdt-20261120/`. It also records the original summary SHA-256 and all original artifact hashes. The original four journal segments, plan, pins, full result matrix and committed summary remain unchanged; the original summary continues to report its one UNVERIFIED operation. The supplemental observation is additional evidence, not a rewrite of that run.
+
+Considering both observations, monthly metadata now has 40,668 FOUND, 16,396 NOT_FOUND, 56 OUTSIDE_ACTIVE_PERIOD and zero unresolved keys. Daily counts remain 954 FOUND and 8,422 NOT_FOUND. All 41,622 FOUND keys have valid CHECKSUM evidence. Cumulative request intents are 108,065 (66,442 HEAD and 41,623 CHECKSUM GET), including the original interrupted attempts. Archive continuity, listing applicability and exchange-wide universe completeness retain their prior limitations.
+
+The following acquisition command was executed once under this supplemental approval. It is recorded for audit; the existing output directory refuses another run. New acquisition would require another operator approval.
+
+```text
+.venv/Scripts/python.exe evidence/m2/probe_highusdt.py
+.venv/Scripts/python.exe -m pytest tests/test_stage_b.py -k supplement -q --basetemp=data/o2-highusdt-tests
+.venv/Scripts/python.exe -m ruff check .
+.venv/Scripts/python.exe -m mypy src evidence/m2
+```
+
+The full supplemental verification passed: `uv sync --locked`, Ruff, mypy over 33 source files, 367 native Windows tests in 42.65 seconds, and 367 Docker Linux tests in 28.33 seconds using the rebuilt check image. The supplemental observation was also reconstructed offline from its saved journal and compared with the report; every original artifact hash still matched. Runtime and smoke checks are not repeated locally because this helper changes only evidence tooling and the check-image inputs; hosted CI runs them on the final commit.
+
+```text
+uv sync --locked
+.venv/Scripts/python.exe -m pytest -q --basetemp=data/o2-highusdt-pytest-final
+docker compose -p acgs-o2-stage-b --profile check build check
+docker compose -p acgs-o2-stage-b --profile check run --rm check
+```
+
 ## Handoff
 
 - **T-15 within the inventory scope** met the date and access segregation rules. Manifest, payload and holdout approvals are later steps.
 - **T-14** has an inventory of provenance gaps. Applying the approved [O3 evidence policy](protocol.md#o3-evidence-policy) and measuring research sensitivity require approved inputs.
 - **T-21** has an inventory of mark and funding keys. Assessing settlement-time alignment and intrabar mark coverage requires approved payloads.
 - O2 step 2 remains open for ranking, publication lag, contiguous history, exclusions and candidate conflict rules. Final O1 windows, manifest pins and numeric settings under O3–O9 remain open.
-- Review the three-symbol matrix before expanding discovery. Retain the limits on notice timing, tier applicability and deduction when applying O3.
+- Review the expanded summary together with the supplemental HIGHUSDT evidence before choosing manifest assets. Retain the limits on notice timing, tier applicability and deduction when applying O3. Stage B does not resolve the provisional list's exchange-wide completeness or the gaps in historical filter, tier and spread evidence.

@@ -1,6 +1,6 @@
 # O2 expansion Stage A operator save list
 
-Stage A now contains 342 provisional epoch candidates across 340 symbols. The candidate list is pending operator review. This short list prioritizes notices that resolve multiple boundaries or material epoch ambiguity. It reuses the existing BTCUSDT, ETHUSDT and DGBUSDT evidence ledger. [Candidates](o2-candidates.json) · [Discovery log](o2-discovery-expansion.json) · [Existing notices](o2-notices.json)
+Stage A contains 342 provisional epoch candidates across 340 symbols. On 2026-11-20 UTC, the operator approved this list for Stage B metadata inventory, including planned and all possible additional months. The candidate JSON remains the pinned Stage A artifact, with the later approval recorded in the protocol and proposed configuration. Exchange-wide completeness remains INCONCLUSIVE. This short list prioritizes notices that resolve multiple boundaries or material epoch ambiguity. It reuses the existing BTCUSDT, ETHUSDT and DGBUSDT evidence ledger. [Candidates](o2-candidates.json) · [Discovery log](o2-discovery-expansion.json) · [Existing notices](o2-notices.json)
 
 The candidate statuses are 148 `INDEX_HINT_ONLY`, 3 `OPERATOR_COPY_CONFIRMED`, 121 `SNAPSHOT_OBSERVED`, 21 `TRADING_RULES_OBSERVED` and 49 `UNVERIFIED`. The candidate list retains the two index contracts and the stablecoin pair identified by the notices. Other unresolved lifecycle records include COCOS, DAR, FRONT and OMG. Uncertain openings, endings and symbol spellings are identified in the JSON review reasons.
 
@@ -98,4 +98,4 @@ Targeted daily probes are separate. The current plan has 160 unique dated bounda
 
 The known `OUTSIDE_ACTIVE_PERIOD` skip is `DGBUSDT` from May through December 2024, eight full months and 56 monthly keys. April stays in the plan, including the April 1 daily probe. For other symbols, the possible-month groups preserve poorly evidenced periods for review. [Original inventory](o2-inventory.md#archive-coverage) · [Collector and pacing](collect.py)
 
-Stage B requires operator approval of the candidate list before archive requests. O2 step 2 eligibility, purpose-specific manifest approval, market payload access and prospective holdout registration remain separate.
+The operator approved Stage B on 2026-11-20 UTC. O2 step 2 eligibility, purpose-specific manifest approval, market payload access and prospective holdout registration remain separate. [Stage B method](o2-inventory.md#stage-b-expanded-metadata-inventory)
