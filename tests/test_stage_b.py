@@ -22,6 +22,11 @@ URL = stage.archive_url("BTCUSDT", "2024-01", "klines", "15m")
 BODY = b"a" * 64 + b"  BTCUSDT-15m-2024-01.zip\n"
 
 
+@pytest.fixture(autouse=True)
+def offline_connections(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(stage.http.client, "HTTPSConnection", lambda *args, **kwargs: pytest.fail("Live connection"))
+
+
 class Response:
     def __init__(self, status: int = 200, body: bytes = b"", length: str | None = None) -> None:
         self.status, self.body, self.offset = status, body, 0
@@ -378,7 +383,6 @@ def test_new_run_cannot_self_approve_another_candidate_list(tmp_path: Path, monk
         "window_start": stage.START, "cutoff_exclusive": stage.CUTOFF,
         "candidates": [candidate("ETHUSDT")],
     }))
-    monkeypatch.setattr(stage.http.client, "HTTPSConnection", lambda *args, **kwargs: pytest.fail("Network"))
     with pytest.raises(ValueError, match="operator approval"):
         stage.run(tmp_path, False)
     assert not list(tmp_path.glob("journal-*.jsonl"))
@@ -446,7 +450,6 @@ def test_resume_validates_existing_log_before_connecting(tmp_path: Path, monkeyp
                    http_status=200, content_length="100")
     journal.close()
     original = journal.path.read_bytes()
-    monkeypatch.setattr(stage.http.client, "HTTPSConnection", lambda *args, **kwargs: pytest.fail("Network"))
     with pytest.raises(ValueError, match="response linkage"):
         stage.run(tmp_path, True)
     assert journal.path.read_bytes() == original
