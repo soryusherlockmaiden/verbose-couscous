@@ -133,7 +133,7 @@ The offline validator regenerates every expected key and observation from the pi
 uv run --locked python evidence/m2/stage_b.py validate --work-dir data/o2-stage-b-20261120 --verify-summary evidence/m2/o2-stage-b-summary.json
 ```
 
-The original three-probe `archives` and `notices` commands and `finalize.py` retain their original scope. Stage B uses its dedicated offline validator. Research manifest approval, payload access, scoring windows, O2 step 2 and O3 numeric choices retain their separate gates.
+The original three-probe `archives` and `notices` commands and `finalize.py` retain their original scope. Stage B uses its dedicated offline validator. O2 step 2 baseline policy is recorded separately in the [protocol](protocol.md#o2-point-in-time-universe-baseline); its implementation, research manifest approval, payload access, scoring windows and O3 numeric choices retain their separate gates.
 
 ### Stage B implementation checks
 
@@ -232,10 +232,31 @@ docker compose -p acgs-o2-stage-b --profile check build check
 docker compose -p acgs-o2-stage-b --profile check run --rm check
 ```
 
+### O2 step 2 policy record (2026-11-20 UTC)
+
+The operator approved the [O2 baseline](protocol.md#o2-point-in-time-universe-baseline) after reviewing Stage B: top-30 liquidity plus eligible majors, 60 contiguous daily contract/original-mark bars with SC-01 funding completeness, 14-day signed momentum, modeled publication lags, same-opportunity fallback and explicit delisting-exit requirements for SC-04. Protocol v3 and the proposed configuration record these choices. Implementation and definitive payload eligibility remain pending. No payload, archive probe or capture request was made for this policy-recording change.
+
+Static checks verified unique JSON keys and consistent parameter references and derived bounds. The `access`, `m1_semantics`, `settled`, OFFLINE/DRAFT state, other OPEN decisions, registered seal and existing metadata summaries match base `9ce1063`. No source or test file changed. Existing regression tests exercise the unchanged access and M1 behavior; they do not establish that the newly recorded policy is implemented. No configuration-mirroring tests were added.
+
+Local verification passed: locked dependency sync, Ruff, default mypy over 33 files, 367 native Windows tests in 40.29 seconds, runtime/check Docker builds, and 367 Docker Linux tests in 24.04 seconds. Two isolated Docker smoke runs recorded then replayed the accepted digest `35be0f1204fa4a70ff517a6643703bfbc657ee64b8cd0827682a183d3db7bc34`. Use the pinned full-history Gitleaks command above for the secret check; final-commit CI results are linked in the policy pull request.
+
+```text
+uv sync --locked
+.venv/Scripts/ruff.exe check .
+.venv/Scripts/mypy.exe
+.venv/Scripts/python.exe -m pytest -q --basetemp=data/o2-step2-pytest
+docker compose -p acgs-o2-step2-policy --profile check config --quiet
+docker compose -p acgs-o2-step2-policy --profile check build acgs check
+docker compose -p acgs-o2-step2-policy --profile check run --rm check
+docker compose -p acgs-o2-step2-policy run --rm acgs smoke
+docker compose -p acgs-o2-step2-policy run --rm acgs smoke
+git diff --check
+```
+
 ## Handoff
 
 - **T-15 within the inventory scope** met the date and access segregation rules. Manifest, payload and holdout approvals are later steps.
 - **T-14** has an inventory of provenance gaps. Applying the approved [O3 evidence policy](protocol.md#o3-evidence-policy) and measuring research sensitivity require approved inputs.
 - **T-21** has an inventory of mark and funding keys. Assessing settlement-time alignment and intrabar mark coverage requires approved payloads.
-- O2 step 2 remains open for ranking, publication lag, contiguous history, exclusions and candidate conflict rules. Final O1 windows, manifest pins and numeric settings under O3–O9 remain open.
+- O2 step 2 baseline policy was approved on 2026-11-20 UTC for ranking, modeled publication lag, contiguous history, exclusions and candidate fallback. Implementation and definitive payload eligibility remain pending. Final O1 windows, manifest pins and remaining numeric settings under O3–O9 remain open; the selected 30/14/60 baseline candidates do not freeze the research protocol.
 - Review the expanded summary together with the supplemental HIGHUSDT evidence before choosing manifest assets. Retain the limits on notice timing, tier applicability and deduction when applying O3. Stage B does not resolve the provisional list's exchange-wide completeness or the gaps in historical filter, tier and spread evidence.

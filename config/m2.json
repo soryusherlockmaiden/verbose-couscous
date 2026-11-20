@@ -63,7 +63,7 @@
       "archive_checks": ["ZIP HEAD", "CHECKSUM GET"],
       "in_use_period_evidence": "dated contract listing and delisting evidence",
       "additional_symbols_require_operator_review": true,
-      "stage_2_status": "OPEN",
+      "stage_2_status": "BASELINE_POLICY_APPROVED_IMPLEMENTATION_PENDING",
       "evidence": "evidence/m2/o2-inventory.json"
     },
     "o2_stage_b_inventory": {
@@ -83,6 +83,98 @@
       "daily_scope": "planned NOT_FOUND months and dated notice boundary days",
       "summary": "evidence/m2/o2-stage-b-summary.json"
     },
+    "o2_universe_policy": {
+      "version": "m2-o2-universe-policy-v1",
+      "operator_approved_at_utc_date": "2026-11-20",
+      "status": "BASELINE_POLICY_APPROVED_IMPLEMENTATION_PENDING",
+      "scope": "research_baseline_policy_only_not_manifest_or_freeze_approval",
+      "policy": "evidence/m2/protocol.md#o2-point-in-time-universe-baseline",
+      "candidate_list_ref": "proposed.o2_stage_b_inventory",
+      "exchange_wide_completeness": "INCONCLUSIVE",
+      "parameters_ref": ["proposed.history_days", "proposed.quote_volume_days", "proposed.top_liquid", "proposed.momentum_days"],
+      "numeric_status": "baseline_research_candidates_not_proven_optima_or_live_defaults",
+      "preregistration": "baseline_and_O8_alternatives_before_designated_validation",
+      "exclusions": ["index_product", "stablecoin_vs_stablecoin", "premarket", "TradFi"],
+      "classification_evidence": "effective_and_observable_at_decision_under_O3",
+      "multiplier_contracts": "included_in_exchange_quoted_units",
+      "epoch_rule": "no_stitched_history_indicators_or_positions_T35",
+      "history": {
+        "daily_window": "60_full_UTC_days_D_minus_60_through_D_minus_1_in_one_epoch",
+        "contract": "contiguous_completed_daily_bars_available_at_ranking",
+        "mark": "original_exchange_mark_klines_contiguous_daily_and_required_replay_timeframes",
+        "mark_proxy": "O3_compliant_sensitivity_only",
+        "funding": "SC01_completeness_and_interval_rules_no_fixed_8h_assumption",
+        "signal_warmup_and_dependency_buffers": "O4_and_approved_manifest_pending",
+        "other_reconstruction": "listing_filters_tiers_and_publication_timing_still_follow_O3"
+      },
+      "liquidity": {
+        "measure": "mean_contract_quote_volume_D_minus_30_through_D_minus_1",
+        "order": ["quote_volume_desc", "symbol_asc", "epoch_asc"]
+      },
+      "pool": {
+        "rule": "top_liquid_union_eligible_majors",
+        "majors_ref": "proposed.majors",
+        "major_exception": "top_liquid_rank_cutoff_only",
+        "preserve_major_true_liquidity_rank": true,
+        "maximum_instruments": 32,
+        "report_actual_major_additions": true
+      },
+      "momentum": {
+        "formula": "close[D-1] / close[D-15] - 1",
+        "required_completed_closes": 15,
+        "positive": "LONG",
+        "negative": "SHORT",
+        "zero": "NO_ENTRY"
+      },
+      "ranking": {
+        "cadence": "daily",
+        "time_utc": "00:01:00",
+        "availability": "available_at <= ranking_time",
+        "required_last_daily_bar": "D-1",
+        "missing_D_minus_1": "reject_candidate_for_day_no_older_endpoint",
+        "snapshot": "immutable_until_next_cutoff_no_late_repair",
+        "entry_rechecks": ["current_epoch", "status", "direction", "feasibility"]
+      },
+      "publication_lag": {
+        "candle_ms": 1000,
+        "funding_ms": 5000,
+        "basis": "modeled_M1_manifest_assumptions_not_measured_VPS_publication_lags",
+        "sensitivity": "O8_preregistered_scenarios",
+        "capture_2026_research_use": "separate_O1_window_and_cutoff_approval_required"
+      },
+      "conflicts": {
+        "order": ["absolute_signed_momentum_desc", "true_liquidity_rank_asc", "symbol_asc", "epoch_asc"],
+        "fallback": "next_simultaneous_valid_directional_signal_in_same_final_union_pool",
+        "feasibility": "50_USDT_at_entry_decision_with_available_inputs_and_M1_authorization",
+        "future_fill_selection": "prohibited",
+        "rejections": "retain_all_rejected_and_unassessable_attempts",
+        "none_feasible": "NO_NEW_TRADE",
+        "reference_account": "reported_separately"
+      },
+      "announced_delisting": "block_new_entries_immediately_when_observable_no_retroactive_exclusion",
+      "open_position_rank_removal_or_sign_reversal": "hold_otherwise_eligible_position_to_existing_strategy_exit",
+      "new_entry_in_removed_direction": false,
+      "delisting_exit_ref": "proposed.o4_delisting_exit_requirement",
+      "concentration": {
+        "simultaneous_diversification_limit": "not_applicable_max_one_position",
+        "risk_and_exposure_caps": "remain_required_under_O5",
+        "reports": ["trades_by_symbol", "PnL_by_symbol", "epoch_attribution"]
+      },
+      "coverage_reporting": ["potential_metadata", "verified_history", "top_30", "final_major_union_pool", "assessable_50_USDT", "executable_50_USDT", "days_with_fewer_than_30_history_eligible", "rejection_reasons_and_major_additions"],
+      "payload_eligibility": "approved_manifest_required_combine_monthly_and_daily_then_check_continuity"
+    },
+    "o4_delisting_exit_requirement": {
+      "operator_approved_at_utc_date": "2026-11-20",
+      "status": "APPROVED_REQUIREMENT_SC04_IMPLEMENTATION_AND_TESTS_PENDING",
+      "entry_block": "immediate_when_supported_announcement_becomes_observable",
+      "order": "REDUCE_ONLY_EXIT",
+      "execution": "first_modeled_open_permitted_by_notice_availability_and_M1_event_order",
+      "deadline": "entire_position_closed_strictly_before_applicable_close_only_or_delisting_if_no_earlier_close_only",
+      "no_eligible_open_or_residual_exposure_or_critical_unknown": "fail_closed_report_unresolved_exposure_and_replay_failure_or_INCONCLUSIVE",
+      "backdated_exit_or_assumed_fill_or_silent_PnL_deletion": "prohibited",
+      "exclusions": "predeclared_before_evaluation_not_selected_after_trade_outcomes",
+      "M1_semantics": "unchanged"
+    },
     "intervals": ["15m", "1h"],
     "adx_period": 14,
     "adx_threshold": "25",
@@ -99,7 +191,11 @@
   },
   "open": {
     "O1_windows_and_pinned_datasets": null,
-    "O2_universe_and_publication": null,
+    "O2_universe_and_publication": {
+      "status": "BASELINE_POLICY_APPROVED_IMPLEMENTATION_PENDING",
+      "policy_ref": "proposed.o2_universe_policy",
+      "remaining": ["implementation_and_regression_tests", "approved_manifest_and_payload_eligibility", "O3_numeric_and_O4_O5_dependencies"]
+    },
     "O3_provenance_policy": null,
     "O4_strategy_and_trigger_semantics": null,
     "O5_sizing_and_preventive_risk": {
