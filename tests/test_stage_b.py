@@ -300,6 +300,11 @@ def test_validation_reproduces_summary_and_detects_body_corruption(tmp_path: Pat
     first = stage.validate(tmp_path, tmp_path / "summary.json")
     assert stage.validate(tmp_path, tmp_path / "summary.json") == first
     assert first["monthly"] == {"FOUND": 1, "UNVERIFIED": 167}
+    daily_path = tmp_path / "daily-plan.json"
+    daily_path.write_bytes(b"[{}]\n")
+    with pytest.raises(ValueError, match="Daily plan differs"):
+        stage.validate(tmp_path, tmp_path / "summary.json")
+    daily_path.unlink()
     expected = tmp_path / "incorrect-summary.json"
     expected.write_text("{}", encoding="utf-8")
     with pytest.raises(ValueError, match="Committed summary"):

@@ -446,7 +446,7 @@ def validate(root: Path, output: Path, expected: Path | None = None) -> dict[str
     client = Client(reader, monthly_allowed)
     monthly = [result(row, client) for row in plan["monthly"]]
     daily = daily_plan(plan, monthly) if (root / "daily-plan.json").exists() else []
-    if daily and (root / "daily-plan.json").read_bytes() != encoded(daily):
+    if (root / "daily-plan.json").exists() and (root / "daily-plan.json").read_bytes() != encoded(daily):
         raise ValueError("Daily plan differs from monthly evidence")
     allowed = monthly_allowed | {row["url"] for row in daily}
     intents: dict[int, dict[str, Any]] = {}
