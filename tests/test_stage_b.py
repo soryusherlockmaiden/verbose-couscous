@@ -454,3 +454,53 @@ def test_resume_validates_existing_log_before_connecting(tmp_path: Path, monkeyp
         stage.run(tmp_path, True)
     assert journal.path.read_bytes() == original
     assert len(list(tmp_path.glob("journal-*.jsonl"))) == 1
+
+
+@pytest.mark.parametrize("fault", ["partial_write", "fsync"])
+def test_journal_io_failure_aborts_without_duplicate_records(
+    tmp_path: Path, monkeypatch: Any, fault: str,
+) -> None:
+    current, journal, conn = client(tmp_path, [Response()])
+    original_sync = stage.os.fsync
+    original_stream = journal.stream
+    syncs = 0
+
+    class PartialWriter:
+        writes = 0
+
+        def write(self, raw: bytes) -> int:
+            self.writes += 1
+            if self.writes == 2:
+                original_stream.write(raw[:len(raw) // 2])
+                original_stream.flush()
+                raise OSError("synthetic partial journal write")
+            return original_stream.write(raw)
+
+        def __getattr__(self, name: str) -> Any:
+            return getattr(original_stream, name)
+
+    def failing_sync(descriptor: int) -> None:
+        nonlocal syncs
+        syncs += 1
+        if syncs == 2:
+            raise OSError("synthetic journal sync failure")
+        original_sync(descriptor)
+
+    with monkeypatch.context() as patch:
+        if fault == "fsync":
+            patch.setattr(stage.os, "fsync", failing_sync)
+        else:
+            patch.setattr(journal, "stream", PartialWriter())
+        try:
+            with pytest.raises(RuntimeError, match="Journal persistence"):
+                current.check("HEAD", URL)
+        finally:
+            current.close()
+            journal.close()
+    assert len(conn.requests) == 1
+    resumed, next_journal, next_conn = client(tmp_path, [Response(404)])
+    resumed.check("HEAD", URL)
+    next_journal.close()
+    assert len(next_conn.requests) == (1 if fault == "partial_write" else 0)
+    records, _ = stage.read_journal(tmp_path)
+    assert [row["seq"] for row in records] == list(range(len(records)))

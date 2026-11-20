@@ -203,6 +203,10 @@ def read_journal(root: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]
     return records, torn
 
 
+class JournalWriteFailed(RuntimeError):
+    """The writer must stop after an uncertain journal write or sync."""
+
+
 class Journal:
     def __init__(self, root: Path, read_only: bool = False) -> None:
         self.records, self.torn = read_journal(root)
@@ -213,15 +217,29 @@ class Journal:
         record = {"seq": len(self.records), "at": stamp(), "event": event, **fields}
         if self.stream is None:
             raise ValueError("Read-only journal")
-        self.stream.write(encoded(record))
-        self.stream.flush()
-        os.fsync(self.stream.fileno())
+        raw = encoded(record)
+        stream = self.stream
+        try:
+            if stream.write(raw) != len(raw):
+                raise OSError("Incomplete journal write")
+            stream.flush()
+            os.fsync(stream.fileno())
+        except BaseException as error:
+            self.stream = None
+            try:
+                stream.close()
+            except OSError:
+                pass
+            if isinstance(error, OSError):
+                raise JournalWriteFailed(f"Journal persistence failed for {self.path.name}") from error
+            raise
         self.records.append(record)
         return record
 
     def close(self) -> None:
         if self.stream is not None:
-            self.stream.close()
+            stream, self.stream = self.stream, None
+            stream.close()
 
 
 class HostStopped(RuntimeError):
@@ -444,7 +462,8 @@ def run(root: Path, resume: bool, phase: str = "all") -> None:
             print(str(error), flush=True)
             raise SystemExit(2) from error
         except BaseException as error:
-            journal.append("interruption", reason=type(error).__name__)
+            if journal.stream is not None:
+                journal.append("interruption", reason=type(error).__name__)
             raise
         finally:
             client.close()

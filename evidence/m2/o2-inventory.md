@@ -112,6 +112,8 @@ An OS lock permits one writer per run directory and releases after process death
 
 Resume requires an existing journal and audits its request linkage, scope, ordering, CHECKSUM bytes and plan pins before opening a connection. It recovers the interruption window between publication of the daily-plan file and recording its journal pin. An unclean-termination timestamp denotes detection at resume, with the last durable event bounding the prior stop. Interrupted temporary files and original journal bytes are preserved.
 
+An error writing or syncing a journal aborts its writer. The collector closes the affected stream and handles recovery from the persisted prefix on resume. Storage errors propagate separately from transport failures. This prevents a failed persistence operation from causing another network request or an overlapping record sequence.
+
 Run these commands from the repository root. `plan` performs no network requests. The monthly phase saves the daily plan and prints its request estimate. After reporting that estimate, resume with `--phase all` to execute the already-approved daily phase. A recorded host stop refuses resume before opening a connection.
 
 ```text
@@ -135,13 +137,13 @@ The original three-probe `archives` and `notices` commands and `finalize.py` ret
 
 ### Stage B implementation checks
 
-Before the live monthly run, the mocked connection suite verified scope refusals, persistent host stops, CHECKSUM limits, final-response reuse and bounded retries. Follow-up integration cases verify the intentional monthly-to-daily pause, nonzero BLOCKED exit, approved candidate-list hash, atomic publication, plan-pin crash window and pre-network resume audit. HTTP failures retrieving CHECKSUM are distinguished from malformed CHECKSUM bytes while preserving FOUND for a successful ZIP HEAD. The final suite contains 349 tests, including 36 Stage B cases. Native Windows and Docker Linux passed. One intermediate Docker run failed because a test read a candidate artifact absent from the image. Replacing that test input with a synthetic candidate list preserved its rejection assertion, and the complete Docker suite then passed. Mypy checks all 32 files under `src` and `evidence/m2` in both environments.
+Before the live monthly run, the mocked connection suite verified scope refusals, persistent host stops, CHECKSUM limits, final-response reuse and bounded retries. Follow-up integration cases verify the intentional monthly-to-daily pause, nonzero BLOCKED exit, approved candidate-list hash, atomic publication, plan-pin crash window and pre-network resume audit. HTTP failures retrieving CHECKSUM are distinguished from malformed CHECKSUM bytes while preserving FOUND for a successful ZIP HEAD. The final suite contains 351 tests, including 38 Stage B cases. Native Windows and Docker Linux passed. One intermediate Docker run failed because a test read a candidate artifact absent from the image. Replacing that test input with a synthetic candidate list preserved its rejection assertion, and the complete Docker suite then passed. Two fault-injection regressions initially failed when partial journal writes and sync failures were treated as transport failures. After separating fatal journal errors, both regressions passed and recovery preserved record sequences. Mypy checks all 32 files under `src` and `evidence/m2` in both environments. Stage B fixtures reject live connections.
 
 ```text
 uv sync --locked
 .venv/Scripts/python.exe -m ruff check .
 .venv/Scripts/python.exe -m mypy src evidence/m2
-.venv/Scripts/python.exe -m pytest -q --basetemp=data/o2-stage-b-pytest-atomic-final
+.venv/Scripts/python.exe -m pytest -q --basetemp=data/o2-stage-b-pytest-storage-final
 docker compose -p acgs-o2-stage-b --profile check build acgs check
 docker compose -p acgs-o2-stage-b --profile check build check
 docker compose -p acgs-o2-stage-b --profile check run --rm check
@@ -151,6 +153,8 @@ git diff --check
 ```
 
 The two smoke runs recorded and replayed `35be0f1204fa4a70ff517a6643703bfbc657ee64b8cd0827682a183d3db7bc34`. The existing `access` object and M1 semantic pin match the Stage B base commit. The pinned Gitleaks v8.24.3 image scanned 111 commits without leaks before the phase-resume follow-up. Final artifact pins and final-commit checks follow collection.
+
+The monthly live process was launched from the working tree before commit `99e6a05`. Further hardening covers startup approval, resume auditing, plan publication and storage-failure handling. Resumed sessions load the branch code at invocation. The final offline validator reconstructs observations from the saved request and response records.
 
 The Compose entry point was also exercised offline with the checkout mounted read-only and a separate writable experiment directory under `data/`. It produced a plan byte-identical to the native Windows plan, SHA-256 `854f687ca6c1af3ecf8109c8119f1f5a9e0c86515085e6634d24c038d67288e2`. The following is the exact Windows-host command used. On Linux or WSL, substitute the checkout's absolute Linux path for `C:/dev/acgs` in both mounts. Use a separate run directory for concurrent experiments.
 
