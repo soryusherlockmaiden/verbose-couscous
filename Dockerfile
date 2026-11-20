@@ -19,6 +19,7 @@ COPY evidence/m2/extract_trading_rules.py ./evidence/m2/extract_trading_rules.py
 COPY evidence/m2/collect.py ./evidence/m2/collect.py
 COPY evidence/m2/finalize.py ./evidence/m2/finalize.py
 COPY evidence/m2/stage_b.py ./evidence/m2/stage_b.py
+COPY evidence/m2/probe_highusdt.py ./evidence/m2/probe_highusdt.py
 RUN uv sync --locked --no-editable
 CMD ["sh", "-c", "/app/.venv/bin/ruff check . && /app/.venv/bin/mypy src evidence/m2 && /app/.venv/bin/pytest"]
 

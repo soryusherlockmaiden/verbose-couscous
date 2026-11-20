@@ -17,4 +17,5 @@ evidence/**
 !evidence/m2/collect.py
 !evidence/m2/finalize.py
 !evidence/m2/stage_b.py
+!evidence/m2/probe_highusdt.py
 *.sqlite3*

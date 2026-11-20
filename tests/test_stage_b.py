@@ -16,6 +16,10 @@ try:
     assert spec is not None and spec.loader is not None
     stage = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(stage)
+    probe_spec = importlib.util.spec_from_file_location("probe_highusdt", SCRIPTS / "probe_highusdt.py")
+    assert probe_spec is not None and probe_spec.loader is not None
+    high_probe = importlib.util.module_from_spec(probe_spec)
+    probe_spec.loader.exec_module(high_probe)
 finally:
     sys.path.remove(str(SCRIPTS))
 
@@ -78,6 +82,95 @@ def candidate(symbol: str = "BTCUSDT", epoch: str = "first") -> dict[str, Any]:
             "planned_active_months": ["2024-01"], "outside_active_months": [],
             "possible_additional_months": [m for m in stage.month_labels() if m != "2024-01"],
             "events": []}
+
+
+@pytest.mark.parametrize("status", [200, 302, 404, 500, 401, 403, 418, 429, 451])
+def test_supplemental_probe_request_budget(tmp_path: Path, status: int) -> None:
+    body = b"a" * 64 + b"  HIGHUSDT-15m-2023-09.zip\n"
+    conn = Connection([Response(status), Response(body=body)])
+    journal = stage.Journal(tmp_path)
+    first = stage.Client(journal, {high_probe.URL}, connect=lambda: conn, pause=lambda _: None)
+    try:
+        if status in stage.ACCESS_STOP:
+            with pytest.raises(stage.HostStopped):
+                high_probe.probe(first, {"url": high_probe.URL})
+        else:
+            observation = high_probe.probe(first, {"url": high_probe.URL})
+            if status == 200:
+                assert observation["sha256"] == "a" * 64
+    finally:
+        first.close()
+        journal.close()
+    assert [method for method, _ in conn.requests] == (["HEAD", "GET"] if status == 200 else ["HEAD"])
+
+
+@pytest.mark.parametrize("method", ["HEAD", "GET"])
+def test_supplemental_probe_never_retries_transport_error(tmp_path: Path, method: str) -> None:
+    replies = [OSError("synthetic disconnect")] if method == "HEAD" else [Response(), OSError("synthetic disconnect")]
+    conn = Connection(replies)
+    journal = stage.Journal(tmp_path)
+    first = stage.Client(journal, {high_probe.URL}, connect=lambda: conn, pause=lambda _: None)
+    try:
+        observation = high_probe.probe(first, {"url": high_probe.URL})
+    finally:
+        first.close()
+        journal.close()
+    assert [item[0] for item in conn.requests] == (["HEAD"] if method == "HEAD" else ["HEAD", "GET"])
+    assert observation["sha256"] is None
+
+
+def test_supplemental_probe_refuses_other_key_before_connection(tmp_path: Path) -> None:
+    first, journal, conn = client(tmp_path, [])
+    try:
+        with pytest.raises(ValueError, match="only the HIGHUSDT"):
+            high_probe.probe(first, {"url": URL})
+    finally:
+        journal.close()
+    assert conn.requests == []
+
+
+def supplemental_fixture(tmp_path: Path, monkeypatch: Any) -> tuple[Path, Path, Connection]:
+    source = tmp_path / "original"
+    source.mkdir()
+    original = source / "journal-000000.jsonl"
+    original.write_bytes(b"original journal bytes\n")
+    (source / "plan.json").write_bytes(stage.encoded({"monthly": [{"url": high_probe.URL}]}))
+    base = tmp_path / "summary.json"
+    base.write_bytes(stage.encoded({"pins": {}, "requests": {"http_status": {"200": 1}},
+                                   "artifacts": {p.name: {"bytes": p.stat().st_size,
+                                   "sha256": stage.digest(p.read_bytes())} for p in source.iterdir()}}))
+    monkeypatch.setattr(high_probe, "check_approval", lambda: None)
+    monkeypatch.setattr(high_probe, "input_pins", lambda: {})
+    monkeypatch.setattr(high_probe, "ORIGINAL", source)
+    monkeypatch.setattr(high_probe, "SUMMARY", base)
+    root = tmp_path / "supplement"
+    monkeypatch.setattr(high_probe, "ROOT", root)
+    body = b"a" * 64 + b"  HIGHUSDT-15m-2023-09.zip\n"
+    conn = Connection([Response(), Response(body=body)])
+    monkeypatch.setattr(high_probe, "Client", lambda journal, allowed: stage.Client(
+        journal, allowed, connect=lambda: conn, pause=lambda _: None))
+    return original, root, conn
+
+
+def test_supplemental_evidence_preserves_original_and_consumes_one_budget(tmp_path: Path, monkeypatch: Any) -> None:
+    original, root, conn = supplemental_fixture(tmp_path, monkeypatch)
+    raw = original.read_bytes()
+    high_probe.main()
+    report = json.loads((root / "report.json").read_text(encoding="utf-8"))
+    assert original.read_bytes() == raw
+    assert report["original_artifacts_unchanged"]
+    assert report["requests"] == {"HEAD": 1, "GET": 1}
+    with pytest.raises(FileExistsError):
+        high_probe.main()
+    assert len(conn.requests) == 2
+
+
+def test_supplement_refuses_changed_original_before_request(tmp_path: Path, monkeypatch: Any) -> None:
+    original, root, conn = supplemental_fixture(tmp_path, monkeypatch)
+    original.write_bytes(b"changed journal\n")
+    with pytest.raises(ValueError, match="Original artifact"):
+        high_probe.main()
+    assert not root.exists() and conn.requests == []
 
 
 def plan(rows: list[dict[str, Any]]) -> Any:

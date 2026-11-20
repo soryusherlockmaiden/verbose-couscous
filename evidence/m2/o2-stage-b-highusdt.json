@@ -1,0 +1,58 @@
+{
+  "version": "m2-o2-highusdt-supplement-v1",
+  "operator_approval": {
+    "date_utc": "2026-11-20",
+    "maximum_head": 1,
+    "maximum_checksum_get": 1,
+    "automatic_retries": 0
+  },
+  "original_summary_sha256": "18457a6e337011bba5411cda0663d6dbf04e00a14c8bef28139d7d06ba845b59",
+  "original_artifacts_unchanged": true,
+  "original_artifact_hashes": {
+    "journal-000000.jsonl": "7f0fa632dc8dfe1aecd8bc860c77dc97aa59b33c03846bdf1312ab9e601a70a0",
+    "journal-000001.jsonl": "99885437a26fc508c6c67b853ed593321af262c0c3a4aedbb65647550b18efbb",
+    "journal-000002.jsonl": "503251c207897e483f760e442de42dabe8d9a71ae6ecf73e71ff26ce511fe54b",
+    "journal-000003.jsonl": "26c5f9fb2a0e0a97c4987aaebe737ae00ff8e7d27bc80a0e0f4d8589f62b12c2",
+    "results.jsonl": "a91c4ab5bcd67d79b54275667955beae65d3b3a1014e272027ac6ac100004933",
+    "plan.json": "854f687ca6c1af3ecf8109c8119f1f5a9e0c86515085e6634d24c038d67288e2",
+    "pins.json": "81e5e18a5883eac3d67a880155f61ce7a4301e050578f7014e51787b530e6afd",
+    "daily-plan.json": "e9a31744b2f98811ebb0b13f6eb559e29e3a39c57d0d783767da8c1fdcdf612a"
+  },
+  "original_unverified_status_preserved": true,
+  "host": "data.binance.vision",
+  "requests": {
+    "HEAD": 1,
+    "GET": 1
+  },
+  "http_status": {
+    "200": 2
+  },
+  "duration_seconds": 0.625,
+  "blocked": false,
+  "market_payload_bytes_downloaded": 0,
+  "observation": {
+    "epochs": [
+      "HIGHUSDT@snapshot-2023-02-03T07:00:00.000Z"
+    ],
+    "interval": "15m",
+    "month": "2023-09",
+    "outside": false,
+    "outside_epochs": [],
+    "planned_epochs": [],
+    "series": "markPriceKlines",
+    "symbol": "HIGHUSDT",
+    "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/HIGHUSDT/15m/HIGHUSDT-15m-2023-09.zip",
+    "status": "FOUND",
+    "sha256": "184afad2fdadf0fcc4f3da1fcda50e7f095efde10707eb2688bb07e1d5e7cca1",
+    "size_bytes": 61776,
+    "head_http_status": 200,
+    "observed_at": "2026-11-20T12:39:29.923865Z",
+    "checksum_http_status": 200
+  },
+  "journal": {
+    "path": "data/o2-stage-b-highusdt-20261120/journal-000000.jsonl",
+    "rows": 8,
+    "bytes": 1632,
+    "sha256": "41d2757c8f99d2cbe126e56d0ffdb67cfea7fe6dedf9a13842b4abc182f56b80"
+  }
+}
