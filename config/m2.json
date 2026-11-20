@@ -66,6 +66,21 @@
       "stage_2_status": "OPEN",
       "evidence": "evidence/m2/o2-inventory.json"
     },
+    "o2_stage_b_inventory": {
+      "operator_approved_at_utc_date": "2026-11-20",
+      "scope": "metadata_only_planned_and_all_possible_months",
+      "candidate_list": "evidence/m2/o2-candidates.json",
+      "symbols": 340,
+      "epochs": 342,
+      "start_inclusive": "2023-01-01T00:00:00Z",
+      "cutoff_exclusive": "2025-01-01T00:00:00Z",
+      "host": "data.binance.vision",
+      "methods": ["HEAD ZIP", "GET CHECKSUM (2048 bytes maximum)"],
+      "pause_after_request_seconds": "0.08",
+      "exchange_wide_completeness": "INCONCLUSIVE",
+      "daily_scope": "planned NOT_FOUND months and dated notice boundary days",
+      "summary": "evidence/m2/o2-stage-b-summary.json"
+    },
     "intervals": ["15m", "1h"],
     "adx_period": 14,
     "adx_threshold": "25",

@@ -16,8 +16,10 @@ COPY evidence/m1/fetch.py ./evidence/m1/fetch.py
 COPY evidence/m2/ingest_notices.py ./evidence/m2/ingest_notices.py
 COPY evidence/m2/extract_exchangeinfo.py ./evidence/m2/extract_exchangeinfo.py
 COPY evidence/m2/extract_trading_rules.py ./evidence/m2/extract_trading_rules.py
+COPY evidence/m2/collect.py ./evidence/m2/collect.py
+COPY evidence/m2/stage_b.py ./evidence/m2/stage_b.py
 RUN uv sync --locked --no-editable
-CMD ["sh", "-c", "/app/.venv/bin/ruff check . && /app/.venv/bin/mypy && /app/.venv/bin/pytest"]
+CMD ["sh", "-c", "/app/.venv/bin/ruff check . && /app/.venv/bin/mypy src evidence/m2 && /app/.venv/bin/pytest"]
 
 # Runtime image (default target): no dev tools and no tests.
 FROM base AS runtime

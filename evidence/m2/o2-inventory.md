@@ -102,6 +102,35 @@ docker compose -p acgs-o2-notices-ci --profile check run --rm check
 git diff --check
 ```
 
+## Stage B expanded metadata inventory
+
+The operator approved the provisional 340 symbols / 342 epochs on 2026-11-20 UTC for metadata collection over [2023-01-01, 2025-01-01), including planned and all possibly active months. The initial physical plan has 57,064 monthly HEAD keys and at most 57,064 CHECKSUM GETs. Another 56 monthly keys are proven outside the DGBUSDT active period and skipped. Shared BNXUSDT and TLMUSDT keys are collected once and associated with each relevant provisional epoch. Their contents remain unallocated across epochs.
+
+The Stage B entry point extends `collect.py` through `stage_b.py`. It allows direct ZIP HEADs and CHECKSUM GETs up to 2 KB on `data.binance.vision`, preserves the existing 0.08-second pause and 12-second socket timeout, and checks the full source bundle against the registered seal before sending. Responses to HEAD carry no downloaded market payload. The collector follows no redirects and has no directory-listing operation. A final HTTP response is retained across resume, including errors. A 401/403/418/429/451 latches the host stop across restarts. Clearing that latch requires a separate operator decision.
+
+An OS lock permits one writer per run directory and releases after process death. The collector pins candidate, seal, access and generated-plan hashes. Journal segments are append-only. Each request has a durable intent, a durable response-header record and, when available, a completion record with the raw CHECKSUM body encoded as base64 and its hash. CHECKSUM bytes in this journal remain under ignored `data/`. This representation also preserves malformed CHECKSUM evidence within the 2 KB cap. HEAD must succeed before its CHECKSUM can be requested. If a process dies after receiving a response but before the response record becomes durable, one retry is possible. Each unanswered operation has at most two attempts across all resumes. A recorded response with a missing body is reported without a repeated request. A torn final journal line is preserved, pinned and disclosed in the next segment. Corruption in a completed line fails validation.
+
+Run these commands from the repository root. `plan` performs no network requests. The monthly phase saves the daily plan and prints its request estimate. After reporting that estimate, resume with `--phase all` to execute the already-approved daily phase. A recorded host stop refuses resume before opening a connection.
+
+```text
+uv run --locked python evidence/m2/stage_b.py plan --work-dir data/o2-stage-b-20261120
+uv run --locked python evidence/m2/collect.py stage-b --work-dir data/o2-stage-b-20261120 --phase monthly
+uv run --locked python evidence/m2/collect.py stage-b --work-dir data/o2-stage-b-20261120 --resume --phase all
+uv run --locked python evidence/m2/stage_b.py validate --work-dir data/o2-stage-b-20261120 --output data/o2-stage-b-20261120/summary.json
+```
+
+Daily fallback is limited to missing monthly keys in the tentative plan. Possibly active months with NOT_FOUND monthly keys retain that result. A dated notice's effective listing or settlement/delisting day can also select a boundary probe within the tentative plan. Indexed notices retain INDEX_HINT_ONLY status, and their probe dates supply no proven active-period bounds. Publication dates and disputed onboard observations do not supply boundary probes. The accepted DGBUSDT daily boundary excludes dates after 2024-04-01. Proven outside-active months are excluded before requests.
+
+FOUND establishes the presence of the physical archive for a symbol, month or day and series. CHECKSUM availability and validity are reported independently. NOT_FOUND establishes that the requested key was unavailable at observation. It supplies no inactivity decision. Listing and delisting instants, intra-month candle and funding continuity and epoch allocation require separate evidence. Exchange-wide completeness remains INCONCLUSIVE because Stage B cannot discover symbols absent from the approved list.
+
+The offline validator regenerates every expected key and observation from the pinned inputs and journal, checks retry linkage and final-response reuse, validates stop-latch enforcement, CHECKSUM bytes and request ordering, and writes per-key `results.jsonl` under the run directory. The committed summary pins artifact hashes, sizes and row counts and reports per-epoch series coverage, CHECKSUM issues, daily results, duration, interruptions and remaining operations. To compare a committed summary with local evidence, use the following command.
+
+```text
+uv run --locked python evidence/m2/stage_b.py validate --work-dir data/o2-stage-b-20261120 --verify-summary evidence/m2/o2-stage-b-summary.json
+```
+
+The original three-probe `archives` and `notices` commands and `finalize.py` retain their original scope. Stage B uses its dedicated offline validator. Research manifest approval, payload access, scoring windows, O2 step 2 and O3 numeric choices retain their separate gates.
+
 ## Handoff
 
 - **T-15 within the inventory scope** met the date and access segregation rules. Manifest, payload and holdout approvals are later steps.
