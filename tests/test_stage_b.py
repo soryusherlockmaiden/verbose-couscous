@@ -314,6 +314,7 @@ def test_validation_reproduces_summary_and_detects_body_corruption(tmp_path: Pat
 def test_run_monthly_then_daily_resume_skips_completed_keys(tmp_path: Path, monkeypatch: Any) -> None:
     current = plan([candidate()])
     monkeypatch.setattr(stage, "initialize", lambda _: current)
+    monkeypatch.setattr(stage, "check_approval", lambda: None)
     real_client = stage.Client
     conn = Connection([Response(404) for _ in range(500)])
     monkeypatch.setattr(stage, "Client", lambda journal, keys: real_client(
@@ -332,6 +333,7 @@ def test_run_monthly_then_daily_resume_skips_completed_keys(tmp_path: Path, monk
 def test_run_blocked_exit_and_resume_never_connect(tmp_path: Path, monkeypatch: Any) -> None:
     current = plan([candidate()])
     monkeypatch.setattr(stage, "initialize", lambda _: current)
+    monkeypatch.setattr(stage, "check_approval", lambda: None)
     real_client = stage.Client
     conn = Connection([Response(403)])
     monkeypatch.setattr(stage, "Client", lambda journal, keys: real_client(
@@ -342,3 +344,12 @@ def test_run_blocked_exit_and_resume_never_connect(tmp_path: Path, monkeypatch: 
             stage.run(tmp_path, resume)
         assert stopped.value.code == 2
     assert len(conn.requests) == 1
+
+
+def test_new_run_cannot_self_approve_another_candidate_list(tmp_path: Path, monkeypatch: Any) -> None:
+    source = tmp_path / "other-candidates.json"
+    source.write_bytes(stage.encoded({"candidates": [candidate()]}))
+    monkeypatch.setattr(stage, "CANDIDATES", source)
+    with pytest.raises(ValueError, match="operator approval"):
+        stage.run(tmp_path, False)
+    assert not list(tmp_path.glob("journal-*.jsonl"))

@@ -15,5 +15,6 @@ evidence/**
 !evidence/m2/extract_exchangeinfo.py
 !evidence/m2/extract_trading_rules.py
 !evidence/m2/collect.py
+!evidence/m2/finalize.py
 !evidence/m2/stage_b.py
 *.sqlite3*

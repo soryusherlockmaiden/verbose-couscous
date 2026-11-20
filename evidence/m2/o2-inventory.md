@@ -131,6 +131,25 @@ uv run --locked python evidence/m2/stage_b.py validate --work-dir data/o2-stage-
 
 The original three-probe `archives` and `notices` commands and `finalize.py` retain their original scope. Stage B uses its dedicated offline validator. Research manifest approval, payload access, scoring windows, O2 step 2 and O3 numeric choices retain their separate gates.
 
+### Stage B implementation checks
+
+Before the live monthly run, the mocked connection suite verified scope refusals, persistent host stops, CHECKSUM limits, final-response reuse and bounded retries. Follow-up integration cases verify the intentional monthly-to-daily pause, nonzero BLOCKED exit and the approved candidate-list hash. The final suite contains 342 tests, including 29 Stage B cases. Native Windows and Docker Linux passed. One intermediate Docker run failed because a test read a candidate artifact absent from the image. Replacing that test input with a synthetic candidate list preserved its rejection assertion, and the complete Docker suite then passed. Mypy checks all 32 files under `src` and `evidence/m2` in both environments.
+
+```text
+uv sync --locked
+.venv/Scripts/python.exe -m ruff check .
+.venv/Scripts/python.exe -m mypy src evidence/m2
+.venv/Scripts/python.exe -m pytest -q --basetemp=data/o2-stage-b-pytest-approved
+docker compose -p acgs-o2-stage-b --profile check build acgs check
+docker compose -p acgs-o2-stage-b --profile check build check
+docker compose -p acgs-o2-stage-b --profile check run --rm check
+docker compose -p acgs-o2-stage-b run --rm acgs smoke
+docker compose -p acgs-o2-stage-b run --rm acgs smoke
+git diff --check
+```
+
+The two smoke runs recorded and replayed `35be0f1204fa4a70ff517a6643703bfbc657ee64b8cd0827682a183d3db7bc34`. The existing `access` object and M1 semantic pin match the Stage B base commit. The pinned Gitleaks v8.24.3 image scanned 111 commits without leaks before the phase-resume follow-up. Final artifact pins and final-commit checks follow collection.
+
 ## Handoff
 
 - **T-15 within the inventory scope** met the date and access segregation rules. Manifest, payload and holdout approvals are later steps.

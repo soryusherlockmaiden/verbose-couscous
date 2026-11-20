@@ -70,6 +70,8 @@
       "operator_approved_at_utc_date": "2026-11-20",
       "scope": "metadata_only_planned_and_all_possible_months",
       "candidate_list": "evidence/m2/o2-candidates.json",
+      "candidate_list_sha256": "93194ec05088b4de5fc9a740057025f1cf7651a0a78f9ccec521a17b310a5571",
+      "candidate_base_commit": "c2e15c1024035cd32ac8b174f9518b3238c38f8a",
       "symbols": 340,
       "epochs": 342,
       "start_inclusive": "2023-01-01T00:00:00Z",

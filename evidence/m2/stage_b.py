@@ -87,6 +87,20 @@ def input_pins() -> dict[str, str]:
     }
 
 
+def check_approval() -> None:
+    approved = json.loads(CONFIG.read_text(encoding="utf-8"))["proposed"]["o2_stage_b_inventory"]
+    raw = CANDIDATES.read_bytes()
+    candidates = json.loads(raw)
+    rows = candidates["candidates"]
+    if (
+        digest(raw) != approved["candidate_list_sha256"] or
+        len(rows) != approved["epochs"] or
+        len({row["symbol"] for row in rows}) != approved["symbols"] or
+        approved["start_inclusive"] != START or approved["cutoff_exclusive"] != CUTOFF
+    ):
+        raise ValueError("Candidate inventory differs from operator approval")
+
+
 def month_labels() -> list[str]:
     return [f"{year}-{month:02}" for year in (2023, 2024) for month in range(1, 13)]
 
@@ -375,6 +389,7 @@ def collect_rows(client: Client, rows: list[dict[str, Any]]) -> None:
 
 def run(root: Path, resume: bool, phase: str = "all") -> None:
     with writer_lock(root):
+        check_approval()
         if list(root.glob("journal-*.jsonl")) and not resume:
             raise ValueError("Existing run requires --resume")
         plan = initialize(root)
@@ -574,10 +589,12 @@ def main() -> None:
         run(root, args.resume, args.phase)
     elif args.action == "validate":
         with writer_lock(root):
+            check_approval()
             report = validate(root, args.output or root / "summary.json", args.verify_summary)
             print(json.dumps({key: report[key] for key in ("run_status", "requests", "remaining", "monthly", "daily")}))
     else:
         with writer_lock(root):
+            check_approval()
             plan = initialize(root)
             active = sum(not row["outside"] for row in plan["monthly"])
             print(json.dumps({"monthly_head": active, "monthly_maximum_checksum_get": active,
