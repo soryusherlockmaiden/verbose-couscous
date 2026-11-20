@@ -203,7 +203,7 @@
         "output": "candidate_and_evidence_not_final_quantity_or_real_order"
       },
       "indexing_and_seeds": {
-        "parameters_ref": ["proposed.donchian_period", "proposed.ema_period", "proposed.atr_period", "proposed.adx_period", "proposed.adx_threshold", "proposed.volume_period", "proposed.volume_multiple"],
+        "parameters_ref": ["proposed.donchian_period", "proposed.ema_period", "proposed.atr_period", "proposed.adx_period", "proposed.adx_threshold", "proposed.volume_period", "proposed.volume_multiple", "proposed.atr_multiple"],
         "Donchian": "max_high_or_min_low_i_minus_20_through_i_minus_1_exclude_signal_bar",
         "EMA_ATR_ADX_endpoint": "completed_bar_i",
         "volume_field": "contract_base_volume_quote_volume_only_for_O2_ranking",
@@ -235,7 +235,8 @@
         "target_open_rechecks": ["current_status", "current_O2_membership", "current_direction", "feasibility"],
         "no_longer_eligible": "cancel_candidate",
         "later_snapshot_names_or_reordering": "prohibited",
-        "midnight_fixture": "00:00:01_signal_uses_previous_day_snapshot_revalidate_after_00:01_without_pool_expansion"
+        "midnight_fixture": "00:00:01_signal_uses_previous_day_snapshot_revalidate_after_00:01_without_pool_expansion",
+        "midnight_zero_lag_fixture": "00:00_target_open_before_00:01_publication_revalidates_against_previous_day_snapshot"
       },
       "fallback_and_positions": {
         "fallback": "pre_authorization_rejections_only_same_O2_pool_and_opportunity",
