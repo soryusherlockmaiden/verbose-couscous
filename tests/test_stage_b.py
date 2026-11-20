@@ -1,6 +1,7 @@
 """Crash, access and evidence regressions for the offline-testable Stage B client."""
 
 import importlib.util
+import io
 import json
 import sys
 from pathlib import Path
@@ -242,6 +243,30 @@ def test_checksum_http_error_preserves_found_archive(tmp_path: Path, status: int
     journal.close()
     assert outcome["status"] == "FOUND" and outcome["sha256"] is None
     assert outcome["checksum_issue"] == f"CHECKSUM_HTTP_{status}"
+
+
+@pytest.mark.parametrize("body,expected_sha,expected_issue,expected_bytes", [
+    (BODY, "a" * 64, None, len(BODY)),
+    (BODY + b" " * (4096 - len(BODY)), None, "CHECKSUM_RESPONSE_EXCEEDS_2KB_OR_INCOMPLETE", 2048),
+])
+def test_close_delimited_checksum_without_content_length(
+    tmp_path: Path, body: bytes, expected_sha: str | None, expected_issue: str | None, expected_bytes: int,
+) -> None:
+    class SocketFixture:
+        def makefile(self, mode: str) -> io.BytesIO:
+            return io.BytesIO(b"HTTP/1.0 200 OK\r\n\r\n" + body)
+
+    response = stage.http.client.HTTPResponse(SocketFixture())
+    response.begin()
+    current, journal, _ = client(tmp_path, [Response(), response])
+    current.check("HEAD", URL)
+    current.check("GET", URL + ".CHECKSUM")
+    outcome = stage.result({"url": URL}, current)
+    journal.close()
+    assert outcome["sha256"] == expected_sha
+    assert outcome.get("checksum_issue") == expected_issue
+    saved = current.complete[max(current.complete)]
+    assert len(stage.base64.b64decode(saved["body_base64"])) == expected_bytes
 
 
 def test_shared_epoch_bundle_is_requested_once() -> None:

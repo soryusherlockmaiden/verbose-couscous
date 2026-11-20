@@ -309,7 +309,9 @@ class Client:
                 else:
                     body = response.read(2048)
                     if not response.isclosed():
-                        issue = "CHECKSUM_RESPONSE_EXCEEDS_2KB_OR_INCOMPLETE"
+                        # A short close-delimited read reaches EOF without closing fp.
+                        if length is not None or len(body) == 2048:
+                            issue = "CHECKSUM_RESPONSE_EXCEEDS_2KB_OR_INCOMPLETE"
                         self.close()
             elif method == "HEAD":
                 response.read()
